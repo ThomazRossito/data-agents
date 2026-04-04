@@ -186,7 +186,8 @@ data-agents/
 │
 ├── tools/                           # Ferramentas independentes do ecossistema AI extra (scripts Python isolados)
 ├── hooks/                           # Checkers, filtros de segurança (Pydantic / Guardails)
-├── skills/                          # Prompts longos e Documentação referêncial ao Claude (KGs)
+├── skills/                          # Prompts longos e Documentação referencial (Ex: Manuais do Claude)
+│   └── databricks/                  # 📥 Hub de Skills Oficiais importadas do Databricks AI-DEV-KIT
 ├── tests/                           # BDD, TDD automatizados
 ├── logs/                            # Pastas isoladas de logs por execução [!] (gerado)
 └── output/                          # Relatórios, Artefatos, ou CSvs exportados [!] (gerado)

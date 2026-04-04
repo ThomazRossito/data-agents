@@ -14,6 +14,10 @@ dependencies = [
     "microsoft-fabric-rti-mcp>=0.1.0",
     "microsoft-fabric-mcp>=0.1.0",
 
+    # Databricks Enterprise & MLOps
+    "databricks-sdk>=0.20.0",
+    "mlflow>=2.11.0",
+
     # Configuração
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
