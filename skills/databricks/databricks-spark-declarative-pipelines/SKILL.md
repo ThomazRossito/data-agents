@@ -145,7 +145,9 @@ Before writing pipeline code, make sure you have:
 |----------|------|---------|
 | Windowed aggregations (tumbling, sliding, session) | Streaming Table | `FROM stream(source)` + `GROUP BY window()` |
 | Full-table aggregations (totals, daily counts) | Materialized View | `FROM source` (no stream wrapper) |
-| CDC / SCD Type 2 | Streaming Table | `AUTO CDC INTO` or `dp.create_auto_cdc_flow()` |
+| CDC / SCD Type 1 or 2 | Streaming Table + Flow | `AUTO CDC INTO` or `dp.create_auto_cdc_flow()` |
+
+> **CRITICAL ANTI-PATTERN**: NEVER implement Slow Changing Dimensions (SCD Type 1 or 2) manually using window functions (`LAG()`, `LEAD()`), `ROW_NUMBER()`, or hashing (`sha2()`). You **MUST** use the native Lakeflow features: `AUTO CDC INTO` (SQL) or `dp.create_auto_cdc_flow()` (Python). The old `APPLY CHANGES INTO` is deprecated in favor of `AUTO CDC`.
 
 Use streaming tables for windowed aggregations to enable incremental processing. Use materialized views for simple aggregations that recompute fully on each refresh.
 
