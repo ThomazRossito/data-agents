@@ -18,6 +18,10 @@ dependencies = [
     "databricks-sdk>=0.20.0",
     "mlflow>=2.11.0",
 
+    # Microsoft Fabric & Identity
+    "azure-identity>=1.15.0",
+    "semantic-link>=0.1.0",
+
     # Configuração
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",

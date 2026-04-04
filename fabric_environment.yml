@@ -1,0 +1,17 @@
+name: data_agents_fabric_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - claude-agent-sdk>=0.1.48
+    - pydantic-settings>=2.0
+    - rich>=13.0
+    # Ferramentas Essenciais do Ecossistema Microsoft Dynamics/Azure para uso in-notebook
+    - azure-identity>=1.15.0
+    - semantic-link>=0.1.0
+    
+    # Adaptadores opcionais caso esse Compute precise atuar sobre Data Warehouses ou Lakehouses legados
+    - pyodbc
+    - msrestazure
