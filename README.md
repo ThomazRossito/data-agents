@@ -2,6 +2,19 @@
 
 Sistema Multi-Agentes para **Engenharia e Análise de Dados**, construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**.
 
+---
+
+### 👤 Autor
+- **Desenvolvido por:** Thomaz Antonio Rossito Neto
+- **Professional:** Specialist Data & AI Solutions Architect | Center of Excellence CoE @CI&T | Enterprise AI Agents, Microsoft Fabric & Databricks Expert
+- **LinkedIn:** [https://www.linkedin.com/in/thomaz-antonio-rossito-neto/](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/)
+- **GitHub:** [https://github.com/ThomazRossito/](https://github.com/ThomazRossito/)
+- **Data criação:** 04/04/2026
+- **Data atualização:** 04/04/2026
+- **Versão:** 1.0.0
+
+---
+
 ## Arquitetura
 
 ```
