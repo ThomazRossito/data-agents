@@ -82,7 +82,26 @@ async def run_interactive() -> None:
 
                 console.print()
 
-                await client.query(user_input)
+                # --- BMAD-METHOD: Slash Commands Parsing ---
+                override_agent = None
+                bmad_prompt = user_input
+
+                if user_input.startswith("/sql "):
+                    override_agent = "data_modeling_agent"
+                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O data_modeling_agent: {user_input[5:]}"
+                    console.print(f"[bold yellow]🚀 [BMAD Express] Direcionando para: {override_agent}...[/bold yellow]")
+
+                elif user_input.startswith("/spark "):
+                    override_agent = "data_engineering_agent"
+                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O data_engineering_agent: {user_input[7:]}"
+                    console.print(f"[bold yellow]🚀 [BMAD Express] Direcionando para: {override_agent}...[/bold yellow]")
+
+                elif user_input.startswith("/plan "):
+                    # Força a criação de um PRD
+                    bmad_prompt = f"Como Product Manager, crie um PRD detalhado na pasta `output/` usando a ferramenta Bash para a seguinte task e valide comigo antes de acionar qualquer agente especialista: {user_input[6:]}"
+                    console.print("[bold purple]🗺️ [BMAD Agile] Iniciando sessão de Context Engineering...[/bold purple]")
+
+                await client.query(bmad_prompt)
 
                 async for message in client.receive_response():
                     if isinstance(message, AssistantMessage):

@@ -46,6 +46,7 @@ def build_supervisor_options(
             "Grep",             # Buscar conteúdo em arquivos
             "Glob",             # Encontrar arquivos por padrão
             "AskUserQuestion",  # Esclarecer ambiguidades com o usuário
+            "Bash",             # Habilitado para gerar Artefatos de PM via output/prd.md
         ],
 
         # --- Subagents Especialistas ---
