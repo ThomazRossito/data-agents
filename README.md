@@ -1,10 +1,21 @@
-# Data Agents
+<p align="center">
+  <h1 align="center">Data Agents</h1>
+  <p align="center">
+    <strong>Sistema Multi-Agentes para Engenharia e Análise de Dados</strong>
+  </p>
+  <p align="center">
+    <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python Version">
+    <img src="https://img.shields.io/badge/Databricks-MCP-FF3621.svg" alt="Databricks MCP">
+    <img src="https://img.shields.io/badge/Microsoft%20Fabric-RTI-0078D4.svg" alt="Fabric MCP">
+    <img src="https://img.shields.io/badge/Anthropic-Claude%20SDK-D97757.svg" alt="Claude SDK">
+  </p>
+</p>
 
-Sistema Multi-Agentes para **Engenharia e Análise de Dados**, construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**.
+Construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**.
 
 ---
 
-### 👤 Autor
+## 👤 Autor
 
 - **Desenvolvido por:** Thomaz Antonio Rossito Neto
 - **Professional:** Specialist Data & AI Solutions Architect | Center of Excellence CoE @CI&T | Enterprise AI Agents, Microsoft Fabric & Databricks Expert
@@ -16,135 +27,182 @@ Sistema Multi-Agentes para **Engenharia e Análise de Dados**, construído sobre
 
 ---
 
-## Arquitetura
+## 🏗️ Visão Geral e Arquitetura
 
+O **Data Agents** é um ecossistema projetado para atuar como um engenheiro/analista de dados autônomo. Através do Agent Supervisor, ele capta intenções em linguagem natural, aciona especialistas (SQL, Spark, Pipeline) e interage nativamente com recursos na nuvem via sub-protocolos MCP.
+
+```mermaid
+flowchart TD
+    US[Usuário - Linguagem Natural] --> AS
+    
+    subgraph Orquestração
+    AS[Agent Supervisor<br>Claude Opus 4.6]
+    end
+    
+    subgraph Especialistas Técnicos
+    SQL[SQL Expert<br>Claude Sonnet 4.6]
+    SPK[Spark Expert<br>Claude Sonnet 4.6]
+    PL[Pipeline Architect<br>Claude Opus 4.6]
+    end
+    
+    subgraph Camada de Integração MCP
+    DB[Databricks MCP Server]
+    FB[Fabric Official MCP Server]
+    FBR[Fabric RTI MCP Server]
+    end
+
+    AS --> |Delega sub-tarefas| SQL
+    AS --> |Delega sub-tarefas| SPK
+    AS --> |Delega sub-tarefas| PL
+    
+    SQL -.-> |Consultas SQL, Metadados| DB
+    SQL -.-> |Consultas SQL, Metadados| FB
+    SPK -.-> |PySpark, Delta, LakeFlow| DB
+    SPK -.-> |PySpark, Notebooks| FB
+    PL -.-> |Pipelines, Jobs, CI/CD| DB
+    PL -.-> |Real-Time Intelligence| FBR
 ```
-Usuário (linguagem natural)
-        │
-        ▼
-┌─────────────────────────┐
-│   AGENT SUPERVISOR      │  Claude Opus 4.6 — orquestra e planeja
-│   (Orquestrador)        │
-└────┬──────┬─────────┬───┘
-     │      │         │
-     ▼      ▼         ▼
-  SQL     Spark    Pipeline
- Expert   Expert   Architect
-(Sonnet) (Sonnet)  (Opus)
-     │               │
-     └───────┬────────┘
-             ▼
-   ┌─────────────────────┐
-   │    Camada MCP       │
-   │  Databricks  Fabric │
-   │  Fabric RTI         │
-   └─────────────────────┘
-```
 
-## Agentes
+## 🤖 Nossos Agentes
 
-| Agente                       | Modelo            | Responsabilidade                           |
-| ---------------------------- | ----------------- | ------------------------------------------ |
-| **Supervisor**         | Claude Opus 4.6   | Interpretar intenção, planejar e delegar |
-| **SQL Expert**         | Claude Sonnet 4.6 | SQL, KQL, descoberta de metadados          |
-| **Spark Expert**       | Claude Sonnet 4.6 | PySpark, Delta Lake, DLT/LakeFlow          |
-| **Pipeline Architect** | Claude Opus 4.6   | ETL/ELT cross-platform, Jobs, execução   |
+| Agente | Modelo (Recomendado) | Papel e Responsabilidades |
+|---|---|---|
+| **Supervisor** | `Claude Opus 4.6` | Atua como líder técnico e orquestrador principal. Recebe o prompt do usuário, divide o problema em tarefas, decide qual Especialista chamar e consolida a resposta final. |
+| **SQL Expert** | `Claude Sonnet 4.6` | Especialista em análise de dados relacionais e em metadados. Realiza descobertas no Unity Catalog / OneLake, gera e otimiza queries (SQL, KQL). |
+| **Spark Expert** | `Claude Sonnet 4.6` | Focado em engenharia de dados em grande escala. Cria código PySpark, manipula DataFrames e gerencia arquitetura Delta Lake (Medallion). |
+| **Pipeline Architect** | `Claude Opus 4.6` | Engenheiro focado em orquestração e deploy. Estrutura workflows, Delta Live Tables (DLT) e processos ELT/ETL automatizados ponta-a-ponta. |
 
-## Pré-requisitos
+---
 
-- Python 3.11+
-- `databricks-mcp-server` instalado e configurado
-- `microsoft-fabric-rti-mcp` instalado (via pip ou uvx)
-- `microsoft-fabric-mcp` instalado (servidor community)
-- dotnet SDK 8.0+ (para Fabric MCP Server oficial)
-- Databricks CLI autenticado **ou** variáveis `DATABRICKS_HOST` / `DATABRICKS_TOKEN`
-- Azure CLI autenticado (`az login`) **ou** service principal configurado
+## 📋 Pré-Requisitos
 
-## Instalação
+1. **Python 3.11+**: Recomenda-se instalação via `pyenv` ou uso de virtualenvs.
+2. **Databricks**: 
+   - CLI do Databricks configurado (`databricks configure`) ou Variáveis `DATABRICKS_HOST` e `DATABRICKS_TOKEN`.
+   - `databricks-mcp-server` adequadamente instalado no sistema.
+3. **Microsoft Fabric**:
+   - Azure CLI autenticado (`az login`) para integração oficial.
+   - dotnet SDK 8.0+ para o Fabric MCP Server da Microsoft.
+   - `microsoft-fabric-rti-mcp` (instalação recomendada via `uvx` ou no ambiente Python).
+
+---
+
+## 🚀 Passo a Passo de Configuração
+
+### 1. Clonar o Repositório
 
 ```bash
-# 1. Clone o projeto
-git clone <repo-url>
+git clone git@github.com:ThomazRossito/data-agents.git
 cd data-agents
-
-# 2. Crie e ative ambiente virtual
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# 3. Instale as dependências
-pip install -e ".[dev]"
-
-# 4. Configure as variáveis de ambiente
-cp .env.example .env
-# Edite .env com suas credenciais reais
-
-# 5. Crie o diretório de logs
-mkdir -p logs
 ```
 
-## Uso
+### 2. Configurar o Ambiente Virtual
 
-### Modo interativo (recomendado)
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # No Windows: .venv\Scripts\activate
+```
+
+### 3. Instalar as Dependências
+
+Garanta que sua branch esteja atualizada (`git checkout dev`) e instale o pacote estrutural em modo de desenvolvimento:
+
+```bash
+pip install -e ".[dev]"
+```
+
+### 4. Configuração das Variáveis de Ambiente
+
+Para a execução correta dos MCPs, o sistema utiliza um arquivo `.env`.
+
+```bash
+cp .env.example .env
+```
+Abra o arquivo `.env` e preencha as variáveis como listado no arquivo (ex. suas configurações do Databricks e chaves de APIs).
+
+### 5. Configurar Diretórios Locais
+
+Alguns comandos salvam artefatos ou registros localmente:
+
+```bash
+mkdir -p logs
+mkdir -p output
+```
+
+---
+
+## 💻 Como Usar
+
+Existem duas maneiras prontas de invocar o sistema dependendo do seu contexto.
+
+### Modo Interativo (Chat)
+
+Este é o modo padrão de conversar via linha de comando (terminal). Ideal para sessões contínuas e exploratórias em tempo real.
 
 ```bash
 python main.py
 ```
 
-### Single-query (para automação/CI)
+### Modo Single-Query (Scripts e CI/CD)
+
+Ideal para passar um comando direto via shell script sem retenção no loop.
 
 ```bash
-python main.py "Analise a tabela analytics.default.vendas e gere um relatório de qualidade"
+python main.py "Verifique a saúde e qualidade da tabela 'vendas_silver' no Unity Catalog (Databricks) e gere um sumário analítico detalhado."
 ```
 
-### Exemplos de solicitações
+### 💡 Casos de Uso Comuns
 
-```
-"Leia o CSV vendas_2024.csv do OneLake no Fabric, normalize os dados com PySpark e salve no Databricks Unity Catalog"
+- **Databricks:** *"Analise todos os logs de erro da minha última Job Run e proponha a correção do código Python."*
+- **Fabric:** *"Execute uma consulta KQL para verificar o volume de logs das últimas 2 horas no dashboard do Fabric RTI."*
+- **Cross-Platform:** *"Identifique as discrepâncias de esquema entre a tabela `clientes` do OneLake (Fabric) e o Unity Catalog (Databricks)."*
 
-"Gere uma query SQL para calcular o top 10 produtos por receita no último mês na tabela analytics.default.vendas"
+---
 
-"Crie um Spark Declarative Pipeline para ingestão incremental do bucket S3 para o Unity Catalog, com camadas Bronze, Silver e Gold"
+## 📂 Estrutura de Diretórios e Componentes
 
-"Otimize esta query: SELECT * FROM vendas WHERE ano = 2024"
+Organização robusta pensada para fácil escalabilidade:
 
-"Analise a qualidade dos dados da tabela fabric.lakehouse.clientes: nulos, duplicatas e anomalias"
-```
-
-## Executar testes
-
-```bash
-pytest tests/ -v
-```
-
-## Adicionar nova plataforma (ex: Snowflake)
-
-1. Copie o template: `cp -r mcp_servers/_template mcp_servers/snowflake`
-2. Implemente `get_snowflake_mcp_config()` em `mcp_servers/snowflake/server_config.py`
-3. Registre em `config/mcp_servers.py`
-4. (Opcional) Crie `agents/definitions/snowflake_expert.py`
-5. (Opcional) Registre o agente em `agents/supervisor.py`
-
-## Estrutura do Projeto
-
-```
+```text
 data-agents/
-├── main.py                          # Entry point
-├── pyproject.toml                   # Dependências
-├── .env.example                     # Template de configuração
-├── config/
-│   ├── settings.py                  # Configurações (Pydantic)
-│   └── mcp_servers.py               # Registry de servidores MCP
-├── agents/
-│   ├── supervisor.py                # Constrói o ClaudeAgentOptions
-│   ├── definitions/                 # AgentDefinition de cada especialista
-│   └── prompts/                     # System prompts
-├── mcp_servers/
-│   ├── databricks/                  # MCP Server Databricks
-│   ├── fabric/                      # MCP Servers Fabric (oficial + community)
-│   ├── fabric_rti/                  # MCP Server Fabric RTI
-│   └── _template/                   # Template para novos módulos
-├── hooks/                           # Hooks de segurança e auditoria
-├── skills/                          # Conhecimento especializado em Markdown
-└── tests/                           # Testes automatizados
+├── main.py                          # Entry point principal
+├── pyproject.toml                   # Dependências do projeto e empacotamento
+├── .env.example                     # Template limpo de credenciais
+│
+├── config/                          # Configurações sensíveis e de arquitetura
+│   ├── settings.py                  # Integração via Pydantic & DotEnv
+│   └── mcp_servers.py               # Mapeamento / Registro dos MCPs disponíveis
+│
+├── agents/                          # Arquitetura dos Especialistas AI
+│   ├── supervisor.py                # Setup, Delegation & Routing (Claude Options)
+│   ├── definitions/                 # Declaração em Python para os Especialistas
+│   └── prompts/                     # System Prompts de persona de cada agente
+│
+├── mcp_servers/                     # Módulos customizados de conexão (Tools provider)
+│   ├── databricks/                  # Adaptador e config local para Databricks
+│   ├── fabric/                      # Oficial Microsoft Fabric 
+│   ├── fabric_rti/                  # Mapeamento do KQL / RTI Microsoft
+│   └── _template/                   # Molde para novos conectores (e.g. Snowflake)
+│
+├── tools/                           # Ferramentas independentes do ecossistema AI extra (scripts Python isolados)
+├── hooks/                           # Checkers, filtros de segurança (Pydantic / Guardails)
+├── skills/                          # Prompts longos e Documentação referêncial ao Claude (KGs)
+├── tests/                           # BDD, TDD automatizados
+├── logs/                            # Pastas isoladas de logs por execução [!] (gerado)
+└── output/                          # Relatórios, Artefatos, ou CSvs exportados [!] (gerado)
+```
+
+---
+
+## 🤝 Fluxo de Contribuição e Expansão
+
+A expansão do sistema se dá criando novas capabilities baseadas em MCPs.
+
+1. **Novo MCP:** Para adicionar um conector, por exemplo o `Snowflake`, duplique o  `mcp_servers/_template` como modelo base para injetar a conexão STDIN/STDOUT padrão do protocolo. Re-registre em `config/mcp_servers.py`.
+2. **Criar Especialista:** Vá em `agents/definitions/` crie `snowflake_expert.py` e registre-o com sua ferramenta MCP recém criada.
+3. **Notificar o Supervisor:** Declare o seu novo Agente disponível para roteamento em `agents/supervisor.py`.
+
+```bash
+# Rode a suite de testes automatizada para validar os hooks
+pytest tests/ -v
 ```
