@@ -79,7 +79,7 @@ flowchart TD
 1. **Python 3.11+**: Recomenda-se instalação via `pyenv` ou uso de virtualenvs.
 2. **Databricks**: 
    - CLI do Databricks configurado (`databricks configure`) ou Variáveis `DATABRICKS_HOST` e `DATABRICKS_TOKEN`.
-   - `databricks-mcp-server` adequadamente instalado no sistema.
+   - `databricks-mcp-server`, `databricks-sdk` e `mlflow` instalados no ambiente Python.
 3. **Microsoft Fabric**:
    - Azure CLI autenticado (`az login`) para integração oficial.
    - dotnet SDK 8.0+ para o Fabric MCP Server da Microsoft.
@@ -151,11 +151,31 @@ Ideal para passar um comando direto via shell script sem retenção no loop.
 python main.py "Verifique a saúde e qualidade da tabela 'vendas_silver' no Unity Catalog (Databricks) e gere um sumário analítico detalhado."
 ```
 
+### Validação do Ambiente Databricks
+
+Para validar se suas credenciais locais configuram um *Workspace* e um *SQL Warehouse* válido, utilize nosso script de verificação via SDK oficial antes de interagir com o agente:
+
+```bash
+python tools/databricks_health_check.py
+```
+
 ### 💡 Casos de Uso Comuns
 
 - **Databricks:** *"Analise todos os logs de erro da minha última Job Run e proponha a correção do código Python."*
 - **Fabric:** *"Execute uma consulta KQL para verificar o volume de logs das últimas 2 horas no dashboard do Fabric RTI."*
 - **Cross-Platform:** *"Identifique as discrepâncias de esquema entre a tabela `clientes` do OneLake (Fabric) e o Unity Catalog (Databricks)."*
+
+---
+
+## 🛠️ Databricks Enterprise DataOps (DABs e MLflow)
+
+Este repositório foi construído já seguindo as diretrizes focadas em DataOps para escala na nuvem:
+
+1. **Databricks Asset Bundles (DABs):**  
+   Configure o `databricks.yml` presente na raiz para integrar e automatizar deploys (CI/CD) em formato de Workflows nativos (Jobs e Pipelines).
+   
+2. **Model Serving via MLflow (Mosaic AI Agent Framework):**  
+   Para exportar sua customização de Agente em vez de apenas utilizá-la via terminal do MAC, estenda as funcionalidades registradas no `agents/mlflow_wrapper.py`. Este wrapper de modelo em PyFunc adequa automaticamente o paradigma do `claude-agent-sdk` para os endpoints REST corporativos de chat (*OpenAI Compatible*) do Model Serving da Databricks.
 
 ---
 
@@ -166,6 +186,7 @@ Organização robusta pensada para fácil escalabilidade:
 ```text
 data-agents/
 ├── main.py                          # Entry point principal
+├── databricks.yml                   # Topologia e configuração do Databricks Asset Bundles (DABs)
 ├── pyproject.toml                   # Dependências do projeto e empacotamento
 ├── .env.example                     # Template limpo de credenciais
 │
@@ -175,6 +196,7 @@ data-agents/
 │
 ├── agents/                          # Arquitetura dos Especialistas AI
 │   ├── supervisor.py                # Setup, Delegation & Routing (Claude Options)
+│   ├── mlflow_wrapper.py            # Wrapper PyFunc para Deploy do Agente usando Databricks Model Serving
 │   ├── definitions/                 # Declaração em Python para os Especialistas
 │   └── prompts/                     # System Prompts de persona de cada agente
 │
@@ -184,7 +206,8 @@ data-agents/
 │   ├── fabric_rti/                  # Mapeamento do KQL / RTI Microsoft
 │   └── _template/                   # Molde para novos conectores (e.g. Snowflake)
 │
-├── tools/                           # Ferramentas independentes do ecossistema AI extra (scripts Python isolados)
+├── tools/                           # Ferramentas e validadores auxiliares
+│   └── databricks_health_check.py   # Diagnóstico de autenticação com Databricks SDK via Python
 ├── hooks/                           # Checkers, filtros de segurança (Pydantic / Guardails)
 ├── skills/                          # Prompts longos e Documentação referencial (Ex: Manuais do Claude)
 │   └── databricks/                  # 📥 Hub de Skills Oficiais importadas do Databricks AI-DEV-KIT
