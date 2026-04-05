@@ -4,9 +4,13 @@ Módulo principal do Agent Supervisor.
 Constrói o ClaudeAgentOptions com:
   - System prompt do orquestrador
   - Subagents especialistas (sql-expert, spark-expert, pipeline-architect)
-  - Servidores MCP de todas as plataformas
+  - Servidores MCP das plataformas com credenciais configuradas
   - Hooks de auditoria e segurança
   - Configurações de modelo, custo e permissões
+
+Modos de thinking:
+  - BMAD Full (/plan): thinking enabled com budget de 8000 tokens — para planejamento complexo
+  - Demais modos: thinking disabled — economiza custo/latência em tarefas pontuais
 """
 
 from claude_agent_sdk import ClaudeAgentOptions, HookMatcher
@@ -24,17 +28,28 @@ from hooks.security_hook import block_destructive_commands
 
 def build_supervisor_options(
     platforms: list[str] | None = None,
+    enable_thinking: bool = False,
 ) -> ClaudeAgentOptions:
     """
     Constrói e retorna o ClaudeAgentOptions para o Agent Supervisor.
 
     Args:
-        platforms: Plataformas MCP a ativar. None = todas.
+        platforms: Plataformas MCP a ativar. None = detecta por credenciais disponíveis.
                    Opções: "databricks", "fabric", "fabric_rti"
+        enable_thinking: Se True, ativa thinking com budget de 8000 tokens.
+                         Use apenas para BMAD Full (/plan) — tarefas de planejamento complexo.
+                         False por padrão para economizar custo e latência.
 
     Returns:
         ClaudeAgentOptions configurado e pronto para uso com query() ou ClaudeSDKClient.
     """
+    # Thinking: ativo apenas quando explicitamente solicitado (modo BMAD Full)
+    thinking_config = (
+        {"type": "enabled", "budget_tokens": 8000}
+        if enable_thinking
+        else {"type": "disabled"}
+    )
+
     return ClaudeAgentOptions(
         # --- Modelo e System Prompt ---
         model=settings.default_model,
@@ -43,11 +58,12 @@ def build_supervisor_options(
         # --- Tools do Supervisor (planejamento e delegação apenas) ---
         allowed_tools=[
             "Agent",            # Invocar subagents especialistas
-            "Read",             # Ler arquivos locais (schemas, configs)
+            "Read",             # Ler arquivos locais (schemas, configs, skills)
             "Grep",             # Buscar conteúdo em arquivos
             "Glob",             # Encontrar arquivos por padrão
+            "Write",            # Salvar PRDs e artefatos em output/
             "AskUserQuestion",  # Esclarecer ambiguidades com o usuário
-            "Bash",             # Habilitado para gerar Artefatos de PM via output/prd.md
+            "Bash",             # Executar comandos auxiliares (mkdir, etc.)
         ],
 
         # --- Subagents Especialistas ---
@@ -57,7 +73,7 @@ def build_supervisor_options(
             "pipeline-architect": create_pipeline_architect(),
         },
 
-        # --- Servidores MCP (todas as plataformas de dados) ---
+        # --- Servidores MCP (plataformas com credenciais disponíveis) ---
         mcp_servers=build_mcp_registry(platforms),
 
         # --- Controle de Execução ---
@@ -68,8 +84,8 @@ def build_supervisor_options(
         # --- Streaming parcial para feedback visual em tempo real ---
         include_partial_messages=True,
 
-        # --- Thinking adaptativo para planejamento complexo ---
-        thinking={"type": "adaptive"},
+        # --- Thinking: desabilitado por padrão; ativo via enable_thinking=True ---
+        thinking=thinking_config,
         effort="high",
 
         # --- Hooks de Auditoria, Custo e Segurança ---

@@ -304,6 +304,7 @@ Os agentes **leem obrigatoriamente os SKILL.md** antes de gerar qualquer código
 | `spark_patterns.md` | PySpark patterns, `pyspark.pipelines` API moderna |
 | `sql_generation.md` | SQL patterns com Liquid Clustering (CLUSTER BY), sem ZORDER BY |
 | `data_quality.md` | Expectations, reconciliação, qualidade de dados |
+| `star_schema_design.md` | 5 regras Gold Star Schema: dim autônoma, `dim_data` via SEQUENCE, INNER JOIN obrigatório em fact, topologia de DAG, Liquid Clustering |
 
 ---
 
@@ -349,15 +350,18 @@ Todos os hooks são registrados no Supervisor e interceptam chamadas em tempo re
 ```bash
 make help           # Lista todos os comandos disponíveis
 make dev            # Instala dependências de desenvolvimento
-make test           # Executa testes com cobertura mínima de 60%
+make test           # Executa testes com cobertura mínima de 80%
 make lint           # ruff check
 make format         # ruff format
 make type-check     # mypy
 make security       # bandit
-make run            # Inicia o Data Agents
-make deploy-staging # Deploy para Databricks Staging
-make deploy-prod    # Deploy para Databricks Production
-make clean          # Remove cache e artefatos temporários
+make run                # Inicia o Data Agents
+make health-databricks  # Valida credenciais e conectividade Databricks
+make health-fabric      # Valida credenciais e conectividade Microsoft Fabric
+make fabric-env         # Cria ambiente conda para Fabric Notebooks
+make deploy-staging     # Deploy para Databricks Staging
+make deploy-prod        # Deploy para Databricks Production
+make clean              # Remove cache e artefatos temporários
 ```
 
 ### Databricks Asset Bundles (Multi-Environment)
@@ -373,6 +377,14 @@ O arquivo `databricks.yml` configura três targets:
 ### MLflow / Mosaic AI Model Serving
 
 A classe `agents/mlflow_wrapper.py` empacota toda a engine Multi-Agente como um endpoint REST via Databricks Model Serving. Compatível com Python 3.12+ (usa `asyncio.run()` em vez do deprecated `get_event_loop()`). Aceita o formato OpenAI Messages e retorna respostas compatíveis com Databricks AI Gateway.
+
+Ao final de cada execução, o wrapper captura o `ResultMessage` do SDK e loga automaticamente as métricas no MLflow Run ativo (quando disponível):
+
+| Métrica | Descrição |
+|---|---|
+| `agent.cost_usd` | Custo total da sessão em dólares |
+| `agent.num_turns` | Número de turns executados |
+| `agent.duration_ms` | Duração total em milissegundos |
 
 ### Diagnóstico de Startup
 
@@ -393,8 +405,9 @@ data-agents/
 ├── main.py                            # Entry point: loop interativo + single-query + /help
 ├── databricks.yml                     # Databricks Asset Bundles (dev / staging / production)
 ├── fabric_environment.yml             # Dependências para Fabric Notebooks / Spark Compute
-├── pyproject.toml                     # Dependências e metadados do pacote
-├── Makefile                           # Automação: test, lint, format, deploy
+├── pyproject.toml                     # Dependências, metadados e configuração mypy/ruff/pytest
+├── Makefile                           # Automação: test, lint, format, health-checks, deploy
+├── .pre-commit-config.yaml            # Hooks locais: ruff, bandit, trailing-whitespace, detect-private-key
 ├── .env.example                       # Variáveis de ambiente (template)
 │
 ├── .github/
@@ -460,6 +473,7 @@ data-agents/
     ├── spark_patterns.md              # PySpark + pyspark.pipelines (API moderna)
     ├── sql_generation.md              # SQL com Liquid Clustering (CLUSTER BY)
     ├── data_quality.md                # Expectations + reconciliação
+    ├── star_schema_design.md          # 5 regras Gold Star Schema (dim autônoma, SEQUENCE, INNER JOIN)
     ├── databricks/                    # 26 Skills Databricks (SDP, Unity Catalog, DABs, MLflow, etc.)
     └── fabric/                        # 5 Skills Microsoft Fabric (Medallion, Direct Lake, RTI, etc.)
 ```
@@ -468,7 +482,7 @@ data-agents/
 
 ## 🧪 Testes e Desenvolvimento
 
-O projeto inclui suíte de testes assíncronos via `pytest` com 7 arquivos e cobertura mínima de 60%:
+O projeto inclui suíte de testes assíncronos via `pytest` com 7 arquivos e cobertura mínima de **80%**:
 
 ```bash
 # Instale as dependências de desenvolvimento
@@ -490,11 +504,13 @@ Escopo de cobertura: `agents/`, `config/`, `hooks/`, `commands/`.
 Antes de usar em um ambiente novo, valide suas credenciais:
 
 ```bash
-# Ping Databricks (valida token e warehouse)
+# Databricks: valida autenticação, lista SQL Warehouses e catálogos do Unity Catalog
 python tools/databricks_health_check.py
+# ou: make health-databricks
 
-# Ping Microsoft Fabric / Azure Entra ID
+# Microsoft Fabric: valida token Entra ID + conectividade real (GET /v1/workspaces)
 python tools/fabric_health_check.py
+# ou: make health-fabric
 
 # Health check via agente (verifica MCP servers em tempo real)
 data-agents

@@ -61,9 +61,13 @@ df_clean = (
     .saveAsTable("catalog.schema.table_name")
 )
 
-# Otimização pós-escrita
-spark.sql("OPTIMIZE catalog.schema.table_name ZORDER BY (data)")
+# Otimização pós-escrita com Liquid Clustering
+# NUNCA use ZORDER BY em tabelas com CLUSTER BY — são mutuamente exclusivos
+spark.sql("OPTIMIZE catalog.schema.table_name")
 ```
+
+> **Liquid Clustering:** Se a tabela foi criada com `CLUSTER BY`, o `OPTIMIZE` reorganiza
+> automaticamente sem `ZORDER BY`. Ver padrão em `skills/sql_generation.md`.
 
 ## MERGE (Upsert) — SCD Type 1
 
@@ -123,14 +127,20 @@ dp.create_auto_cdc_flow(
     stored_as_scd_type=2,
 )
 
-# --- Gold: MATERIALIZED VIEW para agregação ---
+# --- Gold: MATERIALIZED VIEW — REGRAS STAR SCHEMA OBRIGATÓRIAS ---
+# Leia skills/star_schema_design.md ANTES de gerar qualquer dim_* ou fact_*
+# Regras: dim_* NUNCA derivam de silver transacional; fact_* DEVE INNER JOIN todas as dims
+
 @dp.materialized_view(name="gold_vendas_diarias", comment="Gold: agregação por dia")
 def gold_vendas_diarias():
+    # Exemplo de agregação simples (sem Star Schema)
     return (
         spark.read.table("silver_vendas")
         .groupBy("data")
         .agg(F.sum("valor").alias("total_vendas"))
     )
+
+# Para Star Schema completo (dim_* + fact_*), ver: skills/star_schema_design.md
 ```
 
 ## Broadcast Join para Tabelas Pequenas

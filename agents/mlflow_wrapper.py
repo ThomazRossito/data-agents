@@ -155,8 +155,11 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
 
         Inicializa o supervisor com ferramentas MCP e processa a query
         através do pipeline multi-agente completo.
+
+        Registra métricas de custo/turns/duração no MLflow Run ativo (se houver),
+        permitindo rastreamento de custos diretamente no experimento MLflow.
         """
-        from claude_agent_sdk import query, AssistantMessage, TextBlock
+        from claude_agent_sdk import query, AssistantMessage, TextBlock, ResultMessage
         from agents.supervisor import build_supervisor_options
 
         options = build_supervisor_options()
@@ -168,7 +171,51 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
                     if isinstance(block, TextBlock) and block.text.strip():
                         final_text += block.text + "\n"
 
+            elif isinstance(message, ResultMessage):
+                # Loga métricas de uso no MLflow Run ativo (se houver)
+                self._log_result_metrics(message)
+
         return final_text if final_text else "Processamento concluído sem resposta textual."
+
+    def _log_result_metrics(self, result) -> None:
+        """
+        Loga métricas do ResultMessage no MLflow Run ativo.
+
+        Métricas registradas:
+          - agent.cost_usd: custo total em dólares
+          - agent.num_turns: número de turns executados
+          - agent.duration_ms: duração total em milissegundos
+
+        Se não houver um Run MLflow ativo, apenas loga via logger (não falha).
+        """
+        try:
+            run = mlflow.active_run()
+            if run is None:
+                # Sem run ativo — apenas loga no logger para diagnóstico
+                logger.info(
+                    "ResultMessage (sem MLflow run ativo): "
+                    "cost=%.4f turns=%s duration_ms=%s",
+                    result.total_cost_usd or 0.0,
+                    result.num_turns or 0,
+                    result.duration_ms or 0,
+                )
+                return
+
+            metrics: dict[str, float] = {}
+            if result.total_cost_usd is not None:
+                metrics["agent.cost_usd"] = result.total_cost_usd
+            if result.num_turns is not None:
+                metrics["agent.num_turns"] = float(result.num_turns)
+            if result.duration_ms is not None:
+                metrics["agent.duration_ms"] = float(result.duration_ms)
+
+            if metrics:
+                mlflow.log_metrics(metrics)
+                logger.info("Métricas do agente logadas no MLflow: %s", metrics)
+
+        except Exception as e:
+            # Falhas de logging nunca devem interromper a resposta ao usuário
+            logger.warning("Falha ao logar métricas no MLflow: %s", e)
 
 
 # ═══════════════════════════════════════════════════════════════════

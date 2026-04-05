@@ -61,6 +61,7 @@ DATABRICKS_MCP_TOOLS = [
     # Spark Declarative Pipelines (LakeFlow)
     "mcp__databricks__list_pipelines",
     "mcp__databricks__get_pipeline",
+    "mcp__databricks__create_or_update_pipeline",
     "mcp__databricks__start_pipeline",
     "mcp__databricks__stop_pipeline",
     "mcp__databricks__get_pipeline_update",
@@ -75,6 +76,8 @@ DATABRICKS_MCP_TOOLS = [
     # Files & Volumes
     "mcp__databricks__list_files",
     "mcp__databricks__read_file",
+    "mcp__databricks__upload_to_volume",
+    "mcp__databricks__list_volume_files",
 ]
 
 # Subconjunto apenas de leitura/descoberta (para agentes sem permissão de escrita)

@@ -23,7 +23,7 @@ def create_pipeline_architect() -> AgentDefinition:
         description=(
             "Arquiteto e executor de Pipelines de Dados (ETL/ELT). Use para: "
             "design e execução de pipelines cross-platform (Fabric ↔ Databricks), "
-            "orquestração de Jobs Databricks e Spark Declarative Pipelines, "
+            "orquestração de Jobs Databricks e Spark Declarative Pipelines (LakeFlow), "
             "configuração e monitoramento de pipelines Data Factory no Fabric, "
             "movimentação de dados entre OneLake e Unity Catalog, "
             "monitoramento end-to-end com tratamento de falhas."
@@ -35,6 +35,7 @@ def create_pipeline_architect() -> AgentDefinition:
             + ALL_FABRIC_TOOLS
             + rti_pipeline_tools
         ),
-        model="opus",
+        model="claude-opus-4-6",
+        max_turns=30,
         mcpServers=["databricks", "fabric", "fabric_community", "fabric_rti"],
     )

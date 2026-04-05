@@ -61,13 +61,14 @@ TOOL_LABELS: dict[str, str] = {
     "mcp__databricks__list_catalogs":       "📋 Listando catálogos do Unity Catalog",
     "mcp__databricks__list_schemas":        "📋 Listando schemas",
     "mcp__databricks__list_tables":         "📋 Listando tabelas",
-    "mcp__databricks__get_table_info":      "🔎 Inspecionando tabela",
+    "mcp__databricks__describe_table":       "🔎 Inspecionando tabela",
+    "mcp__databricks__get_table_schema":    "🔎 Obtendo schema da tabela",
+    "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline LakeFlow",
+    "mcp__databricks__upload_to_volume":    "⬆️  Enviando arquivo para Volume",
+    "mcp__databricks__list_volume_files":   "📂 Listando arquivos no Volume",
     "mcp__databricks__run_job_now":         "🚀 Executando Job Databricks",
     "mcp__databricks__start_pipeline":      "🚀 Iniciando Pipeline Databricks",
     "mcp__databricks__get_pipeline":        "📊 Consultando status do Pipeline",
-    "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline",
-    "mcp__databricks__upload_to_volume":    "⬆️  Enviando arquivo para Volume",
-    "mcp__databricks__list_volume_files":   "📂 Listando arquivos no Volume",
     # Ferramentas MCP — Fabric
     "mcp__fabric__list_workspaces":         "📋 Listando workspaces do Fabric",
     "mcp__fabric__list_lakehouses":         "📋 Listando Lakehouses",
@@ -241,12 +242,7 @@ async def _stream_response(client: ClaudeSDKClient) -> None:
 
 async def run_interactive() -> None:
     """Loop interativo com histórico de sessão mantido entre mensagens."""
-    # Tenta chamar setup_logging com parâmetros avançados (versão melhorada);
-    # faz fallback para chamada simples se a versão original estiver em uso.
-    try:
-        setup_logging(level=settings.log_level)
-    except TypeError:
-        setup_logging()
+    setup_logging(log_level=settings.log_level)
     if hasattr(settings, 'startup_diagnostics'):
         settings.startup_diagnostics()
 
@@ -299,9 +295,15 @@ async def run_interactive() -> None:
                             f"Slash command: {command_result.command} "
                             f"(mode={command_result.bmad_mode}, agent={command_result.agent})"
                         )
+                        # Ativa thinking apenas para BMAD Full (/plan) — planejamento complexo
+                        if command_result.bmad_mode == "full":
+                            options.thinking = {"type": "enabled", "budget_tokens": 8000}
+                        else:
+                            options.thinking = {"type": "disabled"}
                     else:
-                        # Texto livre → BMAD Auto (Supervisor decide)
+                        # Texto livre → BMAD Auto (Supervisor decide), sem thinking extra
                         bmad_prompt = user_input
+                        options.thinking = {"type": "disabled"}
 
                     # --- Enviar para o Supervisor e processar com feedback visual ---
                     await client.query(bmad_prompt)
@@ -342,10 +344,7 @@ async def run_interactive() -> None:
 
 async def run_single_query(prompt: str) -> None:
     """Executa uma única solicitação e exibe o resultado."""
-    try:
-        setup_logging(level=settings.log_level, enable_console=False)
-    except TypeError:
-        setup_logging()
+    setup_logging(log_level=settings.log_level, enable_console=False)
 
     options = build_supervisor_options()
     options.include_partial_messages = True

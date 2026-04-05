@@ -23,27 +23,43 @@ def run_health_check():
         # Como o host nem sempre é óbvio no retorno do SDK, pegamos das configs de inicialização.
         console.print(f"✅ Host configurado: [bold]{w.config.host}[/bold]")
         
-        # Teste 3: SQL Warehouses disponíveis
+        # Teste 3: SQL Warehouses disponíveis (usa warehouses.list() — API correta)
         console.print("\n[dim]3. Verificando SQL Warehouses disponíveis (Serverless/Pro)...[/dim]")
-        warehouses = list(w.data_sources.list())
-        
+        warehouses = list(w.warehouses.list())
+
         if not warehouses:
-            console.print("⚠️ Nenhum SQL Warehouse encontrado neste workspace.")
+            console.print("⚠️  Nenhum SQL Warehouse encontrado neste workspace.")
         else:
             table = Table(show_header=True, header_style="bold magenta")
             table.add_column("Nome", style="dim")
             table.add_column("ID")
             table.add_column("Tamanho")
+            table.add_column("Estado")
 
-            for wh in warehouses[:5]:  # Mostrar apenas os primeiros 5
-                # Algumas chaves dependem da versão/formato específico da API, mas podemos recuperar dados gerais
-                # Neste caso, usamos atributos do objeto retornado.
-                if hasattr(wh, "name") and hasattr(wh, "id") and hasattr(wh, "size"):
-                    table.add_row(wh.name, wh.id, wh.size)
-            
+            for wh in warehouses[:5]:
+                table.add_row(
+                    wh.name or "-",
+                    str(wh.id or "-"),
+                    wh.cluster_size or "-",
+                    str(wh.state.value) if wh.state else "-",
+                )
+
             console.print(table)
             if len(warehouses) > 5:
                 console.print(f"... e mais {len(warehouses) - 5} Warehouses omitidos.")
+
+        # Teste 4: Unity Catalog — lista catálogos acessíveis
+        console.print("\n[dim]4. Verificando catálogos do Unity Catalog...[/dim]")
+        try:
+            catalogs = list(w.catalogs.list())
+            if catalogs:
+                names = ", ".join(c.name for c in catalogs[:5] if c.name)
+                console.print(f"✅ Catálogos disponíveis: [bold]{names}[/bold]"
+                               + (f" (+ {len(catalogs) - 5} more)" if len(catalogs) > 5 else ""))
+            else:
+                console.print("⚠️  Nenhum catálogo encontrado — Unity Catalog pode não estar habilitado.")
+        except Exception as uc_err:
+            console.print(f"⚠️  Não foi possível listar catálogos do Unity Catalog: {uc_err}")
 
         console.print("\n[bold green]Tudo pronto![/bold green] O Servidor MCP funcionará perfeitamente com essas credenciais.\n")
 

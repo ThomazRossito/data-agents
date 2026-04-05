@@ -35,7 +35,7 @@ jobs:
         run: ruff format --check .
 
       - name: Type check (mypy)
-        run: mypy --ignore-missing-imports agents/ config/ hooks/ commands/
+        run: mypy agents/ config/ hooks/ commands/
 
   test:
     name: Tests
@@ -63,7 +63,7 @@ jobs:
             --cov=agents --cov=config --cov=hooks --cov=commands \
             --cov-report=term-missing \
             --cov-report=xml \
-            --cov-fail-under=60
+            --cov-fail-under=80
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4

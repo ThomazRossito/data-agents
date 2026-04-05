@@ -37,6 +37,7 @@ def create_sql_expert() -> AgentDefinition:
             + fabric_readonly
             + FABRIC_RTI_READONLY_TOOLS
         ),
-        model="sonnet",
+        model="claude-sonnet-4-6",
+        max_turns=15,
         mcpServers=["databricks", "fabric", "fabric_community", "fabric_rti"],
     )

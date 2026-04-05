@@ -4,45 +4,73 @@ Registry centralizado de servidores MCP.
 Cada plataforma de dados é um módulo isolado que expõe uma função
 get_config() retornando um dict compatível com ClaudeAgentOptions.mcp_servers.
 
+Comportamento padrão:
+  - Se `platforms=None`, ativa apenas as plataformas com credenciais válidas
+    (detectadas via settings.get_available_platforms()).
+  - Se nenhuma credencial estiver configurada, registra todas as plataformas
+    para evitar que o sistema fique sem MCP servers (comportamento de fallback).
+
 Para adicionar uma nova plataforma:
   1. Copie mcp_servers/_template/server_config.py para mcp_servers/<nome>/server_config.py
   2. Implemente a função get_<nome>_mcp_config()
-  3. Registre-a aqui no dicionário all_configs abaixo
+  3. Registre-a aqui no dicionário ALL_MCP_CONFIGS abaixo
 """
+
+import logging
 
 from mcp_servers.databricks.server_config import get_databricks_mcp_config
 from mcp_servers.fabric.server_config import get_fabric_mcp_config
 from mcp_servers.fabric_rti.server_config import get_fabric_rti_mcp_config
+
+logger = logging.getLogger("data_agents.mcp")
+
+# Registry completo de plataformas disponíveis
+ALL_MCP_CONFIGS: dict = {
+    "databricks": get_databricks_mcp_config,
+    "fabric":     get_fabric_mcp_config,
+    "fabric_rti": get_fabric_rti_mcp_config,
+    # Adicione novas plataformas aqui:
+    # "snowflake": get_snowflake_mcp_config,
+    # "bigquery":  get_bigquery_mcp_config,
+}
 
 
 def build_mcp_registry(platforms: list[str] | None = None) -> dict:
     """
     Constrói o registry de MCP servers para as plataformas solicitadas.
 
+    Se `platforms=None`, detecta automaticamente quais plataformas têm
+    credenciais válidas via settings.get_available_platforms(). Isso evita
+    tentar inicializar servidores MCP sem credenciais, que causariam erros
+    de conexão silenciosos no startup.
+
     Args:
-        platforms: Lista de plataformas a ativar.
-                   None = todas disponíveis.
+        platforms: Lista explícita de plataformas a ativar.
+                   None = detecção automática por credenciais disponíveis.
                    Valores válidos: "databricks", "fabric", "fabric_rti"
 
     Returns:
         Dict compatível com ClaudeAgentOptions.mcp_servers
     """
-    all_configs = {
-        "databricks": get_databricks_mcp_config,
-        "fabric":     get_fabric_mcp_config,
-        "fabric_rti": get_fabric_rti_mcp_config,
-        # Adicione novas plataformas aqui:
-        # "snowflake": get_snowflake_mcp_config,
-        # "bigquery":  get_bigquery_mcp_config,
-    }
-
     if platforms is None:
-        platforms = list(all_configs.keys())
+        # Importação local para evitar dependência circular no startup
+        from config.settings import settings
+        available = settings.get_available_platforms()
+        platforms = available if available else list(ALL_MCP_CONFIGS.keys())
+        if available:
+            logger.info(f"MCP servers ativos (por credenciais): {platforms}")
+        else:
+            logger.warning(
+                "Nenhuma credencial de plataforma configurada. "
+                "Registrando todos os MCP servers como fallback."
+            )
 
     registry: dict = {}
     for platform in platforms:
-        if platform in all_configs:
-            config = all_configs[platform]()
+        if platform in ALL_MCP_CONFIGS:
+            config = ALL_MCP_CONFIGS[platform]()
             registry.update(config)
+        else:
+            logger.warning(f"Plataforma desconhecida ignorada: '{platform}'")
 
     return registry

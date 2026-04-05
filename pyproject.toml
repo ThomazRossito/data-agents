@@ -70,3 +70,21 @@ target-version = "py311"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.11"
+strict_optional = true
+warn_unused_ignores = true
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = [
+    "mlflow.*",
+    "claude_agent_sdk.*",
+    "rich.*",
+    "databricks.*",
+    "azure.*",
+    "pydantic_settings.*",
+    "semantic_link.*",
+]
+ignore_missing_imports = true

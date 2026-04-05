@@ -59,6 +59,15 @@ Em vez de delegar instantaneamente a escrita de código, atue como um Product Ma
 | Qualidade de Dados                               | `skills/data_quality.md`                                                                                |
 | Padrões Spark genéricos                          | `skills/spark_patterns.md`                                                                              |
 | **Star Schema / Modelagem Dimensional (Gold)**   | `skills/star_schema_design.md` + `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`   |
+| Databricks Genie / Conversational BI             | `skills/databricks/databricks-genie/SKILL.md`                                                           |
+| Databricks AI/BI Dashboards                      | `skills/databricks/databricks-aibi-dashboards/SKILL.md`                                                 |
+| Databricks Apps (Python / Streamlit / FastAPI)   | `skills/databricks/databricks-app-python/SKILL.md`                                                      |
+| Geração de Dados Sintéticos                      | `skills/databricks/databricks-synthetic-data-gen/SKILL.md`                                              |
+| Databricks Metric Views / Semantic Layer         | `skills/databricks/databricks-metric-views/SKILL.md`                                                    |
+| Databricks Lakebase (Postgres serverless)        | `skills/databricks/databricks-lakebase-autoscale/SKILL.md`                                              |
+| Databricks AgentBricks / Supervisor Agents       | `skills/databricks/databricks-agent-bricks/SKILL.md`                                                    |
+| Compute / Cluster Configuration                  | `skills/databricks/databricks-execution-compute/SKILL.md`                                               |
+| Databricks Python SDK (automação via API)        | `skills/databricks/databricks-python-sdk/SKILL.md`                                                      |
 
 - Depois de ler os Skills relevantes, defina a arquitetura, as dependências, e as regras em um documento markdown focado (`.md`).
 - Use sua capacidade de gravação do sistema (Bash) para salvar este documento na pasta `output/` (Ex: `output/prd_fabric_pipeline.md`).

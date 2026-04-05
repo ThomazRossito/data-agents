@@ -37,26 +37,46 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Databricks CLI
-        run: pip install databricks-cli
+      # Databricks CLI v2 (binário Go) — obrigatório para `bundle deploy`
+      # O pacote Python `databricks-cli` é o CLI legado e NÃO suporta Asset Bundles
+      - name: Install Databricks CLI v2
+        uses: databricks/setup-cli@main
 
       - name: Configure Databricks CLI
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_STAGING }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_STAGING }}
         run: |
-          echo "[DEFAULT]" > ~/.databrickscfg
-          echo "host = $DATABRICKS_HOST" >> ~/.databrickscfg
-          echo "token = $DATABRICKS_TOKEN" >> ~/.databrickscfg
+          databricks configure --host "$DATABRICKS_HOST" --token "$DATABRICKS_TOKEN" --profile DEFAULT
 
       - name: Deploy with Databricks Asset Bundles
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_STAGING }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_STAGING }}
         run: |
           databricks bundle deploy --target staging
 
-      - name: Sync Skills to Workspace
+      - name: Sync Skills to Workspace (apenas .md e .py)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_STAGING }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_STAGING }}
         run: |
           databricks workspace mkdirs /Shared/data-agents/skills
-          databricks workspace import-dir skills/ /Shared/data-agents/skills --overwrite
+          find skills/ -name "*.md" -o -name "*.py" | while read f; do
+            target="/Shared/data-agents/${f}"
+            dir=$(dirname "$target")
+            databricks workspace mkdirs "$dir" 2>/dev/null || true
+            databricks workspace import "$f" "$target" --overwrite
+          done
+
+      - name: Verify skills sync
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_STAGING }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_STAGING }}
+        run: |
+          databricks workspace ls /Shared/data-agents/skills/databricks/databricks-spark-declarative-pipelines/
+          databricks workspace ls /Shared/data-agents/skills/fabric/
+          echo "Skills sync verified."
 
   # ─── Deploy to Production ──────────────────────────────────────
   deploy-production:
@@ -73,30 +93,44 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Databricks CLI
-        run: pip install databricks-cli
+      # Databricks CLI v2 (binário Go) — obrigatório para `bundle deploy`
+      - name: Install Databricks CLI v2
+        uses: databricks/setup-cli@main
 
       - name: Configure Databricks CLI
         env:
           DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PRODUCTION }}
           DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PRODUCTION }}
         run: |
-          echo "[DEFAULT]" > ~/.databrickscfg
-          echo "host = $DATABRICKS_HOST" >> ~/.databrickscfg
-          echo "token = $DATABRICKS_TOKEN" >> ~/.databrickscfg
+          databricks configure --host "$DATABRICKS_HOST" --token "$DATABRICKS_TOKEN" --profile DEFAULT
 
       - name: Deploy with Databricks Asset Bundles
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PRODUCTION }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PRODUCTION }}
         run: |
           databricks bundle deploy --target production
 
-      - name: Sync Skills to Workspace
+      - name: Sync Skills to Workspace (apenas .md e .py)
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PRODUCTION }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PRODUCTION }}
         run: |
           databricks workspace mkdirs /Shared/data-agents/skills
-          databricks workspace import-dir skills/ /Shared/data-agents/skills --overwrite
+          find skills/ -name "*.md" -o -name "*.py" | while read f; do
+            target="/Shared/data-agents/${f}"
+            dir=$(dirname "$target")
+            databricks workspace mkdirs "$dir" 2>/dev/null || true
+            databricks workspace import "$f" "$target" --overwrite
+          done
 
       - name: Verify deployment
+        env:
+          DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST_PRODUCTION }}
+          DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN_PRODUCTION }}
         run: |
           echo "Verifying deployment..."
-          databricks workspace ls /Shared/data-agents/skills/databricks
-          databricks workspace ls /Shared/data-agents/skills/fabric
+          databricks workspace ls /Shared/data-agents/skills/databricks/databricks-spark-declarative-pipelines/
+          databricks workspace ls /Shared/data-agents/skills/fabric/
+          databricks workspace ls /Shared/data-agents/skills/star_schema_design.md
           echo "Deployment verified successfully."

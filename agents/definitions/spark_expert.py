@@ -9,19 +9,22 @@ def create_spark_expert() -> AgentDefinition:
 
     O Spark Expert APENAS GERA CÓDIGO — não acessa MCP diretamente.
     Recebe schemas e contexto do Supervisor e devolve código PySpark pronto.
+
+    max_turns=20: tarefas de geração de código são pontuais; limita risco de loop.
     """
     return AgentDefinition(
         description=(
             "Especialista em Python e Apache Spark. Use para: "
             "geração de código PySpark, Spark SQL e Spark Declarative Pipelines (DLT/LakeFlow), "
             "transformações de dados com DataFrames, "
-            "operações Delta Lake (MERGE, OPTIMIZE, VACUUM, Z-ORDER, SCD1/SCD2), "
+            "operações Delta Lake (MERGE, OPTIMIZE, VACUUM, SCD1/SCD2), "
             "debug e otimização de código Python/Spark existente, "
             "conversão de pandas para PySpark, "
-            "implementação de padrões ETL Bronze→Silver→Gold."
+            "implementação de padrões ETL Bronze→Silver→Gold e Star Schema."
         ),
         prompt=SPARK_EXPERT_SYSTEM_PROMPT,
         # Sem MCP — apenas gera código para ser executado pelo pipeline-architect
         tools=["Read", "Grep", "Glob", "Write"],
-        model="sonnet",
+        model="claude-sonnet-4-6",
+        max_turns=20,
     )
