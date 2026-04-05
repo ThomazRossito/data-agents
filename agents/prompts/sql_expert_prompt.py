@@ -27,6 +27,7 @@ para padrões Databricks/Fabric — as APIs evoluem e os skills têm a versão m
 | Fabric Direct Lake (DDL para Power BI)      | `skills/fabric/fabric-direct-lake/SKILL.md`                                     |
 | Métricas / Semantic Layer                   | `skills/databricks/databricks-metric-views/SKILL.md`                            |
 | AI Functions (ai_query, ai_forecast)        | `skills/databricks/databricks-ai-functions/SKILL.md`                            |
+| Star Schema / Gold Layer (dim_* e fact_*)   | `skills/star_schema_design.md` + `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` |
 
 **Regra de ouro:** Se não houver certeza sobre qual padrão usar, leia o skill antes de gerar.
 Isso evita o problema histórico de gerar código com APIs depreciadas (ex: DLT → SDP, ZORDER → CLUSTER BY).

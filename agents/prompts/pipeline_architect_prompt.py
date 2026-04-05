@@ -28,7 +28,7 @@ Domínios:
 - Padrões de Arquitetura Medalhão Modernos:
   - Bronze: STREAMING TABLES consumindo das fontes via `cloud_files` (Auto Loader).
   - Silver: STREAMING TABLES consumindo via `stream()`, com SCD Tipo 2 nativo via `AUTO CDC INTO` (Proibido uso manual de LAG/LEAD ou MATERIALIZED VIEWs na camada Silver).
-  - Gold: MATERIALIZED VIEWs para Agregações e Star Schema.
+  - Gold: MATERIALIZED VIEWs para Agregações e Star Schema. **IMPORTANTE**: ao delegar geração de tabelas Gold ao spark-expert, instrua-o explicitamente a ler `skills/star_schema_design.md` antes. `dim_*` nunca derivam de silver transacional; `fact_*` fazem INNER JOIN em todas as dimensões.
 - Consulta de Arquivos de Skills: **Sempre leia os skills relevantes antes de desenhar a arquitetura**, conforme o mapa abaixo:
 
 ### Mapa de Skills por Plataforma/Tipo (use a tool Read antes de projetar)
@@ -46,6 +46,7 @@ Domínios:
 | **Fabric: Real-Time Intelligence / Eventhouse** | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                                              |
 | **Fabric: Data Factory / Pipelines / Dataflows**| `skills/fabric/fabric-data-factory/SKILL.md`                                                                |
 | **Cross-Platform: Fabric ↔ Databricks**         | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md` + `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` |
+| **Star Schema / Gold Layer (dim_* e fact_*)**   | `skills/star_schema_design.md` + `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`                                              |
 
 ---
 

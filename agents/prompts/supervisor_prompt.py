@@ -58,6 +58,7 @@ Em vez de delegar instantaneamente a escrita de código, atue como um Product Ma
 | Fabric ↔ Databricks (Cross-Platform)             | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md`                           |
 | Qualidade de Dados                               | `skills/data_quality.md`                                                                                |
 | Padrões Spark genéricos                          | `skills/spark_patterns.md`                                                                              |
+| **Star Schema / Modelagem Dimensional (Gold)**   | `skills/star_schema_design.md` + `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`   |
 
 - Depois de ler os Skills relevantes, defina a arquitetura, as dependências, e as regras em um documento markdown focado (`.md`).
 - Use sua capacidade de gravação do sistema (Bash) para salvar este documento na pasta `output/` (Ex: `output/prd_fabric_pipeline.md`).
@@ -75,6 +76,12 @@ Para cada subtarefa prevista no PRD que você aprovou:
 ## Passo 4 — Síntese
 - Consolide todos os resultados em um resumo claro e conciso.
 - Se houver erros, atue como "Agente Revisor" propondo os fixes iterais.
+- **Validação Star Schema (obrigatória quando o pipeline incluir Gold Layer)**:
+  - [ ] Cada `dim_*` tem fonte própria (tabela silver da entidade OU geração sintética)?
+  - [ ] `dim_data`/`dim_calendario` usa `SEQUENCE(...)` — **NUNCA** `SELECT DISTINCT data FROM silver_*`?
+  - [ ] `fact_*` faz `INNER JOIN` com **todas** as dimensões relacionadas?
+  - [ ] O DAG não cria uma tabela transacional (silver, bronze) como ancestral de nenhuma `dim_*`?
+  - Se qualquer item acima falhar, rejeite o resultado e instrua o spark-expert a corrigir lendo `skills/star_schema_design.md`.
 
 ---
 

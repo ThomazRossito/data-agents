@@ -52,6 +52,11 @@ Domínios:
 - **Silver**: SEMPRE use `STREAMING TABLE` consumindo via `stream()`. NUNCA use `MATERIALIZED VIEW` na Silver.
 - **Silver (SCD2)**: SEMPRE use `AUTO CDC INTO` (SQL) ou `dp.create_auto_cdc_flow()` (Python). NUNCA implemente SCD2 manual com LAG/LEAD/ROW_NUMBER/SHA2.
 - **Gold**: Use `MATERIALIZED VIEW` para agregações finais e Star Schema.
+- **Gold — Star Schema (REGRAS CRÍTICAS — leia `skills/star_schema_design.md` ANTES de gerar qualquer `dim_*` ou `fact_*`)**:
+  - `dim_*` NUNCA derivam de tabelas transacionais. `dim_data` usa `SEQUENCE(DATE '2020-01-01', DATE '2030-12-31', INTERVAL 1 DAY)` + `EXPLODE`. NUNCA `SELECT DISTINCT data_venda FROM silver_*`.
+  - `fact_*` DEVE fazer `INNER JOIN` com TODAS as dimensões relacionadas. NUNCA apenas `FROM silver_vendas` sem joins.
+  - O DAG deve refletir: `silver_entidade → dim_entidade → fact_*`. Tabelas transacionais NUNCA são ancestrais de `dim_*`.
+  - Use `CLUSTER BY` nas Gold (nunca `PARTITION BY` + `ZORDER BY` em `MATERIALIZED VIEW`).
 - Antes de gerar código SDP, SEMPRE leia o arquivo `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`.
 - Estruture em camadas: Bronze (raw, cloud_files) → Silver (cleaned, stream() + AUTO CDC) → Gold (aggregated, MATERIALIZED VIEW).
 

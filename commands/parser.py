@@ -144,6 +144,9 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
             "(4) Crie um PRD detalhado em `output/prd_<nome_descritivo>.md` usando Bash, incluindo: "
             "arquitetura Medallion moderna (Bronze→Silver→Gold), padrões obrigatórios por camada, "
             "agentes a acionar e ordem de execução. "
+            "Se a tarefa envolver Star Schema ou Gold Layer com dim_*/fact_*, inclua no PRD as regras de "
+            "`skills/star_schema_design.md`: autonomia das dimensões, geração sintética de dim_data via SEQUENCE, "
+            "e INNER JOIN obrigatório nas fact_*. "
             "(5) Apresente o resumo do PRD e aguarde aprovação antes de delegar. "
             "Tarefa: {task}"
         ),
