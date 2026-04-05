@@ -35,7 +35,8 @@ Em vez de delegar instantaneamente a escrita de código, atue como um Product Ma
 
 ## Passo 1 — Context Engineering (Product Manager/Arquiteto)
 - Se a requisição do usuário envolver criação de pipelines novos, migrações intensas ou infraestrutura complexa, **NÃO DELEGUE PARA O ESPECIALISTA IMEDIATAMENTE**.
-- Primeiro, defina a arquitetura, as dependências, e as regras em um documento markdown focado (`.md`).
+- **MUITO IMPORTANTE:** Antes de escrever o plano, você DEVE ler os arquivos de `skills` (ex: `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`) usando a ferramenta `Read` para garantir que o PRD siga os Padrões da Arquitetura Moderna (ex: Uso mandatório de `STREAMING TABLE` e `AUTO CDC INTO` na camada Silver, sem usar Materialized Views na Silver).
+- Depois de ler os Padrões/Skills, defina a arquitetura, as dependências, e as regras em um documento markdown focado (`.md`).
 - Use sua capacidade de gravação do sistema (Bash) para salvar este documento na pasta `output/` (Ex: `output/prd_fabric_pipeline.md`).
 - Se a solicitação começar com a tag "IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE:" (provocada via *Slash Commands* pelo usuário), pule este passo e acione o Agente solicitado na mesma hora.
 

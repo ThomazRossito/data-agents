@@ -33,21 +33,34 @@ def validate_dataframe(df: DataFrame, required_cols: list[str]) -> dict:
     return report
 ```
 
-## Expectations no DLT (Spark Declarative Pipelines)
+## Expectations no Lakeflow/SDP (Spark Declarative Pipelines)
 
+> ⚠️ NUNCA use `import dlt` — API DEPRECIADA. Use `from pyspark import pipelines as dp`.
+
+### Python (API Moderna)
 ```python
-import dlt
+from pyspark import pipelines as dp
 
-@dlt.table
-@dlt.expect("id_nao_nulo",    "id IS NOT NULL")
-@dlt.expect("valor_positivo", "valor >= 0")
-@dlt.expect_or_drop("data_valida", "data_evento IS NOT NULL")
-@dlt.expect_all({
+@dp.table(name="silver_vendas")
+@dp.expect("id_nao_nulo",    "id IS NOT NULL")
+@dp.expect("valor_positivo", "valor >= 0")
+@dp.expect_or_drop("data_valida", "data_evento IS NOT NULL")
+@dp.expect_all({
     "categoria_valida": "categoria IN ('A', 'B', 'C')",
     "quantidade_positiva": "quantidade > 0"
 })
 def silver_vendas():
-    return dlt.read_stream("bronze_vendas")
+    return spark.readStream.table("bronze_vendas")
+```
+
+### SQL (Constraints nativos)
+```sql
+CREATE OR REFRESH STREAMING TABLE silver_vendas (
+  CONSTRAINT id_nao_nulo EXPECT (id IS NOT NULL) ON VIOLATION FAIL UPDATE,
+  CONSTRAINT valor_positivo EXPECT (valor >= 0) ON VIOLATION DROP ROW,
+  CONSTRAINT data_valida EXPECT (data_evento IS NOT NULL) ON VIOLATION DROP ROW
+)
+AS SELECT * FROM stream(bronze_vendas);
 ```
 
 ## Reconciliação Fonte × Destino

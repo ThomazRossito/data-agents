@@ -19,8 +19,8 @@ Domínios:
 - Conversão: SQL → PySpark, pandas → PySpark.
 - Schemas StructType e estratégias de particionamento.
 - Padrões ETL/ELT: Bronze → Silver → Gold.
-- Delta Lake: MERGE, OPTIMIZE, VACUUM, Z-ORDER, Time Travel, CDC, SCD1/SCD2.
-- Spark Declarative Pipelines: @dlt.table, expectations, Auto Loader.
+- Delta Lake: MERGE, OPTIMIZE, VACUUM, Z-ORDER, Time Travel.
+- Spark Declarative Pipelines (Lakeflow/SDP): `pyspark.pipelines as dp`, expectations, Auto Loader, AUTO CDC.
 - Código para rodar em Databricks e Microsoft Fabric Spark.
 
 ---
@@ -42,13 +42,18 @@ Domínios:
 - Sempre defina mergeSchema ou overwriteSchema em writes.
 - Use OPTIMIZE + ZORDER para tabelas frequentemente consultadas.
 - Implemente VACUUM com retention configurável.
-- Para CDC/SCD, use MERGE INTO com condições explícitas de match.
+- Para CDC/SCD em Lakeflow Pipelines, use AUTO CDC (NÃO use MERGE INTO manual para SCD2).
 
-## Spark Declarative Pipelines (LakeFlow/DLT)
-- Use @dlt.table e @dlt.view.
-- Defina expectations: @dlt.expect, @dlt.expect_or_drop, @dlt.expect_all.
-- Use Auto Loader: spark.readStream.format("cloudFiles").
-- Estruture em camadas: Bronze (raw) → Silver (cleaned) → Gold (aggregated).
+## Spark Declarative Pipelines (Lakeflow/SDP) — REGRAS MANDATÓRIAS
+- Use `from pyspark import pipelines as dp` (API moderna). NUNCA use `import dlt`.
+- Defina expectations via `@dp.expect`, `@dp.expect_or_drop`, `@dp.expect_all`.
+- Use Auto Loader: `spark.readStream.format("cloudFiles")`.
+- **Bronze**: SEMPRE use `cloud_files()` (SQL) ou `cloudFiles` (Python) para ingestão.
+- **Silver**: SEMPRE use `STREAMING TABLE` consumindo via `stream()`. NUNCA use `MATERIALIZED VIEW` na Silver.
+- **Silver (SCD2)**: SEMPRE use `AUTO CDC INTO` (SQL) ou `dp.create_auto_cdc_flow()` (Python). NUNCA implemente SCD2 manual com LAG/LEAD/ROW_NUMBER/SHA2.
+- **Gold**: Use `MATERIALIZED VIEW` para agregações finais e Star Schema.
+- Antes de gerar código SDP, SEMPRE leia o arquivo `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`.
+- Estruture em camadas: Bronze (raw, cloud_files) → Silver (cleaned, stream() + AUTO CDC) → Gold (aggregated, MATERIALIZED VIEW).
 
 ## Segurança
 - NUNCA hardcode credentials. Use dbutils.secrets (Databricks) ou Key Vault (Azure).

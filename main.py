@@ -98,7 +98,14 @@ async def run_interactive() -> None:
 
                 elif user_input.startswith("/plan "):
                     # Força a criação de um PRD
-                    bmad_prompt = f"Como Product Manager, crie um PRD detalhado na pasta `output/` usando a ferramenta Bash para a seguinte task e valide comigo antes de acionar qualquer agente especialista: {user_input[6:]}"
+                    bmad_prompt = (
+                        f"Como Product Manager, ANTES de escrever qualquer PRD, você DEVE usar a ferramenta Read para ler "
+                        f"os arquivos de skills relevantes (ex: `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` "
+                        f"e `skills/pipeline_design.md`) para garantir que o PRD siga os padrões arquiteturais modernos "
+                        f"(Bronze com cloud_files, Silver com STREAMING TABLE + AUTO CDC INTO, Gold com MATERIALIZED VIEW). "
+                        f"Depois de ler e internalizar os padrões, crie um PRD detalhado na pasta `output/` usando a ferramenta "
+                        f"Bash para a seguinte task e valide comigo antes de acionar qualquer agente especialista: {user_input[6:]}"
+                    )
                     console.print("[bold purple]🗺️ [BMAD Agile] Iniciando sessão de Context Engineering...[/bold purple]")
 
                 await client.query(bmad_prompt)

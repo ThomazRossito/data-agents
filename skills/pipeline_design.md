@@ -7,22 +7,30 @@ Fonte (CSV / API / Stream)
         │
         ▼
   ┌─────────────┐
-  │   BRONZE    │  Raw data, sem transformação, particionado por data de ingestão.
-  │  (Raw Zone) │  Formato: Delta / Parquet
-  └─────────────┘
+  │   BRONZE    │  STREAMING TABLE via cloud_files() (Auto Loader).
+  │  (Raw Zone) │  Append-only, sem transformação. Formato: Delta.
+  └─────────────┘  Metadados: _ingest_timestamp, _metadata.file_path
         │
         ▼
   ┌─────────────┐
-  │   SILVER    │  Dados limpos, tipados, deduplicados, com schema validado.
-  │ (Clean Zone)│  Qualidade de dados aplicada (expectations DLT).
-  └─────────────┘
+  │   SILVER    │  STREAMING TABLE consumindo via stream(bronze_table).
+  │ (Clean Zone)│  SCD Tipo 2 nativo via AUTO CDC INTO (CREATE FLOW).
+  └─────────────┘  ⚠️ PROIBIDO: MATERIALIZED VIEW, LAG/LEAD manual, SHA2.
         │
         ▼
   ┌─────────────┐
-  │    GOLD     │  Agregações, métricas de negócio, modelos dimensionais (Star/Snowflake).
-  │ (Serve Zone)│  Otimizado para consulta (Z-ORDER, caching).
+  │    GOLD     │  MATERIALIZED VIEW para Star Schema e agregações.
+  │ (Serve Zone)│  Otimizado para consulta (CLUSTER BY / Z-ORDER).
   └─────────────┘
 ```
+
+### Regras Mandatórias por Camada (Lakeflow/SDP)
+
+| Camada | Tipo SDP Obrigatório | Padrão de Ingestão | Proibido |
+|--------|---------------------|--------------------|----------|
+| **Bronze** | `STREAMING TABLE` | `cloud_files()` (Auto Loader) | `read_files`, batch reads, `schemaHints` |
+| **Silver** | `STREAMING TABLE` + `CREATE FLOW` | `stream(bronze_table)` + `AUTO CDC INTO` | `MATERIALIZED VIEW`, Window Functions `LAG/LEAD` para SCD2 |
+| **Gold** | `MATERIALIZED VIEW` | Leitura direta das tabelas Silver | — |
 
 ## Padrão de Pipeline Cross-Platform (Fabric → Databricks)
 

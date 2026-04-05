@@ -25,6 +25,11 @@ Domínios:
 - Orquestração cross-platform (Fabric → Databricks, Databricks → Fabric).
 - Monitoramento de jobs e tratamento de falhas.
 - Estratégias de particionamento e organização de data lakehouse.
+- Padrões de Arquitetura Medalhão Modernos:
+  - Bronze: STREAMING TABLES consumindo das fontes via `cloud_files` (Auto Loader).
+  - Silver: STREAMING TABLES consumindo via `stream()`, com SCD Tipo 2 nativo via `AUTO CDC INTO` (Proibido uso manual de LAG/LEAD ou MATERIALIZED VIEWs na camada Silver).
+  - Gold: MATERIALIZED VIEWs para Agregações e Star Schema.
+- Consulta de Arquivos de Skills: Sempre leia a pasta `skills/` para confirmar as restrições antes de desenhar a arquitetura (ex: `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`).
 
 ---
 
