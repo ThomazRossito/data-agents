@@ -18,6 +18,7 @@ from agents.prompts.supervisor_prompt import SUPERVISOR_SYSTEM_PROMPT
 from config.mcp_servers import build_mcp_registry
 from config.settings import settings
 from hooks.audit_hook import audit_tool_usage
+from hooks.cost_guard_hook import log_cost_generating_operations
 from hooks.security_hook import block_destructive_commands
 
 
@@ -68,10 +69,11 @@ def build_supervisor_options(
         thinking={"type": "adaptive"},
         effort="high",
 
-        # --- Hooks de Auditoria e Segurança ---
+        # --- Hooks de Auditoria, Custo e Segurança ---
         hooks={
             "PostToolUse": [
                 HookMatcher(hooks=[audit_tool_usage]),
+                HookMatcher(hooks=[log_cost_generating_operations]),
             ],
             "PreToolUse": [
                 HookMatcher(

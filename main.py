@@ -87,26 +87,30 @@ async def run_interactive() -> None:
                 bmad_prompt = user_input
 
                 if user_input.startswith("/sql "):
-                    override_agent = "data_modeling_agent"
-                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O data_modeling_agent: {user_input[5:]}"
+                    override_agent = "sql-expert"
+                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O sql-expert: {user_input[5:]}"
                     console.print(f"[bold yellow]🚀 [BMAD Express] Direcionando para: {override_agent}...[/bold yellow]")
 
                 elif user_input.startswith("/spark "):
-                    override_agent = "data_engineering_agent"
-                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O data_engineering_agent: {user_input[7:]}"
+                    override_agent = "spark-expert"
+                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O spark-expert: {user_input[7:]}"
                     console.print(f"[bold yellow]🚀 [BMAD Express] Direcionando para: {override_agent}...[/bold yellow]")
 
                 elif user_input.startswith("/plan "):
-                    # Força a criação de um PRD
+                    # Força a criação de um PRD com skill routing inteligente
                     bmad_prompt = (
-                        f"Como Product Manager, ANTES de escrever qualquer PRD, você DEVE usar a ferramenta Read para ler "
-                        f"os arquivos de skills relevantes (ex: `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` "
-                        f"e `skills/pipeline_design.md`) para garantir que o PRD siga os padrões arquiteturais modernos "
-                        f"(Bronze com cloud_files, Silver com STREAMING TABLE + AUTO CDC INTO, Gold com MATERIALIZED VIEW). "
-                        f"Depois de ler e internalizar os padrões, crie um PRD detalhado na pasta `output/` usando a ferramenta "
-                        f"Bash para a seguinte task e valide comigo antes de acionar qualquer agente especialista: {user_input[6:]}"
+                        f"Como Product Manager/Arquiteto (BMAD Passo 1), você deve criar um PRD completo para a tarefa abaixo. "
+                        f"ANTES de escrever qualquer linha do PRD, use a ferramenta Read para ler os skills relevantes: "
+                        f"(1) Identifique o tipo de tarefa (SDP, Structured Streaming, Jobs, Fabric Lakehouse, RTI, etc). "
+                        f"(2) Consulte o Mapa de Skills no seu system prompt para decidir quais SKILL.md ler. "
+                        f"(3) Leia TODOS os skills identificados antes de começar o PRD. "
+                        f"(4) Crie um PRD detalhado em `output/prd_<nome_descritivo>.md` usando Bash, incluindo: "
+                        f"arquitetura Medallion moderna (Bronze→Silver→Gold), padrões obrigatórios por camada, "
+                        f"agentes a acionar e ordem de execução. "
+                        f"(5) Apresente o resumo do PRD e aguarde aprovação antes de delegar. "
+                        f"Tarefa: {user_input[6:]}"
                     )
-                    console.print("[bold purple]🗺️ [BMAD Agile] Iniciando sessão de Context Engineering...[/bold purple]")
+                    console.print("[bold purple]🗺️ [BMAD Agile] Iniciando Context Engineering — lendo skills relevantes...[/bold purple]")
 
                 await client.query(bmad_prompt)
 

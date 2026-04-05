@@ -29,7 +29,23 @@ Domínios:
   - Bronze: STREAMING TABLES consumindo das fontes via `cloud_files` (Auto Loader).
   - Silver: STREAMING TABLES consumindo via `stream()`, com SCD Tipo 2 nativo via `AUTO CDC INTO` (Proibido uso manual de LAG/LEAD ou MATERIALIZED VIEWs na camada Silver).
   - Gold: MATERIALIZED VIEWs para Agregações e Star Schema.
-- Consulta de Arquivos de Skills: Sempre leia a pasta `skills/` para confirmar as restrições antes de desenhar a arquitetura (ex: `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`).
+- Consulta de Arquivos de Skills: **Sempre leia os skills relevantes antes de desenhar a arquitetura**, conforme o mapa abaixo:
+
+### Mapa de Skills por Plataforma/Tipo (use a tool Read antes de projetar)
+
+| Cenário de Pipeline                             | Skill(s) a Ler                                                                                              |
+|-------------------------------------------------|-------------------------------------------------------------------------------------------------------------|
+| **Databricks: SDP / LakeFlow (qualquer)**       | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` + `skills/pipeline_design.md`          |
+| **Databricks: Spark Structured Streaming**      | `skills/databricks/databricks-spark-structured-streaming/SKILL.md`                                          |
+| **Databricks: Jobs multi-task / Workflows**     | `skills/databricks/databricks-jobs/SKILL.md`                                                                |
+| **Databricks: CI/CD com Asset Bundles**         | `skills/databricks/databricks-bundles/SKILL.md`                                                             |
+| **Databricks: Ingestão Python Data Source**     | `skills/databricks/spark-python-data-source/SKILL.md`                                                       |
+| **Databricks: Ingestão ZeroBus**                | `skills/databricks/databricks-zerobus-ingest/SKILL.md`                                                      |
+| **Fabric: Lakehouse / Medallion**               | `skills/fabric/fabric-medallion/SKILL.md` + `skills/pipeline_design.md`                                     |
+| **Fabric: Direct Lake / Power BI**              | `skills/fabric/fabric-direct-lake/SKILL.md`                                                                 |
+| **Fabric: Real-Time Intelligence / Eventhouse** | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                                              |
+| **Fabric: Data Factory / Pipelines / Dataflows**| `skills/fabric/fabric-data-factory/SKILL.md`                                                                |
+| **Cross-Platform: Fabric ↔ Databricks**         | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md` + `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` |
 
 ---
 

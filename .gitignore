@@ -32,3 +32,9 @@ Thumbs.db
 .ruff_cache/
 htmlcov/
 .coverage
+
+# Docs
+docs/
+
+# Output
+output/

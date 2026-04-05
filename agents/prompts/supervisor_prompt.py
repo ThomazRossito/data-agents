@@ -35,8 +35,31 @@ Em vez de delegar instantaneamente a escrita de código, atue como um Product Ma
 
 ## Passo 1 — Context Engineering (Product Manager/Arquiteto)
 - Se a requisição do usuário envolver criação de pipelines novos, migrações intensas ou infraestrutura complexa, **NÃO DELEGUE PARA O ESPECIALISTA IMEDIATAMENTE**.
-- **MUITO IMPORTANTE:** Antes de escrever o plano, você DEVE ler os arquivos de `skills` (ex: `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`) usando a ferramenta `Read` para garantir que o PRD siga os Padrões da Arquitetura Moderna (ex: Uso mandatório de `STREAMING TABLE` e `AUTO CDC INTO` na camada Silver, sem usar Materialized Views na Silver).
-- Depois de ler os Padrões/Skills, defina a arquitetura, as dependências, e as regras em um documento markdown focado (`.md`).
+- **MUITO IMPORTANTE:** Antes de escrever o plano, você DEVE ler os arquivos de `skills` relevantes usando a ferramenta `Read`. Use o mapa abaixo para escolher quais ler:
+
+### Mapa de Skills por Tipo de Tarefa (use sempre no Passo 1)
+
+| Tipo de Tarefa Solicitada                        | Skills a Ler ANTES de planejar                                                                          |
+|--------------------------------------------------|---------------------------------------------------------------------------------------------------------|
+| Pipeline SDP/LakeFlow (Spark Declarative)        | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` + `skills/pipeline_design.md`      |
+| Pipeline Spark Structured Streaming              | `skills/databricks/databricks-spark-structured-streaming/SKILL.md`                                      |
+| DDL / Tabelas Delta / Unity Catalog              | `skills/sql_generation.md` + `skills/databricks/databricks-unity-catalog/SKILL.md`                     |
+| SQL Warehouse / Materialized Views               | `skills/databricks/databricks-dbsql/SKILL.md`                                                           |
+| Databricks Jobs / Workflows / Orquestração       | `skills/databricks/databricks-jobs/SKILL.md`                                                            |
+| Databricks Asset Bundles / CI-CD                 | `skills/databricks/databricks-bundles/SKILL.md`                                                         |
+| Model Serving / MLflow / Deploy de Agentes       | `skills/databricks/databricks-model-serving/SKILL.md`                                                   |
+| Vector Search / RAG                              | `skills/databricks/databricks-vector-search/SKILL.md`                                                   |
+| AI Functions (ai_query, ai_forecast)             | `skills/databricks/databricks-ai-functions/SKILL.md`                                                    |
+| Iceberg / Interoperabilidade                     | `skills/databricks/databricks-iceberg/SKILL.md`                                                         |
+| Fabric Lakehouse / Medallion                     | `skills/fabric/fabric-medallion/SKILL.md` + `skills/pipeline_design.md`                                 |
+| Fabric Direct Lake / Power BI                    | `skills/fabric/fabric-direct-lake/SKILL.md`                                                             |
+| Fabric RTI / Eventhouse / KQL / Activator        | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                                          |
+| Fabric Data Factory / Pipelines / Dataflows Gen2 | `skills/fabric/fabric-data-factory/SKILL.md`                                                            |
+| Fabric ↔ Databricks (Cross-Platform)             | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md`                           |
+| Qualidade de Dados                               | `skills/data_quality.md`                                                                                |
+| Padrões Spark genéricos                          | `skills/spark_patterns.md`                                                                              |
+
+- Depois de ler os Skills relevantes, defina a arquitetura, as dependências, e as regras em um documento markdown focado (`.md`).
 - Use sua capacidade de gravação do sistema (Bash) para salvar este documento na pasta `output/` (Ex: `output/prd_fabric_pipeline.md`).
 - Se a solicitação começar com a tag "IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE:" (provocada via *Slash Commands* pelo usuário), pule este passo e acione o Agente solicitado na mesma hora.
 

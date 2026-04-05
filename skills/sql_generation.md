@@ -3,6 +3,8 @@
 ## Spark SQL — Criação de Tabela Delta no Unity Catalog
 
 ```sql
+-- PADRÃO MODERNO: Liquid Clustering com CLUSTER BY (Databricks 2024+)
+-- Substitui PARTITIONED BY + ZORDER BY (padrões depreciados para tabelas Delta gerenciadas)
 CREATE TABLE IF NOT EXISTS catalog.schema.tabela_nome (
     id          STRING      NOT NULL COMMENT 'Identificador único',
     data_evento DATE        COMMENT 'Data do evento',
@@ -11,7 +13,7 @@ CREATE TABLE IF NOT EXISTS catalog.schema.tabela_nome (
     _ingestion_timestamp TIMESTAMP COMMENT 'Timestamp de ingestão'
 )
 USING DELTA
-PARTITIONED BY (data_evento)
+CLUSTER BY (data_evento, categoria)   -- Liquid Clustering: substitui PARTITIONED BY + ZORDER BY
 TBLPROPERTIES (
     'delta.autoOptimize.optimizeWrite' = 'true',
     'delta.autoOptimize.autoCompact'   = 'true'
@@ -19,15 +21,30 @@ TBLPROPERTIES (
 COMMENT 'Tabela de vendas processadas';
 ```
 
-## Spark SQL — OPTIMIZE e Z-ORDER
+> **Nota:** `PARTITIONED BY` + `ZORDER BY` são padrões legados. Para tabelas Delta novas no
+> Unity Catalog, use sempre `CLUSTER BY` (Liquid Clustering). Oferece melhor performance de
+> leitura e elimina a necessidade de definir partições estáticas.
+
+## Spark SQL — OPTIMIZE (com Liquid Clustering)
 
 ```sql
--- Compactar small files e indexar por colunas de filtro frequente
-OPTIMIZE catalog.schema.tabela_nome
-ZORDER BY (categoria, data_evento);
+-- Com Liquid Clustering, o OPTIMIZE reorganiza os dados automaticamente
+-- NÃO use ZORDER BY — o CLUSTER BY já gerencia o layout dos arquivos
+OPTIMIZE catalog.schema.tabela_nome;
 
 -- Limpar versões antigas (retenção de 7 dias)
 VACUUM catalog.schema.tabela_nome RETAIN 168 HOURS;
+```
+
+## Spark SQL — Adicionar Liquid Clustering a Tabela Existente
+
+```sql
+-- Migrar tabela legada (com PARTITION BY / ZORDER) para Liquid Clustering
+ALTER TABLE catalog.schema.tabela_nome
+CLUSTER BY (data_evento, categoria);
+
+-- Após alterar, executar OPTIMIZE para reorganizar os arquivos existentes
+OPTIMIZE catalog.schema.tabela_nome;
 ```
 
 ## Spark SQL — CTE com Window Function
