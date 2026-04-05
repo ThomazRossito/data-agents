@@ -78,6 +78,10 @@ async def block_destructive_commands(
     Retorna deny com mensagem explicativa se algum padrão for detectado.
     Para comandos não-Bash, retorna {} sem interferir.
     """
+    # Proteção contra eventos de teardown do SDK
+    if not input_data or not isinstance(input_data, dict):
+        return {}
+
     if input_data.get("tool_name") != "Bash":
         return {}
 

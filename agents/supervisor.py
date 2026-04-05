@@ -65,6 +65,9 @@ def build_supervisor_options(
         max_turns=settings.max_turns,
         max_budget_usd=settings.max_budget_usd,
 
+        # --- Streaming parcial para feedback visual em tempo real ---
+        include_partial_messages=True,
+
         # --- Thinking adaptativo para planejamento complexo ---
         thinking={"type": "adaptive"},
         effort="high",

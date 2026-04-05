@@ -69,8 +69,18 @@ async def audit_tool_usage(
 
     Não registra valores completos para evitar vazamento de dados sensíveis.
     Em caso de falha de I/O, faz fallback para stderr e logging.warning.
+    Robusto a eventos de teardown/shutdown do SDK (input_data pode ser None ou
+    ter formato inesperado durante o encerramento da sessão).
     """
+    # Proteção contra eventos de teardown do SDK (hook chamado com dados inválidos)
+    if not input_data or not isinstance(input_data, dict):
+        return {}
+
     tool_name = input_data.get("tool_name", "unknown")
+
+    # Ignora eventos internos do SDK sem nome de tool significativo
+    if not tool_name or tool_name in ("unknown", "", None):
+        return {}
 
     log_entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),

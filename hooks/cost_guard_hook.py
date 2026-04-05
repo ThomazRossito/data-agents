@@ -45,6 +45,10 @@ async def log_cost_generating_operations(
     Emite warnings para operações HIGH e alertas quando o acumulado
     de operações HIGH ultrapassa 5 na mesma sessão.
     """
+    # Proteção contra eventos de teardown do SDK
+    if not input_data or not isinstance(input_data, dict):
+        return {}
+
     tool_name = input_data.get("tool_name", "")
 
     if tool_name not in COST_TIERS:
