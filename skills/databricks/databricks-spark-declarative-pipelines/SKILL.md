@@ -143,13 +143,15 @@ Before writing pipeline code, make sure you have:
 
 | Use Case | Type | Pattern |
 |----------|------|---------|
-| Windowed aggregations (tumbling, sliding, session) | Streaming Table | `FROM stream(source)` + `GROUP BY window()` |
-| Full-table aggregations (totals, daily counts) | Materialized View | `FROM source` (no stream wrapper) |
+| Windowed aggregations, cleanups | Streaming Table | `FROM stream(source)` |
+| Full-table aggregations (totals, counts) | Materialized View | `FROM source` (no stream wrapper) |
 | CDC / SCD Type 1 or 2 | Streaming Table + Flow | `AUTO CDC INTO` or `dp.create_auto_cdc_flow()` |
 
-> **CRITICAL ANTI-PATTERN**: NEVER implement Slow Changing Dimensions (SCD Type 1 or 2) manually using window functions (`LAG()`, `LEAD()`), `ROW_NUMBER()`, or hashing (`sha2()`). You **MUST** use the native Lakeflow features: `AUTO CDC INTO` (SQL) or `dp.create_auto_cdc_flow()` (Python). The old `APPLY CHANGES INTO` is deprecated in favor of `AUTO CDC`.
+> **CRITICAL ANTI-PATTERN (CDC & SILVER LAYER)**: NEVER use `MATERIALIZED VIEW` in the Silver layer. Silver layers **MUST ALWAYS** use `STREAMING TABLE` reading via `stream()` to process data incrementally from Bronze. Wait to use Materialized Views **only** in the Gold layer for final business aggregations and Star Schemas.
 
-Use streaming tables for windowed aggregations to enable incremental processing. Use materialized views for simple aggregations that recompute fully on each refresh.
+> **CRITICAL ANTI-PATTERN (SCD LOGIC)**: NEVER implement Slow Changing Dimensions (SCD Type 1 or 2) manually using window functions (`LAG()`, `LEAD()`), `ROW_NUMBER()`, or hashing (`sha2()`). You **MUST** use the native Lakeflow features: `AUTO CDC INTO` (SQL) ou `dp.create_auto_cdc_flow()` (Python). The old `APPLY CHANGES INTO` is deprecated in favor of `AUTO CDC`.
+
+Use streaming tables to enable incremental processing. Use materialized views only at the end (Gold) for aggregations that recompute fully on each refresh.
 
 ---
 
