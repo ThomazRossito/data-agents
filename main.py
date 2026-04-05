@@ -52,7 +52,8 @@ def print_banner() -> None:
     console.print(Panel(banner, border_style="cyan"))
     console.print()
     console.print("[dim]Digite sua solicitação em linguagem natural.[/dim]")
-    console.print("[dim]Comandos: [bold]sair[/bold] para encerrar | [bold]limpar[/bold] para nova sessão[/dim]\n")
+    console.print("[dim]Comandos: [bold]sair[/bold] para encerrar | [bold]limpar[/bold] para nova sessão[/dim]")
+    console.print("[dim]Slash: [bold]/plan[/bold] <tarefa> | [bold]/sql[/bold] <instrução> | [bold]/spark[/bold] <instrução> | [bold]/pipeline[/bold] <instrução>[/dim]\n")
 
 
 async def run_interactive() -> None:
@@ -94,6 +95,11 @@ async def run_interactive() -> None:
                 elif user_input.startswith("/spark "):
                     override_agent = "spark-expert"
                     bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O spark-expert: {user_input[7:]}"
+                    console.print(f"[bold yellow]🚀 [BMAD Express] Direcionando para: {override_agent}...[/bold yellow]")
+
+                elif user_input.startswith("/pipeline "):
+                    override_agent = "pipeline-architect"
+                    bmad_prompt = f"IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE PARA O pipeline-architect: {user_input[10:]}"
                     console.print(f"[bold yellow]🚀 [BMAD Express] Direcionando para: {override_agent}...[/bold yellow]")
 
                 elif user_input.startswith("/plan "):

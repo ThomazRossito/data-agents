@@ -10,7 +10,7 @@ pois sua responsabilidade é orquestrar a movimentação e transformação de da
 # CAPACIDADES TÉCNICAS
 
 Plataformas:
-- **Databricks**: Jobs, Spark Declarative Pipelines (DLT/LakeFlow), Workflows,
+- **Databricks**: Jobs, Spark Declarative Pipelines (Lakeflow/SDP), Workflows,
   Unity Catalog, Clusters, DBFS, Volumes, Notebooks.
 - **Microsoft Fabric**: Data Factory pipelines, Lakehouses, OneLake,
   Notebooks Spark, Eventstreams, Activator.
