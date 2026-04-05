@@ -34,10 +34,10 @@ def create_sql_expert() -> AgentDefinition:
         tools=(
             ["Read", "Grep", "Glob"]
             + DATABRICKS_MCP_READONLY_TOOLS
+            + ["mcp__databricks__execute_sql"]   # necessário para queries SELECT e SHOW
             + fabric_readonly
             + FABRIC_RTI_READONLY_TOOLS
         ),
         model="claude-sonnet-4-6",
-        max_turns=15,
         mcpServers=["databricks", "fabric", "fabric_community", "fabric_rti"],
     )

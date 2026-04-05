@@ -10,7 +10,6 @@ def create_spark_expert() -> AgentDefinition:
     O Spark Expert APENAS GERA CÓDIGO — não acessa MCP diretamente.
     Recebe schemas e contexto do Supervisor e devolve código PySpark pronto.
 
-    max_turns=20: tarefas de geração de código são pontuais; limita risco de loop.
     """
     return AgentDefinition(
         description=(
@@ -26,5 +25,4 @@ def create_spark_expert() -> AgentDefinition:
         # Sem MCP — apenas gera código para ser executado pelo pipeline-architect
         tools=["Read", "Grep", "Glob", "Write"],
         model="claude-sonnet-4-6",
-        max_turns=20,
     )

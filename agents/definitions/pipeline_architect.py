@@ -36,6 +36,5 @@ def create_pipeline_architect() -> AgentDefinition:
             + rti_pipeline_tools
         ),
         model="claude-opus-4-6",
-        max_turns=30,
         mcpServers=["databricks", "fabric", "fabric_community", "fabric_rti"],
     )
