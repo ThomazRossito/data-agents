@@ -38,6 +38,11 @@ dev = [
     "mypy>=1.10",
     "bandit>=1.7",
 ]
+monitoring = [
+    "streamlit>=1.35",
+    "pandas>=2.0",
+    "pyyaml>=6.0",
+]
 
 [project.scripts]
 data-agents = "main:main"
