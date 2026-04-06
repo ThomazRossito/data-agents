@@ -18,17 +18,19 @@ Pré-requisitos:
   Configurar: DATABRICKS_HOST e DATABRICKS_TOKEN no .env
 """
 
+
 def get_databricks_mcp_config() -> dict:
     """Retorna a configuração MCP para o Databricks."""
     from config.settings import settings  # importação local para evitar circular import
+
     return {
         "databricks": {
             "type": "stdio",
             "command": "databricks-mcp-server",
             "args": [],
             "env": {
-                "DATABRICKS_HOST":             settings.databricks_host,
-                "DATABRICKS_TOKEN":            settings.databricks_token,
+                "DATABRICKS_HOST": settings.databricks_host,
+                "DATABRICKS_TOKEN": settings.databricks_token,
                 "DATABRICKS_SQL_WAREHOUSE_ID": settings.databricks_sql_warehouse_id,
             },
         }
@@ -80,8 +82,7 @@ DATABRICKS_MCP_TOOLS = [
 
 # Subconjunto apenas de leitura/descoberta (para agentes sem permissão de escrita)
 DATABRICKS_MCP_READONLY_TOOLS = [
-    t for t in DATABRICKS_MCP_TOOLS
-    if any(kw in t for kw in [
-        "list_", "get_", "describe_", "sample_", "export_", "read_"
-    ])
+    t
+    for t in DATABRICKS_MCP_TOOLS
+    if any(kw in t for kw in ["list_", "get_", "describe_", "sample_", "export_", "read_"])
 ]

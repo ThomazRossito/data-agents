@@ -42,6 +42,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
         try:
             import claude_agent_sdk  # noqa: F401
             from agents.supervisor import build_supervisor_options  # noqa: F401
+
             logger.info("Dependências do Data Agent carregadas com sucesso.")
         except ImportError as e:
             self._init_error = (
@@ -193,8 +194,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
             if run is None:
                 # Sem run ativo — apenas loga no logger para diagnóstico
                 logger.info(
-                    "ResultMessage (sem MLflow run ativo): "
-                    "cost=%.4f turns=%s duration_ms=%s",
+                    "ResultMessage (sem MLflow run ativo): cost=%.4f turns=%s duration_ms=%s",
                     result.total_cost_usd or 0.0,
                     result.num_turns or 0,
                     result.duration_ms or 0,

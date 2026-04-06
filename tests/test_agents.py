@@ -12,16 +12,17 @@ from pathlib import Path
 
 import pytest
 
-from agents.loader import load_agent, load_all_agents, _parse_frontmatter, _resolve_tools
+from agents.loader import load_all_agents, _parse_frontmatter, _resolve_tools
 
 
 # ─── Testes do Loader Dinâmico ────────────────────────────────────────────────
+
 
 class TestFrontmatterParser:
     """Testes para o parser de frontmatter YAML."""
 
     def test_parse_valid_frontmatter(self, tmp_path):
-        content = "---\nname: test-agent\ndescription: \"Agente de teste.\"\nmodel: claude-sonnet-4-6\ntools: [Read, Grep]\n---\n# Body\nConteúdo do agente."
+        content = '---\nname: test-agent\ndescription: "Agente de teste."\nmodel: claude-sonnet-4-6\ntools: [Read, Grep]\n---\n# Body\nConteúdo do agente.'
         meta, body = _parse_frontmatter(content)
         assert meta["name"] == "test-agent"
         assert meta["description"] == "Agente de teste."
@@ -30,12 +31,12 @@ class TestFrontmatterParser:
         assert "# Body" in body
 
     def test_parse_frontmatter_with_mcp_servers(self):
-        content = "---\nname: test\ndescription: \"Desc.\"\nmodel: claude-sonnet-4-6\ntools: [Read]\nmcp_servers: [databricks, fabric]\n---\nBody."
+        content = '---\nname: test\ndescription: "Desc."\nmodel: claude-sonnet-4-6\ntools: [Read]\nmcp_servers: [databricks, fabric]\n---\nBody.'
         meta, _ = _parse_frontmatter(content)
         assert meta["mcp_servers"] == ["databricks", "fabric"]
 
     def test_parse_frontmatter_without_mcp_servers(self):
-        content = "---\nname: test\ndescription: \"Desc.\"\nmodel: claude-sonnet-4-6\ntools: [Read]\n---\nBody."
+        content = '---\nname: test\ndescription: "Desc."\nmodel: claude-sonnet-4-6\ntools: [Read]\n---\nBody.'
         meta, _ = _parse_frontmatter(content)
         assert "mcp_servers" not in meta
 
@@ -109,12 +110,11 @@ class TestLoadAllAgents:
         agents = load_all_agents()
         valid_models = {"claude-sonnet-4-6", "claude-opus-4-6"}
         for name, agent in agents.items():
-            assert agent.model in valid_models, (
-                f"Agente '{name}' com model inválido: {agent.model}"
-            )
+            assert agent.model in valid_models, f"Agente '{name}' com model inválido: {agent.model}"
 
 
 # ─── Testes dos Agentes T1 (Core) ────────────────────────────────────────────
+
 
 class TestSqlExpert:
     """Testes específicos para o sql-expert."""
@@ -172,6 +172,7 @@ class TestPipelineArchitect:
 
 # ─── Testes dos Agentes T2 (Especializados) ──────────────────────────────────
 
+
 class TestDataQualitySteward:
     """Testes específicos para o data-quality-steward."""
 
@@ -188,8 +189,7 @@ class TestDataQualitySteward:
         agents = load_all_agents()
         agent = agents["data-quality-steward"]
         write_tools = [
-            t for t in (agent.tools or [])
-            if "upload" in t or "create" in t or "ingest" in t
+            t for t in (agent.tools or []) if "upload" in t or "create" in t or "ingest" in t
         ]
         assert len(write_tools) == 0, (
             f"Data Quality Steward não deve ter tools de escrita: {write_tools}"
@@ -220,8 +220,7 @@ class TestGovernanceAuditor:
         agents = load_all_agents()
         agent = agents["governance-auditor"]
         rti_write = [
-            t for t in (agent.tools or [])
-            if "fabric_rti" in t and ("ingest" in t or "create" in t)
+            t for t in (agent.tools or []) if "fabric_rti" in t and ("ingest" in t or "create" in t)
         ]
         assert len(rti_write) == 0, (
             f"Governance Auditor não deve ter tools de escrita RTI: {rti_write}"
@@ -251,9 +250,7 @@ class TestSemanticModeler:
         agents = load_all_agents()
         agent = agents["semantic-modeler"]
         rti_tools = [t for t in (agent.tools or []) if "fabric_rti" in t]
-        assert len(rti_tools) == 0, (
-            f"Semantic Modeler não deve ter tools RTI: {rti_tools}"
-        )
+        assert len(rti_tools) == 0, f"Semantic Modeler não deve ter tools RTI: {rti_tools}"
 
     def test_semantic_modeler_model_is_sonnet(self):
         agents = load_all_agents()
@@ -262,6 +259,7 @@ class TestSemanticModeler:
 
 
 # ─── Testes de Arquivos de Registry ──────────────────────────────────────────
+
 
 class TestRegistryFiles:
     """Testes de integridade dos arquivos de registry."""
@@ -286,9 +284,7 @@ class TestRegistryFiles:
             content = path.read_text(encoding="utf-8")
             meta, _ = _parse_frontmatter(content)
             for field in ["name", "description", "model", "tools"]:
-                assert field in meta, (
-                    f"Arquivo '{path.name}' sem campo obrigatório: '{field}'"
-                )
+                assert field in meta, f"Arquivo '{path.name}' sem campo obrigatório: '{field}'"
 
     def test_template_file_exists(self):
         """O arquivo de template deve existir para orientar novos agentes."""

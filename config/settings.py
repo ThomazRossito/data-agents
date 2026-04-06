@@ -153,11 +153,7 @@ class Settings(BaseSettings):
     def get_available_platforms(self) -> list[str]:
         """Retorna lista de plataformas MCP com credenciais válidas."""
         status = self.validate_platform_credentials()
-        return [
-            name
-            for name, info in status.items()
-            if info["ready"] and name != "anthropic"
-        ]
+        return [name for name, info in status.items() if info["ready"] and name != "anthropic"]
 
     def startup_diagnostics(self) -> None:
         """

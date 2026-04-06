@@ -27,7 +27,7 @@ logger = logging.getLogger("data_agents.mcp")
 # Registry completo de plataformas disponíveis
 ALL_MCP_CONFIGS: dict = {
     "databricks": get_databricks_mcp_config,
-    "fabric":     get_fabric_mcp_config,
+    "fabric": get_fabric_mcp_config,
     "fabric_rti": get_fabric_rti_mcp_config,
     # Adicione novas plataformas aqui:
     # "snowflake": get_snowflake_mcp_config,
@@ -55,6 +55,7 @@ def build_mcp_registry(platforms: list[str] | None = None) -> dict:
     if platforms is None:
         # Importação local para evitar dependência circular no startup
         from config.settings import settings
+
         available = settings.get_available_platforms()
         platforms = available if available else list(ALL_MCP_CONFIGS.keys())
         if available:

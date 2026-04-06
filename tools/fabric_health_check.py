@@ -32,10 +32,14 @@ def run_fabric_health_check():
 
         console.print(f"[dim]2. Solicitando token para {fabric_scope}...[/dim]")
         token = credential.get_token(fabric_scope)
-        console.print(f"✅ Token gerado com sucesso. [dim]Expira em (epoch): {token.expires_on}[/dim]")
+        console.print(
+            f"✅ Token gerado com sucesso. [dim]Expira em (epoch): {token.expires_on}[/dim]"
+        )
 
         # Passo 2 — Testar conectividade real: listar workspaces via API REST do Fabric
-        console.print("\n[dim]3. Testando conectividade com a API do Fabric (GET /v1/workspaces)...[/dim]")
+        console.print(
+            "\n[dim]3. Testando conectividade com a API do Fabric (GET /v1/workspaces)...[/dim]"
+        )
         import json
 
         api_url = "https://api.fabric.microsoft.com/v1/workspaces"
@@ -82,11 +86,16 @@ def run_fabric_health_check():
             "para Service Principal."
         )
     except urllib.error.HTTPError as e:
-        console.print(f"\n[bold red]❌ Erro HTTP ao acessar a API do Fabric:[/bold red] {e.code} {e.reason}")
-        console.print("[dim]Verifique se o Service Principal tem permissão no tenant do Fabric.[/dim]")
+        console.print(
+            f"\n[bold red]❌ Erro HTTP ao acessar a API do Fabric:[/bold red] {e.code} {e.reason}"
+        )
+        console.print(
+            "[dim]Verifique se o Service Principal tem permissão no tenant do Fabric.[/dim]"
+        )
     except Exception as e:
         console.print("\n[bold red]❌ Erro inesperado:[/bold red]")
         console.print(str(e))
+
 
 if __name__ == "__main__":
     run_fabric_health_check()

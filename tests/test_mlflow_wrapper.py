@@ -1,6 +1,5 @@
 """Testes do MLflow Wrapper."""
 
-import pytest
 from agents.mlflow_wrapper import ClaudeDataAgent
 
 

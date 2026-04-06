@@ -123,6 +123,8 @@ O projeto conta com **6 agentes especialistas** pré-configurados, divididos em 
 - **Onde vive:** `agents/supervisor.py`
 - **Modelo de IA:** `claude-opus-4-6` (O modelo mais avançado, focado em raciocínio complexo).
 - **O que faz:** É o gerente do projeto. Ele é a única IA que conversa diretamente com você. Ele não escreve código; o trabalho dele é ler as regras de negócio (KBs), entender o seu problema, criar o documento de arquitetura (PRD) e delegar as tarefas para os especialistas corretos.
+- **Modo de Permissão:** Usa `permission_mode="bypassPermissions"`. Isso significa que as ferramentas MCP (conexões com a nuvem) executam automaticamente, sem precisar pedir aprovação manual a cada chamada. Sem essa configuração, o sistema ficaria travado aguardando confirmação em cada operação.
+- **Roteamento Inteligente:** Se um agente especialista falhar ao usar uma ferramenta MCP, o Supervisor redelega automaticamente para o Pipeline Architect, garantindo que o trabalho seja concluído mesmo em caso de indisponibilidade temporária de ferramentas.
 
 ### 🛠️ Tier 1 — Engenharia de Dados (O Core)
 
@@ -132,7 +134,8 @@ Estes agentes são os construtores da fundação de dados.
 - **Arquivo:** `agents/registry/sql-expert.md`
 - **Modelo:** `claude-sonnet-4-6` (Rápido e excelente em código).
 - **Analogia:** O Analista de Dados e Administrador de Banco de Dados.
-- **O que faz:** Especializado em escrever e otimizar consultas em SQL (incluindo as variantes T-SQL da Microsoft e Spark SQL do Databricks). Ele é usado para descobrir como as tabelas estão estruturadas e gerar código para criar novas tabelas.
+- **O que faz:** Especializado em escrever e otimizar consultas em SQL (incluindo as variantes T-SQL da Microsoft e Spark SQL do Databricks). Ele é usado para descobrir como as tabelas estão estruturadas, explorar o Unity Catalog e gerar código para criar novas tabelas.
+- **Ferramentas MCP:** Possui acesso explícito a `mcp__databricks__execute_sql` (para executar consultas `SELECT` e `SHOW`) além das ferramentas de leitura padrão (`list_catalogs`, `describe_table`, etc.). Também possui ferramentas de leitura do Fabric RTI para consultas KQL.
 - **Segurança:** Este agente tem permissão estrita de **apenas leitura**. Ele pode olhar os dados, mas não pode alterar ou apagar nada na nuvem.
 
 #### 2. Spark Expert (`/spark`)
@@ -268,7 +271,9 @@ Este arquivo é o painel de controle do projeto. Ele usa uma biblioteca chamada 
 Ele define coisas como:
 - **`default_model`**: Qual "cérebro" a IA vai usar (padrão: `claude-opus-4-6`).
 - **`max_budget_usd`**: Quanto a IA pode gastar em dólares por sessão (padrão: `$5.00`). Se passar disso, o sistema para imediatamente.
-- **`max_turns`**: Quantas vezes a IA pode tentar resolver um problema antes de desistir (padrão: 50).
+- **`max_turns`**: Quantas vezes a IA pode tentar resolver um problema antes de desistir (padrão: 50). Este é um limite de sessão global — os agentes individuais **não** possuem mais este parâmetro em suas definições.
+
+> **Detalhe técnico importante:** O `settings.py` usa Pydantic BaseSettings, que lê o arquivo `.env` e carrega as credenciais diretamente no objeto `settings`. Os servidores MCP recebem as credenciais via `settings.databricks_host`, `settings.databricks_token`, etc. — e **não** via `os.environ.get()`. Essa distinção é crucial: `os.environ.get()` leria o ambiente do processo atual, que pode não ter as variáveis do `.env` se o processo MCP foi iniciado antes do carregamento. Usando `settings.*`, as credenciais são sempre entregues corretamente ao servidor MCP.
 
 ---
 
@@ -318,6 +323,8 @@ O MCP (Model Context Protocol) é a tecnologia que permite que a IA "saia" do se
 3. **Fabric RTI MCP (Real-Time Intelligence):** Uma conexão especial para dados em tempo real. Permite que a IA consulte bancos de dados Kusto (KQL), configure Eventstreams e crie alertas no Activator.
 
 **O Truque Inteligente:** O arquivo `mcp_servers.py` é inteligente. Quando você liga o sistema, ele olha as suas senhas. Se você só colocou a senha do Databricks, ele desliga as conexões do Fabric para não dar erro, e vice-versa.
+
+**Por que as credenciais chegam corretamente ao MCP:** O servidor MCP (`databricks-mcp-server`) é um processo externo iniciado em *stdio*. Ele precisa receber as credenciais como variáveis de ambiente próprias. O código dos `server_config.py` usa `settings.databricks_host`, `settings.databricks_token` etc. para montar o dicionário `"env"` que é passado ao processo MCP na inicialização — garantindo que as credenciais do `.env` sempre cheguem ao servidor, independente do estado do `os.environ` do processo pai.
 
 ---
 
@@ -381,17 +388,34 @@ Você pode mudar o comportamento da IA ajustando o arquivo `config/settings.py` 
 
 Como saber se a IA não quebrou ao ser atualizada? O projeto Data Agents possui uma bateria de testes automatizados (na pasta `tests/`).
 
-### Como rodar os testes
+### Como rodar os testes e verificar a qualidade do código
 
-Abra o terminal e digite:
+Abra o terminal e execute:
 ```bash
+# Verificar erros de linting (imports não usados, padrões proibidos, etc.)
+ruff check .
+
+# Verificar formatação do código (espaços, quebras de linha, aspas, etc.)
+ruff format --check .
+
+# Rodar os testes automatizados com relatório de cobertura
 pytest
+```
+
+Ou use o atalho do Makefile que faz tudo de uma vez:
+```bash
+make lint
+make test
 ```
 
 ### O que os testes verificam?
 1. **O Loader Dinâmico:** Ele tenta ler todos os arquivos Markdown na pasta `registry/`. Se você esqueceu de colocar o nome de um agente no arquivo, o teste falha e te avisa.
 2. **A Segurança:** Ele tenta rodar comandos perigosos (como `DROP TABLE`) e verifica se o `security_hook.py` consegue bloquear todos eles.
 3. **O Parser de Comandos:** Ele digita comandos como `/quality` e verifica se o sistema sabe que deve chamar o `data-quality-steward`.
+4. **Os Agentes T2:** Verifica se os novos agentes (`data-quality-steward`, `governance-auditor`, `semantic-modeler`) possuem as ferramentas MCP corretas configuradas.
+5. **Os Wrappers MLflow:** Verifica se o sistema de servimento de modelos consegue formatar respostas e extrair prompts corretamente.
+
+> **Nota sobre a pasta `skills/`:** Os arquivos Python dentro da pasta `skills/` são arquivos de referência/exemplos de tecnologias externas (Databricks SDK, Fabric, etc.) e **não fazem parte do código do projeto**. Por isso, estão excluídos das verificações do `ruff` — eles não precisam seguir os padrões de código do projeto.
 
 Sempre rode `pytest` antes de enviar uma nova versão do projeto para o GitHub.
 
@@ -401,13 +425,23 @@ Sempre rode `pytest` antes de enviar uma nova versão do projeto para o GitHub.
 
 O projeto foi construído para rodar no seu computador (localmente) ou em um servidor na nuvem (como um contêiner Docker).
 
-Se você olhar a pasta `.github/workflows/`, verá que o projeto já vem com **Integração Contínua (CI)**. Isso significa que toda vez que você envia uma alteração para o GitHub:
-1. O GitHub cria um computador virtual temporário.
-2. Ele instala o Python e todas as dependências.
-3. Ele roda todos os testes (`pytest`) automaticamente.
-4. Se algum teste falhar, ele bloqueia a alteração e avisa que o código está quebrado.
+Se você olhar a pasta `.github/workflows/`, verá que o projeto já vem com **Integração Contínua (CI)**. Isso significa que toda vez que você envia uma alteração para o GitHub, três pipelines são executados automaticamente em paralelo:
 
-Isso garante que o seu time de dados sempre tenha uma versão funcional e segura do Data Agents.
+**Pipeline 1 — Code Quality (Qualidade de Código):**
+1. Instala as dependências de desenvolvimento.
+2. Roda `ruff check .` — verifica se há imports não usados, variáveis duplicadas, padrões proibidos, etc.
+3. Roda `ruff format --check .` — verifica se o código está formatado seguindo o padrão PEP 8 automaticamente.
+4. Roda `mypy` nos módulos principais (`agents/`, `config/`, `hooks/`, `commands/`) para verificar tipos estáticos.
+
+**Pipeline 2 — Tests (Testes Automatizados):**
+1. Roda `pytest tests/ -v --cov` com todas as variáveis de nuvem simuladas.
+2. Exige cobertura de código mínima de **80%**.
+3. Gera e publica o relatório de cobertura no Codecov.
+
+**Pipeline 3 — Security Scan (Varredura de Segurança):**
+1. Roda `bandit` nos módulos principais para detectar vulnerabilidades de segurança (senhas hard-coded, uso de funções inseguras, etc.).
+
+Se qualquer um desses passos falhar, o GitHub bloqueia o merge para o branch principal e avisa o desenvolvedor. Isso garante que o time de dados sempre tenha uma versão funcional, segura e bem testada do Data Agents.
 
 ---
 
