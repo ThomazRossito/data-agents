@@ -46,4 +46,4 @@ def test_all_agents_have_descriptions():
 def test_sql_expert_has_rti_tools():
     agent = create_sql_expert()
     rti_tools = [t for t in (agent.tools or []) if "fabric_rti" in t]
-    assert len(rti_tools) > 0, "SQL Expert deve ter tools do Fabric RTI para KQL"
+    assert len(rti_tools) > 0, "SQL Expert deve ter tools do Fabric RTI para KQL" 

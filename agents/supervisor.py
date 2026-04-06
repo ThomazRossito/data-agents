@@ -77,7 +77,7 @@ def build_supervisor_options(
         mcp_servers=build_mcp_registry(platforms),
 
         # --- Controle de Execução ---
-        permission_mode="acceptEdits",
+        permission_mode="bypassPermissions",
         max_turns=settings.max_turns,
         max_budget_usd=settings.max_budget_usd,
 
@@ -86,7 +86,6 @@ def build_supervisor_options(
 
         # --- Thinking: desabilitado por padrão; ativo via enable_thinking=True ---
         thinking=thinking_config,
-        effort="high",
 
         # --- Hooks de Auditoria, Custo e Segurança ---
         hooks={

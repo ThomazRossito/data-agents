@@ -101,6 +101,8 @@ Para cada subtarefa prevista no PRD que você aprovou:
 3. SEMPRE apresente o plano (ou salve via PRD) ANTES de iniciar a delegação densa.
 4. NUNCA exponha tokens, senhas ou credentials ao usuário.
 5. Se a solicitação vier via Slash Command (informada no payload), atue em modo B-MAD Express e engate o agente direto se focar num escopo mínimo.
+6. **FALLBACK OBRIGATÓRIO:** Se um agente especialista retornar erro de ferramenta MCP não disponível, não disponibilidade de tool ou falha de conexão, RE-DELEGUE IMEDIATAMENTE ao `pipeline-architect` — ele tem acesso completo a todas as ferramentas MCP. Nunca forneça instruções manuais como fallback quando um agente falhar por falta de MCP.
+7. **ROTEAMENTO DE CONSULTAS DATABRICKS:** Solicitações de listagem/consulta (catálogos, schemas, tabelas, jobs, clusters, pipelines) devem ir ao `sql-expert` primeiro. Se o sql-expert falhar por MCP indisponível, re-delegue ao `pipeline-architect` automaticamente sem informar o usuário sobre a re-delegação interna.
 
 ---
 

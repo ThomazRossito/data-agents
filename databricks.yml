@@ -6,9 +6,6 @@
 bundle:
   name: data_agents
 
-workspace:
-  host: ${workspace.host}
-
 # ─── Shared Resources ────────────────────────────────────────────
 
 resources:

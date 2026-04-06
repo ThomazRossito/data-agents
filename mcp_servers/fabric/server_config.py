@@ -19,11 +19,9 @@ Pré-requisitos:
   az login  (ou configurar AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID)
 """
 
-import os
-
-
 def get_fabric_mcp_config() -> dict:
     """Retorna a configuração MCP para Microsoft Fabric."""
+    from config.settings import settings  # importação local para evitar circular import
     return {
         # Servidor oficial Microsoft (dotnet) — OneLake + Workspaces + API Specs
         "fabric": {
@@ -32,16 +30,13 @@ def get_fabric_mcp_config() -> dict:
             "args": [
                 "run",
                 "--project",
-                os.environ.get("FABRIC_MCP_SERVER_PATH", "./mcp_servers/fabric/Fabric.Mcp.Server"),
+                settings.fabric_mcp_server_path,
             ],
             "env": {
-                "FABRIC_API_BASE_URL": os.environ.get(
-                    "FABRIC_API_BASE_URL",
-                    "https://api.fabric.microsoft.com/v1"
-                ),
-                "AZURE_TENANT_ID":     os.environ.get("AZURE_TENANT_ID", ""),
-                "AZURE_CLIENT_ID":     os.environ.get("AZURE_CLIENT_ID", ""),
-                "AZURE_CLIENT_SECRET": os.environ.get("AZURE_CLIENT_SECRET", ""),
+                "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
+                "AZURE_TENANT_ID":     settings.azure_tenant_id,
+                "AZURE_CLIENT_ID":     settings.azure_client_id,
+                "AZURE_CLIENT_SECRET": settings.azure_client_secret,
             },
         },
         # Servidor community Python — Lakehouses + Jobs + Lineage
@@ -50,14 +45,11 @@ def get_fabric_mcp_config() -> dict:
             "command": "python",
             "args": ["-m", "microsoft_fabric_mcp"],
             "env": {
-                "AZURE_TENANT_ID":      os.environ.get("AZURE_TENANT_ID", ""),
-                "AZURE_CLIENT_ID":      os.environ.get("AZURE_CLIENT_ID", ""),
-                "AZURE_CLIENT_SECRET":  os.environ.get("AZURE_CLIENT_SECRET", ""),
-                "FABRIC_WORKSPACE_ID":  os.environ.get("FABRIC_WORKSPACE_ID", ""),
-                "FABRIC_API_BASE_URL":  os.environ.get(
-                    "FABRIC_API_BASE_URL",
-                    "https://api.fabric.microsoft.com/v1"
-                ),
+                "AZURE_TENANT_ID":     settings.azure_tenant_id,
+                "AZURE_CLIENT_ID":     settings.azure_client_id,
+                "AZURE_CLIENT_SECRET": settings.azure_client_secret,
+                "FABRIC_WORKSPACE_ID": settings.fabric_workspace_id,
+                "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
             },
         },
     }

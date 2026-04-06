@@ -18,20 +18,18 @@ Pré-requisitos:
   Configurar: DATABRICKS_HOST e DATABRICKS_TOKEN no .env
 """
 
-import os
-
-
 def get_databricks_mcp_config() -> dict:
     """Retorna a configuração MCP para o Databricks."""
+    from config.settings import settings  # importação local para evitar circular import
     return {
         "databricks": {
             "type": "stdio",
             "command": "databricks-mcp-server",
             "args": [],
             "env": {
-                "DATABRICKS_HOST":              os.environ.get("DATABRICKS_HOST", ""),
-                "DATABRICKS_TOKEN":             os.environ.get("DATABRICKS_TOKEN", ""),
-                "DATABRICKS_SQL_WAREHOUSE_ID":  os.environ.get("DATABRICKS_SQL_WAREHOUSE_ID", ""),
+                "DATABRICKS_HOST":             settings.databricks_host,
+                "DATABRICKS_TOKEN":            settings.databricks_token,
+                "DATABRICKS_SQL_WAREHOUSE_ID": settings.databricks_sql_warehouse_id,
             },
         }
     }
