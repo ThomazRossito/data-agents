@@ -17,17 +17,21 @@ logger = logging.getLogger("data_agents.cost")
 
 COST_TIERS: dict[str, dict] = {
     # HIGH: Operações que iniciam compute ou executam jobs
-    "mcp__databricks__run_job_now":     {"tier": "HIGH", "description": "Execução de Job Databricks"},
-    "mcp__databricks__start_cluster":   {"tier": "HIGH", "description": "Inicialização de Cluster"},
-    "mcp__databricks__start_pipeline":  {"tier": "HIGH", "description": "Inicialização de Pipeline SDP"},
-    "mcp__databricks__cancel_run":      {"tier": "HIGH", "description": "Cancelamento de Job Run"},
-
+    "mcp__databricks__run_job_now": {"tier": "HIGH", "description": "Execução de Job Databricks"},
+    "mcp__databricks__start_cluster": {"tier": "HIGH", "description": "Inicialização de Cluster"},
+    "mcp__databricks__start_pipeline": {
+        "tier": "HIGH",
+        "description": "Inicialização de Pipeline SDP",
+    },
+    "mcp__databricks__cancel_run": {"tier": "HIGH", "description": "Cancelamento de Job Run"},
     # MEDIUM: Operações que consomem SQL Warehouse (DBUs)
-    "mcp__databricks__execute_sql":     {"tier": "MEDIUM", "description": "Execução SQL no Warehouse"},
-
+    "mcp__databricks__execute_sql": {"tier": "MEDIUM", "description": "Execução SQL no Warehouse"},
     # LOW: Operações de leitura que podem ter custo marginal
-    "mcp__databricks__get_query_history": {"tier": "LOW", "description": "Consulta de histórico SQL"},
-    "mcp__fabric_rti__kusto_query":      {"tier": "LOW", "description": "Query KQL no Eventhouse"},
+    "mcp__databricks__get_query_history": {
+        "tier": "LOW",
+        "description": "Consulta de histórico SQL",
+    },
+    "mcp__fabric_rti__kusto_query": {"tier": "LOW", "description": "Query KQL no Eventhouse"},
 }
 
 # Contadores de sessão (resetados a cada restart)
@@ -64,9 +68,7 @@ async def log_cost_generating_operations(
 
     # Total de operações HIGH na sessão
     total_high = sum(
-        _session_counters.get(t, 0)
-        for t, i in COST_TIERS.items()
-        if i["tier"] == "HIGH"
+        _session_counters.get(t, 0) for t, i in COST_TIERS.items() if i["tier"] == "HIGH"
     )
 
     if tier == "HIGH":
@@ -82,13 +84,11 @@ async def log_cost_generating_operations(
             )
     elif tier == "MEDIUM":
         logger.info(
-            f"[COST:MEDIUM] {description}: {tool_name} "
-            f"(uso #{count}) tool_use_id={tool_use_id}"
+            f"[COST:MEDIUM] {description}: {tool_name} (uso #{count}) tool_use_id={tool_use_id}"
         )
     else:
         logger.debug(
-            f"[COST:LOW] {description}: {tool_name} "
-            f"(uso #{count}) tool_use_id={tool_use_id}"
+            f"[COST:LOW] {description}: {tool_name} (uso #{count}) tool_use_id={tool_use_id}"
         )
 
     return {}

@@ -270,9 +270,7 @@ def parse_command(user_input: str) -> CommandResult | None:
         agent=definition.agent,
         bmad_prompt=definition.prompt_template.format(task=task),
         bmad_mode=definition.bmad_mode,
-        display_message=definition.display_template.format(
-            agent=definition.agent or "supervisor"
-        ),
+        display_message=definition.display_template.format(agent=definition.agent or "supervisor"),
     )
 
 
@@ -297,8 +295,12 @@ def get_help_text() -> str:
         )
 
     lines.append("")
-    lines.append("  [bold green]/help[/bold green]         [dim]Internal[/dim]              Exibe esta ajuda.")
-    lines.append("  [bold green]/exit[/bold green]         [dim]Internal[/dim]              Encerra a sessão.")
+    lines.append(
+        "  [bold green]/help[/bold green]         [dim]Internal[/dim]              Exibe esta ajuda."
+    )
+    lines.append(
+        "  [bold green]/exit[/bold green]         [dim]Internal[/dim]              Encerra a sessão."
+    )
     lines.append("")
 
     return "\n".join(lines)

@@ -15,11 +15,12 @@ import os
 from typing import Any
 
 import mlflow
+from mlflow.pyfunc import PythonModel
 
 logger = logging.getLogger("data_agents.mlflow")
 
 
-class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
+class ClaudeDataAgent(PythonModel):
     """
     Wrapper PyFunc para implantação do Data Agent em Model Serving do Databricks
     via MLflow (Mosaic AI Agent Framework).
@@ -42,6 +43,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
         try:
             import claude_agent_sdk  # noqa: F401
             from agents.supervisor import build_supervisor_options  # noqa: F401
+
             logger.info("Dependências do Data Agent carregadas com sucesso.")
         except ImportError as e:
             self._init_error = (
@@ -65,7 +67,12 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
         self._ready = True
         logger.info("ClaudeDataAgent inicializado e pronto para servir.")
 
-    def predict(self, context, model_input) -> dict[str, Any]:
+    def predict(
+        self,
+        context: Any,
+        model_input: Any,
+        params: dict[str, Any] | None = None,
+    ) -> Any:
         """
         Ponto de entrada do Databricks Model Serving.
 
@@ -113,13 +120,14 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
         if hasattr(model_input, "get") and "messages" in model_input:
             messages = model_input["messages"]
             if messages:
-                return messages[-1].get("content", "")
+                return str(messages[-1].get("content", ""))
+            return ""  # lista vazia → sem prompt
 
         # Formato lista de dicts
         if isinstance(model_input, list) and len(model_input) > 0:
             item = model_input[0]
             if isinstance(item, dict):
-                return item.get("prompt", item.get("content", str(item)))
+                return str(item.get("prompt") or item.get("content") or str(item))
             return str(item)
 
         # Fallback: string direta
@@ -133,7 +141,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
             text: Conteúdo da resposta.
             is_error: Se True, inclui metadata de erro para observabilidade.
         """
-        response = {
+        response: dict[str, Any] = {
             "choices": [
                 {
                     "message": {
@@ -193,8 +201,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
             if run is None:
                 # Sem run ativo — apenas loga no logger para diagnóstico
                 logger.info(
-                    "ResultMessage (sem MLflow run ativo): "
-                    "cost=%.4f turns=%s duration_ms=%s",
+                    "ResultMessage (sem MLflow run ativo): cost=%.4f turns=%s duration_ms=%s",
                     result.total_cost_usd or 0.0,
                     result.num_turns or 0,
                     result.duration_ms or 0,

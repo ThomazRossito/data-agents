@@ -7,12 +7,19 @@ Inclui validação de credenciais por plataforma e diagnóstico de startup.
 
 import logging
 import warnings
-from typing import ClassVar
+from typing import ClassVar, TypedDict
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger("data_agents.config")
+
+
+class _PlatformConfig(TypedDict):
+    """Estrutura interna usada para validação de credenciais por plataforma."""
+
+    fields: dict[str, str]
+    required: list[str]
 
 
 class Settings(BaseSettings):
@@ -105,7 +112,7 @@ class Settings(BaseSettings):
                 ...
             }
         """
-        platforms = {
+        platforms: dict[str, _PlatformConfig] = {
             "anthropic": {
                 "fields": {"ANTHROPIC_API_KEY": self.anthropic_api_key},
                 "required": ["ANTHROPIC_API_KEY"],
@@ -153,11 +160,7 @@ class Settings(BaseSettings):
     def get_available_platforms(self) -> list[str]:
         """Retorna lista de plataformas MCP com credenciais válidas."""
         status = self.validate_platform_credentials()
-        return [
-            name
-            for name, info in status.items()
-            if info["ready"] and name != "anthropic"
-        ]
+        return [name for name, info in status.items() if info["ready"] and name != "anthropic"]
 
     def startup_diagnostics(self) -> None:
         """

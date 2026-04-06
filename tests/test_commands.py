@@ -1,6 +1,5 @@
 """Testes do parser de slash commands."""
 
-import pytest
 from commands.parser import parse_command, get_help_text, COMMAND_REGISTRY
 
 

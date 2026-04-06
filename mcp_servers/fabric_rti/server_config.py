@@ -31,21 +31,23 @@ Pré-requisitos:
   KUSTO_SERVICE_URI e KUSTO_SERVICE_DEFAULT_DB no .env
 """
 
+
 def get_fabric_rti_mcp_config() -> dict:
     """Retorna a configuração MCP para Fabric Real-Time Intelligence."""
     from config.settings import settings  # importação local para evitar circular import
+
     return {
         "fabric_rti": {
             "type": "stdio",
             "command": "uvx",
             "args": ["microsoft-fabric-rti-mcp"],
             "env": {
-                "KUSTO_SERVICE_URI":        settings.kusto_service_uri,
+                "KUSTO_SERVICE_URI": settings.kusto_service_uri,
                 "KUSTO_SERVICE_DEFAULT_DB": settings.kusto_service_default_db,
-                "FABRIC_API_BASE_URL":      settings.fabric_api_base_url,
-                "AZURE_TENANT_ID":          settings.azure_tenant_id,
-                "AZURE_CLIENT_ID":          settings.azure_client_id,
-                "AZURE_CLIENT_SECRET":      settings.azure_client_secret,
+                "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
+                "AZURE_TENANT_ID": settings.azure_tenant_id,
+                "AZURE_CLIENT_ID": settings.azure_client_id,
+                "AZURE_CLIENT_SECRET": settings.azure_client_secret,
             },
         }
     }

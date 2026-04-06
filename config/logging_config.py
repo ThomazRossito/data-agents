@@ -20,6 +20,7 @@ from typing import Any
 
 try:
     from rich.logging import RichHandler
+
     _RICH_AVAILABLE = True
 except ImportError:
     _RICH_AVAILABLE = False
@@ -77,6 +78,7 @@ def setup_logging(
 
     # ─── Console Handler ─────────────────────────────────────────
     if enable_console:
+        console_handler: logging.Handler
         if _RICH_AVAILABLE:
             console_handler = RichHandler(
                 level=getattr(logging, log_level.upper(), logging.INFO),
@@ -85,11 +87,10 @@ def setup_logging(
                 show_path=False,
             )
         else:
-            console_handler = logging.StreamHandler(sys.stdout)
-            console_handler.setLevel(getattr(logging, log_level.upper(), logging.INFO))
-            console_handler.setFormatter(
-                logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
-            )
+            sh = logging.StreamHandler(sys.stdout)
+            sh.setLevel(getattr(logging, log_level.upper(), logging.INFO))
+            sh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s"))
+            console_handler = sh
 
         root_logger.addHandler(console_handler)
 

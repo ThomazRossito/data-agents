@@ -34,11 +34,11 @@ def get_template_mcp_config() -> dict:
     """
     return {
         "platform_name": {
-            "type": "stdio",                        # ou "sse" / "http"
-            "command": "your-mcp-server-command",   # ex: "uvx", "python", "node"
-            "args": [],                             # argumentos do comando
+            "type": "stdio",  # ou "sse" / "http"
+            "command": "your-mcp-server-command",  # ex: "uvx", "python", "node"
+            "args": [],  # argumentos do comando
             "env": {
-                "PLATFORM_HOST":  os.environ.get("PLATFORM_HOST", ""),
+                "PLATFORM_HOST": os.environ.get("PLATFORM_HOST", ""),
                 "PLATFORM_TOKEN": os.environ.get("PLATFORM_TOKEN", ""),
             },
         }

@@ -48,14 +48,15 @@ AGENTS_REGISTRY_DIR = Path(__file__).parent / "registry"
 
 # Mapeamento de aliases de tool sets para listas concretas de tools MCP
 MCP_TOOL_SETS: dict[str, list[str]] = {
-    "databricks_all":      DATABRICKS_MCP_TOOLS,
+    "databricks_all": DATABRICKS_MCP_TOOLS,
     "databricks_readonly": DATABRICKS_MCP_READONLY_TOOLS,
-    "fabric_all":          FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS,
+    "fabric_all": FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS,
     "fabric_readonly": [
-        t for t in FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS
+        t
+        for t in FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS
         if any(kw in t for kw in ["list_", "get_", "download_", "sample_"])
     ],
-    "fabric_rti_all":      FABRIC_RTI_MCP_TOOLS,
+    "fabric_rti_all": FABRIC_RTI_MCP_TOOLS,
     "fabric_rti_readonly": FABRIC_RTI_READONLY_TOOLS,
 }
 
@@ -149,15 +150,13 @@ def load_agent(path: Path) -> tuple[str, AgentDefinition]:
     required = ["name", "description", "model", "tools"]
     missing = [f for f in required if f not in metadata]
     if missing:
-        raise ValueError(
-            f"Agente '{path.name}' está faltando campos obrigatórios: {missing}"
-        )
+        raise ValueError(f"Agente '{path.name}' está faltando campos obrigatórios: {missing}")
 
     name: str = metadata["name"]
     description: str = metadata["description"]
     model: str = metadata["model"]
     tools_raw: list[str] = metadata["tools"]
-    mcp_servers: list[str] = metadata.get("mcp_servers", [])
+    mcp_servers: list[str | dict[str, Any]] = metadata.get("mcp_servers", [])
 
     # Resolve aliases de tool sets para tools MCP concretas
     tools = _resolve_tools(tools_raw)
@@ -216,8 +215,5 @@ def load_all_agents(
             logger.error(f"Erro ao carregar agente '{path.name}': {e}")
             # Continua carregando os demais agentes mesmo com erro em um
 
-    logger.info(
-        f"Registry carregado: {len(agents)} agentes — "
-        f"{list(agents.keys())}"
-    )
+    logger.info(f"Registry carregado: {len(agents)} agentes — {list(agents.keys())}")
     return agents

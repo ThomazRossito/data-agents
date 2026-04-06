@@ -12,7 +12,6 @@ dependencies = [
     # MCP Servers
     "databricks-mcp-server>=0.4.4",
     "microsoft-fabric-rti-mcp>=0.1.0",
-    "microsoft-fabric-mcp>=0.1.0",
 
     # Databricks Enterprise & MLOps
     "databricks-sdk>=0.20.0",
@@ -67,6 +66,9 @@ include = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+extend-exclude = [
+    "skills/",  # Reference/example files from external sources — not project code
+]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

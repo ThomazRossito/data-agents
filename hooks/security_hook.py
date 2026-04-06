@@ -23,20 +23,18 @@ DESTRUCTIVE_PATTERNS: list[re.Pattern] = [
     re.compile(r">\s*/dev/sd[a-z]", re.IGNORECASE),
     re.compile(r"\bdd\s+.*of=/dev/", re.IGNORECASE),
     re.compile(r"\bformat\s+[cC]:", re.IGNORECASE),
-
     # SQL destructive operations
     re.compile(r"\bDROP\s+(DATABASE|CATALOG|SCHEMA|TABLE|VIEW|FUNCTION)\b", re.IGNORECASE),
     re.compile(r"\bTRUNCATE\s+TABLE\b", re.IGNORECASE),
     re.compile(r"\bDELETE\s+FROM\b", re.IGNORECASE),
     re.compile(r"\bALTER\s+TABLE\s+\S+\s+DROP\b", re.IGNORECASE),
-
     # Dangerous system commands
     re.compile(r"\bchmod\s+(-[a-zA-Z]+\s+)?777\s+/", re.IGNORECASE),
     re.compile(r"\bchown\s+(-[a-zA-Z]+\s+)?\S+\s+/", re.IGNORECASE),
     re.compile(r"\bkill\s+-9\s+-1\b", re.IGNORECASE),
     re.compile(r"\bshutdown\b", re.IGNORECASE),
     re.compile(r"\breboot\b", re.IGNORECASE),
-    re.compile(r":(){ :\|:& };:", re.IGNORECASE),  # fork bomb
+    re.compile(r":\(\)\{.*?:\|.*?&.*?\};:", re.IGNORECASE),  # fork bomb
 ]
 
 # ─── Padrões de evasão (tentativas de bypass) ────────────────────
@@ -45,22 +43,17 @@ EVASION_PATTERNS: list[re.Pattern] = [
     # Base64 encoding para esconder comandos
     re.compile(r"\bbase64\s+(-d|--decode)\b", re.IGNORECASE),
     re.compile(r"\becho\s+\S+\s*\|\s*base64\s+(-d|--decode)", re.IGNORECASE),
-
     # eval / exec para execução dinâmica
     re.compile(r"\beval\s+", re.IGNORECASE),
     re.compile(r"\$\(\s*echo\s+.*\)", re.IGNORECASE),
-
     # xargs com comandos perigosos
     re.compile(r"\bxargs\s+.*\brm\b", re.IGNORECASE),
     re.compile(r"\bxargs\s+.*\bkill\b", re.IGNORECASE),
-
     # Hex/octal encoding
     re.compile(r"\\x[0-9a-fA-F]{2}", re.IGNORECASE),
     re.compile(r"\$'\\x", re.IGNORECASE),
-
     # Curl/wget piped to shell
     re.compile(r"\b(curl|wget)\s+.*\|\s*(bash|sh|zsh)\b", re.IGNORECASE),
-
     # Python/Perl/Ruby one-liners para bypass
     re.compile(r"\bpython[23]?\s+-c\s+.*import\s+os", re.IGNORECASE),
     re.compile(r"\bperl\s+-e\s+.*system\(", re.IGNORECASE),

@@ -50,34 +50,34 @@ console = Console()
 
 TOOL_LABELS: dict[str, str] = {
     # Ferramentas do Supervisor
-    "Agent":            "🤖 Delegando para agente especialista",
-    "Read":             "📖 Lendo arquivo",
-    "Grep":             "🔍 Buscando conteúdo",
-    "Glob":             "📂 Listando arquivos",
-    "Bash":             "⚙️  Executando comando",
-    "AskUserQuestion":  "❓ Aguardando resposta do usuário",
+    "Agent": "🤖 Delegando para agente especialista",
+    "Read": "📖 Lendo arquivo",
+    "Grep": "🔍 Buscando conteúdo",
+    "Glob": "📂 Listando arquivos",
+    "Bash": "⚙️  Executando comando",
+    "AskUserQuestion": "❓ Aguardando resposta do usuário",
     # Ferramentas MCP — Databricks
-    "mcp__databricks__execute_sql":         "🗄️  Executando SQL no Databricks",
-    "mcp__databricks__list_catalogs":       "📋 Listando catálogos do Unity Catalog",
-    "mcp__databricks__list_schemas":        "📋 Listando schemas",
-    "mcp__databricks__list_tables":         "📋 Listando tabelas",
-    "mcp__databricks__describe_table":       "🔎 Inspecionando tabela",
-    "mcp__databricks__get_table_schema":    "🔎 Obtendo schema da tabela",
+    "mcp__databricks__execute_sql": "🗄️  Executando SQL no Databricks",
+    "mcp__databricks__list_catalogs": "📋 Listando catálogos do Unity Catalog",
+    "mcp__databricks__list_schemas": "📋 Listando schemas",
+    "mcp__databricks__list_tables": "📋 Listando tabelas",
+    "mcp__databricks__describe_table": "🔎 Inspecionando tabela",
+    "mcp__databricks__get_table_schema": "🔎 Obtendo schema da tabela",
     "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline LakeFlow",
-    "mcp__databricks__upload_to_volume":    "⬆️  Enviando arquivo para Volume",
-    "mcp__databricks__list_volume_files":   "📂 Listando arquivos no Volume",
-    "mcp__databricks__run_job_now":         "🚀 Executando Job Databricks",
-    "mcp__databricks__start_pipeline":      "🚀 Iniciando Pipeline Databricks",
-    "mcp__databricks__get_pipeline":        "📊 Consultando status do Pipeline",
+    "mcp__databricks__upload_to_volume": "⬆️  Enviando arquivo para Volume",
+    "mcp__databricks__list_volume_files": "📂 Listando arquivos no Volume",
+    "mcp__databricks__run_job_now": "🚀 Executando Job Databricks",
+    "mcp__databricks__start_pipeline": "🚀 Iniciando Pipeline Databricks",
+    "mcp__databricks__get_pipeline": "📊 Consultando status do Pipeline",
     # Ferramentas MCP — Fabric
-    "mcp__fabric__list_workspaces":         "📋 Listando workspaces do Fabric",
-    "mcp__fabric__list_lakehouses":         "📋 Listando Lakehouses",
-    "mcp__fabric__onelake_upload_file":     "⬆️  Enviando arquivo para OneLake",
-    "mcp__fabric__onelake_list_files":      "📂 Listando arquivos no OneLake",
+    "mcp__fabric__list_workspaces": "📋 Listando workspaces do Fabric",
+    "mcp__fabric__list_lakehouses": "📋 Listando Lakehouses",
+    "mcp__fabric__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
+    "mcp__fabric__onelake_list_files": "📂 Listando arquivos no OneLake",
     # Ferramentas MCP — Fabric RTI
-    "mcp__fabric_rti__kusto_query":         "🔍 Executando query KQL",
-    "mcp__fabric_rti__kusto_command":       "⚙️  Executando comando KQL",
-    "mcp__fabric_rti__kusto_list_databases":"📋 Listando databases do Eventhouse",
+    "mcp__fabric_rti__kusto_query": "🔍 Executando query KQL",
+    "mcp__fabric_rti__kusto_command": "⚙️  Executando comando KQL",
+    "mcp__fabric_rti__kusto_list_databases": "📋 Listando databases do Eventhouse",
 }
 
 
@@ -94,6 +94,7 @@ def _get_agent_label(tool_input_json: str) -> str:
     """Extrai o nome do agente de um input JSON de tool Agent."""
     try:
         import json
+
         data = json.loads(tool_input_json) if tool_input_json else {}
         agent_name = data.get("agent_name") or data.get("name") or ""
         if agent_name:
@@ -112,7 +113,9 @@ def print_banner() -> None:
 
     banner.append("  Desenvolvido por: \n", style="bold cyan")
     banner.append("  Thomaz Antonio Rossito Neto\n", style="bold")
-    banner.append("  Specialist Data & AI Solutions Architect | Center of Excellence CoE @CI&T\n", style="dim")
+    banner.append(
+        "  Specialist Data & AI Solutions Architect | Center of Excellence CoE @CI&T\n", style="dim"
+    )
     banner.append("  LinkedIn: ", style="bold")
     banner.append("https://www.linkedin.com/in/thomaz-antonio-rossito-neto/\n", style="dim")
     banner.append("  GitHub: ", style="bold")
@@ -120,7 +123,9 @@ def print_banner() -> None:
     console.print(Panel(banner, border_style="cyan"))
     console.print()
     console.print("[dim]Digite sua solicitação em linguagem natural.[/dim]")
-    console.print("[dim]Comandos: [bold]sair[/bold] para encerrar | [bold]limpar[/bold] para nova sessão | [bold]/help[/bold] para ajuda[/dim]")
+    console.print(
+        "[dim]Comandos: [bold]sair[/bold] para encerrar | [bold]limpar[/bold] para nova sessão | [bold]/help[/bold] para ajuda[/dim]"
+    )
     console.print(
         "[dim]Slash: [bold]/plan[/bold] | [bold]/sql[/bold] | [bold]/spark[/bold] | "
         "[bold]/pipeline[/bold] | [bold]/fabric[/bold] | [bold]/health[/bold] | "
@@ -161,7 +166,6 @@ async def _stream_response(client: ClaudeSDKClient) -> None:
     live_status = _start_spinner("Agente pensando...")
 
     async for message in client.receive_response():
-
         # ── StreamEvent: feedback em tempo real ──────────────────────
         if isinstance(message, StreamEvent):
             event = message.event
@@ -215,7 +219,9 @@ async def _stream_response(client: ClaudeSDKClient) -> None:
                     if block.name == "AskUserQuestion":
                         question = block.input.get("question", "") if block.input else ""
                         if question:
-                            console.print(f"\n[bold yellow]❓ Agente pergunta:[/bold yellow] {question}\n")
+                            console.print(
+                                f"\n[bold yellow]❓ Agente pergunta:[/bold yellow] {question}\n"
+                            )
 
             # Reinicia spinner para próximo turn se não for a mensagem final
             if not response_started:
@@ -248,7 +254,7 @@ async def run_interactive() -> None:
 
     # ── 2. Logging + diagnósticos aparecem DEPOIS do banner ──────────────────
     setup_logging(log_level=settings.log_level)
-    if hasattr(settings, 'startup_diagnostics'):
+    if hasattr(settings, "startup_diagnostics"):
         settings.startup_diagnostics()
 
     # ── 3. build_supervisor_options emite "MCP servers ativos..." aqui ───────
@@ -320,7 +326,9 @@ async def run_interactive() -> None:
 
                 except BudgetExceededError as e:
                     console.print(f"\n[bold red]Orçamento excedido:[/bold red] {e.message}")
-                    console.print("[dim]Aumente MAX_BUDGET_USD no .env ou inicie nova sessão.[/dim]\n")
+                    console.print(
+                        "[dim]Aumente MAX_BUDGET_USD no .env ou inicie nova sessão.[/dim]\n"
+                    )
                     logger.warning(f"Budget exceeded: {e.message}")
                     continue
 

@@ -1,6 +1,5 @@
 """Testes de configuração dos servidores MCP."""
 
-import pytest
 from mcp_servers.databricks.server_config import get_databricks_mcp_config, DATABRICKS_MCP_TOOLS
 from mcp_servers.fabric.server_config import get_fabric_mcp_config, ALL_FABRIC_TOOLS
 from mcp_servers.fabric_rti.server_config import get_fabric_rti_mcp_config, FABRIC_RTI_MCP_TOOLS
@@ -29,7 +28,8 @@ def test_fabric_rti_config_has_required_keys():
 
 
 def test_registry_all_platforms():
-    registry = build_mcp_registry()
+    # Passa plataformas explícitas para não depender de credenciais do ambiente
+    registry = build_mcp_registry(platforms=["databricks", "fabric", "fabric_rti"])
     assert "databricks" in registry
     assert "fabric" in registry
     assert "fabric_community" in registry

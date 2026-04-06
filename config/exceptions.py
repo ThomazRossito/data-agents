@@ -101,8 +101,7 @@ class SecurityViolationError(DataAgentsError):
         self.command = command
         self.pattern = pattern
         super().__init__(
-            f"Operação bloqueada por política de segurança. "
-            f"Padrão detectado: '{pattern}'."
+            f"Operação bloqueada por política de segurança. Padrão detectado: '{pattern}'."
         )
 
 

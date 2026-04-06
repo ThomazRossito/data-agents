@@ -22,6 +22,8 @@ Modos de thinking:
   - Demais modos: thinking disabled — economiza custo/latência em tarefas pontuais
 """
 
+from typing import Any
+
 from claude_agent_sdk import ClaudeAgentOptions, HookMatcher
 
 from agents.loader import load_all_agents
@@ -56,10 +58,10 @@ def build_supervisor_options(
         ClaudeAgentOptions configurado e pronto para uso com query() ou ClaudeSDKClient.
     """
     # Thinking: ativo apenas quando explicitamente solicitado (modo BMAD Full)
-    thinking_config = (
-        {"type": "enabled", "budget_tokens": 8000}
-        if enable_thinking
-        else {"type": "disabled"}
+    # Typed as Any because the SDK union (ThinkingConfigEnabled | ThinkingConfigDisabled | ...)
+    # is not directly importable here without creating a hard dependency on SDK internals.
+    thinking_config: Any = (
+        {"type": "enabled", "budget_tokens": 8000} if enable_thinking else {"type": "disabled"}
     )
 
     # Carregamento dinâmico de agentes via Markdown/YAML
@@ -70,47 +72,42 @@ def build_supervisor_options(
         # --- Modelo e System Prompt ---
         model=settings.default_model,
         system_prompt=SUPERVISOR_SYSTEM_PROMPT,
-
         # --- Tools do Supervisor (planejamento e delegação apenas) ---
         allowed_tools=[
-            "Agent",            # Invocar subagents especialistas
-            "Read",             # Ler arquivos locais (KBs, schemas, configs, skills)
-            "Grep",             # Buscar conteúdo em arquivos
-            "Glob",             # Encontrar arquivos por padrão
-            "Write",            # Salvar PRDs e artefatos em output/
+            "Agent",  # Invocar subagents especialistas
+            "Read",  # Ler arquivos locais (KBs, schemas, configs, skills)
+            "Grep",  # Buscar conteúdo em arquivos
+            "Glob",  # Encontrar arquivos por padrão
+            "Write",  # Salvar PRDs e artefatos em output/
             "AskUserQuestion",  # Esclarecer ambiguidades com o usuário
-            "Bash",             # Executar comandos auxiliares (mkdir, etc.)
+            "Bash",  # Executar comandos auxiliares (mkdir, etc.)
         ],
-
         # --- Subagents Especialistas (carregados dinamicamente do registry) ---
         agents=agents,
-
         # --- Servidores MCP (plataformas com credenciais disponíveis) ---
         mcp_servers=build_mcp_registry(platforms),
-
         # --- Controle de Execução ---
         # permission_mode="acceptEdits",
         permission_mode="bypassPermissions",
         max_turns=settings.max_turns,
         max_budget_usd=settings.max_budget_usd,
-
         # --- Streaming parcial para feedback visual em tempo real ---
         include_partial_messages=True,
-
         # --- Thinking: desabilitado por padrão; ativo via enable_thinking=True ---
         thinking=thinking_config,
         effort="high",
-
         # --- Hooks de Auditoria, Custo e Segurança ---
+        # Hooks use generic dict[str, Any] signatures; SDK expects its own union input types.
+        # Behavior is correct at runtime — suppress the list-item mismatch below.
         hooks={
             "PostToolUse": [
-                HookMatcher(hooks=[audit_tool_usage]),
-                HookMatcher(hooks=[log_cost_generating_operations]),
+                HookMatcher(hooks=[audit_tool_usage]),  # type: ignore[list-item]
+                HookMatcher(hooks=[log_cost_generating_operations]),  # type: ignore[list-item]
             ],
             "PreToolUse": [
                 HookMatcher(
                     matcher="Bash",
-                    hooks=[block_destructive_commands],
+                    hooks=[block_destructive_commands],  # type: ignore[list-item]
                 ),
             ],
         },

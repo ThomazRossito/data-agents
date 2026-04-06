@@ -19,9 +19,11 @@ Pré-requisitos:
   az login  (ou configurar AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID)
 """
 
+
 def get_fabric_mcp_config() -> dict:
     """Retorna a configuração MCP para Microsoft Fabric."""
     from config.settings import settings  # importação local para evitar circular import
+
     return {
         # Servidor oficial Microsoft (dotnet) — OneLake + Workspaces + API Specs
         "fabric": {
@@ -34,8 +36,8 @@ def get_fabric_mcp_config() -> dict:
             ],
             "env": {
                 "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
-                "AZURE_TENANT_ID":     settings.azure_tenant_id,
-                "AZURE_CLIENT_ID":     settings.azure_client_id,
+                "AZURE_TENANT_ID": settings.azure_tenant_id,
+                "AZURE_CLIENT_ID": settings.azure_client_id,
                 "AZURE_CLIENT_SECRET": settings.azure_client_secret,
             },
         },
@@ -45,8 +47,8 @@ def get_fabric_mcp_config() -> dict:
             "command": "python",
             "args": ["-m", "microsoft_fabric_mcp"],
             "env": {
-                "AZURE_TENANT_ID":     settings.azure_tenant_id,
-                "AZURE_CLIENT_ID":     settings.azure_client_id,
+                "AZURE_TENANT_ID": settings.azure_tenant_id,
+                "AZURE_CLIENT_ID": settings.azure_client_id,
                 "AZURE_CLIENT_SECRET": settings.azure_client_secret,
                 "FABRIC_WORKSPACE_ID": settings.fabric_workspace_id,
                 "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
