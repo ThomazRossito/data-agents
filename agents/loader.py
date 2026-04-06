@@ -156,7 +156,7 @@ def load_agent(path: Path) -> tuple[str, AgentDefinition]:
     description: str = metadata["description"]
     model: str = metadata["model"]
     tools_raw: list[str] = metadata["tools"]
-    mcp_servers: list[str] = metadata.get("mcp_servers", [])
+    mcp_servers: list[str | dict[str, Any]] = metadata.get("mcp_servers", [])
 
     # Resolve aliases de tool sets para tools MCP concretas
     tools = _resolve_tools(tools_raw)

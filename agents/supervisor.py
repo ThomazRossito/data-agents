@@ -22,6 +22,8 @@ Modos de thinking:
   - Demais modos: thinking disabled — economiza custo/latência em tarefas pontuais
 """
 
+from typing import Any
+
 from claude_agent_sdk import ClaudeAgentOptions, HookMatcher
 
 from agents.loader import load_all_agents
@@ -56,7 +58,9 @@ def build_supervisor_options(
         ClaudeAgentOptions configurado e pronto para uso com query() ou ClaudeSDKClient.
     """
     # Thinking: ativo apenas quando explicitamente solicitado (modo BMAD Full)
-    thinking_config = (
+    # Typed as Any because the SDK union (ThinkingConfigEnabled | ThinkingConfigDisabled | ...)
+    # is not directly importable here without creating a hard dependency on SDK internals.
+    thinking_config: Any = (
         {"type": "enabled", "budget_tokens": 8000} if enable_thinking else {"type": "disabled"}
     )
 
@@ -93,15 +97,18 @@ def build_supervisor_options(
         thinking=thinking_config,
         effort="high",
         # --- Hooks de Auditoria, Custo e Segurança ---
+        # type: ignore comments below because our hook signatures use generic dict[str, Any]
+        # while the SDK expects its own union input types (PreToolUseHookInput | ...).
+        # The hooks work correctly at runtime — mypy just can't verify the exact SDK union.
         hooks={
             "PostToolUse": [
-                HookMatcher(hooks=[audit_tool_usage]),
-                HookMatcher(hooks=[log_cost_generating_operations]),
+                HookMatcher(hooks=[audit_tool_usage]),  # type: ignore[list-item]
+                HookMatcher(hooks=[log_cost_generating_operations]),  # type: ignore[list-item]
             ],
             "PreToolUse": [
                 HookMatcher(
                     matcher="Bash",
-                    hooks=[block_destructive_commands],
+                    hooks=[block_destructive_commands],  # type: ignore[list-item]
                 ),
             ],
         },

@@ -15,11 +15,12 @@ import os
 from typing import Any
 
 import mlflow
+from mlflow.pyfunc import PythonModel  # type: ignore[import-untyped]
 
 logger = logging.getLogger("data_agents.mlflow")
 
 
-class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
+class ClaudeDataAgent(PythonModel):  # type: ignore[misc]
     """
     Wrapper PyFunc para implantação do Data Agent em Model Serving do Databricks
     via MLflow (Mosaic AI Agent Framework).
@@ -114,7 +115,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
         if hasattr(model_input, "get") and "messages" in model_input:
             messages = model_input["messages"]
             if messages:
-                return messages[-1].get("content", "")
+                return str(messages[-1].get("content", ""))
 
         # Formato lista de dicts
         if isinstance(model_input, list) and len(model_input) > 0:
@@ -134,7 +135,7 @@ class ClaudeDataAgent(mlflow.pyfunc.PythonModel):
             text: Conteúdo da resposta.
             is_error: Se True, inclui metadata de erro para observabilidade.
         """
-        response = {
+        response: dict[str, Any] = {
             "choices": [
                 {
                     "message": {
