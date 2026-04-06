@@ -97,9 +97,8 @@ def build_supervisor_options(
         thinking=thinking_config,
         effort="high",
         # --- Hooks de Auditoria, Custo e Segurança ---
-        # type: ignore comments below because our hook signatures use generic dict[str, Any]
-        # while the SDK expects its own union input types (PreToolUseHookInput | ...).
-        # The hooks work correctly at runtime — mypy just can't verify the exact SDK union.
+        # Hooks use generic dict[str, Any] signatures; SDK expects its own union input types.
+        # Behavior is correct at runtime — suppress the list-item mismatch below.
         hooks={
             "PostToolUse": [
                 HookMatcher(hooks=[audit_tool_usage]),  # type: ignore[list-item]

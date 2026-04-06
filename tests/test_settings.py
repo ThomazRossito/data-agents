@@ -44,7 +44,18 @@ class TestPlatformCredentials:
 
     def test_no_credentials_returns_not_ready(self):
         """Sem credenciais, nenhuma plataforma de dados deve estar ready."""
-        s = Settings()
+        # Força todos os campos de credencial a string vazia para isolar do ambiente
+        s = Settings(
+            databricks_host="",
+            databricks_token="",
+            databricks_sql_warehouse_id="",
+            azure_tenant_id="",
+            azure_client_id="",
+            azure_client_secret="",
+            fabric_workspace_id="",
+            kusto_service_uri="",
+            kusto_service_default_db="",
+        )
         status = s.validate_platform_credentials()
         for platform, info in status.items():
             if platform != "anthropic":
@@ -62,7 +73,11 @@ class TestPlatformCredentials:
 
     def test_databricks_not_ready_without_token(self):
         """Sem token, Databricks não deve estar ready."""
-        s = Settings(databricks_host="https://adb-123.azuredatabricks.net")
+        # Força token vazio para isolar do ambiente de CI (que pode ter DATABRICKS_TOKEN)
+        s = Settings(
+            databricks_host="https://adb-123.azuredatabricks.net",
+            databricks_token="",
+        )
         status = s.validate_platform_credentials()
         assert not status["databricks"]["ready"]
         assert "DATABRICKS_TOKEN" in status["databricks"]["missing"]

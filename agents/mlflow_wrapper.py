@@ -15,12 +15,12 @@ import os
 from typing import Any
 
 import mlflow
-from mlflow.pyfunc import PythonModel  # type: ignore[import-untyped]
+from mlflow.pyfunc import PythonModel
 
 logger = logging.getLogger("data_agents.mlflow")
 
 
-class ClaudeDataAgent(PythonModel):  # type: ignore[misc]
+class ClaudeDataAgent(PythonModel):
     """
     Wrapper PyFunc para implantação do Data Agent em Model Serving do Databricks
     via MLflow (Mosaic AI Agent Framework).
@@ -67,7 +67,12 @@ class ClaudeDataAgent(PythonModel):  # type: ignore[misc]
         self._ready = True
         logger.info("ClaudeDataAgent inicializado e pronto para servir.")
 
-    def predict(self, context, model_input) -> dict[str, Any]:
+    def predict(  # type: ignore[override]
+        self,
+        context: Any,
+        model_input: Any,
+        params: dict[str, Any] | None = None,
+    ) -> Any:
         """
         Ponto de entrada do Databricks Model Serving.
 
@@ -116,12 +121,13 @@ class ClaudeDataAgent(PythonModel):  # type: ignore[misc]
             messages = model_input["messages"]
             if messages:
                 return str(messages[-1].get("content", ""))
+            return ""  # lista vazia → sem prompt
 
         # Formato lista de dicts
         if isinstance(model_input, list) and len(model_input) > 0:
             item = model_input[0]
             if isinstance(item, dict):
-                return item.get("prompt", item.get("content", str(item)))
+                return str(item.get("prompt") or item.get("content") or str(item))
             return str(item)
 
         # Fallback: string direta

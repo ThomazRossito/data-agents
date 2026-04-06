@@ -34,7 +34,7 @@ DESTRUCTIVE_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bkill\s+-9\s+-1\b", re.IGNORECASE),
     re.compile(r"\bshutdown\b", re.IGNORECASE),
     re.compile(r"\breboot\b", re.IGNORECASE),
-    re.compile(r":(){ :\|:& };:", re.IGNORECASE),  # fork bomb
+    re.compile(r":\(\)\{.*?:\|.*?&.*?\};:", re.IGNORECASE),  # fork bomb
 ]
 
 # ─── Padrões de evasão (tentativas de bypass) ────────────────────
