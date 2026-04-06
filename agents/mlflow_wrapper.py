@@ -67,7 +67,7 @@ class ClaudeDataAgent(PythonModel):
         self._ready = True
         logger.info("ClaudeDataAgent inicializado e pronto para servir.")
 
-    def predict(  # type: ignore[override]
+    def predict(
         self,
         context: Any,
         model_input: Any,
