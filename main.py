@@ -242,12 +242,16 @@ async def _stream_response(client: ClaudeSDKClient) -> None:
 
 async def run_interactive() -> None:
     """Loop interativo com histórico de sessão mantido entre mensagens."""
+
+    # ── 1. Banner primeiro — antes de qualquer inicialização ─────────────────
+    print_banner()
+
+    # ── 2. Logging + diagnósticos aparecem DEPOIS do banner ──────────────────
     setup_logging(log_level=settings.log_level)
     if hasattr(settings, 'startup_diagnostics'):
         settings.startup_diagnostics()
 
-    print_banner()
-
+    # ── 3. build_supervisor_options emite "MCP servers ativos..." aqui ───────
     try:
         options = build_supervisor_options()
         # Habilita streaming parcial para feedback em tempo real
@@ -257,6 +261,7 @@ async def run_interactive() -> None:
         logger.error(f"Falha na inicialização: {e}", exc_info=True)
         return
 
+    # ── 4. ClaudeSDKClient emite "Using bundled Claude Code CLI..." aqui ─────
     try:
         async with ClaudeSDKClient(options=options) as client:
             while True:
