@@ -66,11 +66,6 @@ O **Data Agents** é projetado para atuar como uma *squad* autônoma de dados. A
 
 A grande inovação da versão 2.0 é a separação entre **Knowledge Bases (KB)** e **Skills**. O Supervisor lê as regras de negócio corporativas (KB) *antes* de planejar a arquitetura, enquanto os Agentes Especialistas consultam os manuais operacionais (Skills) na hora de executar. Os agentes são definidos dinamicamente via arquivos Markdown (YAML Frontmatter), permitindo escalar a equipe virtual sem escrever código Python.
 
-<p align="center">
-  <img src="img/readme/architecture.png" alt="Arquitetura Multi-Agent System" width="100%">
-</p>
-
----
 
 <p align="center">
   <img src="img/readme/architecture_v2.png" alt="Arquitetura Multi-Agent System" width="100%">

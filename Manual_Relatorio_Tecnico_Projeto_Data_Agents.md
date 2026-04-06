@@ -110,12 +110,6 @@ A arquitetura do Data Agents v2.0 foi desenhada para ser hierárquica, segura e 
 ### Diagrama da Arquitetura
 
 <p align="center">
-  <img src="img/readme/architecture.png" alt="Arquitetura Multi-Agent System" width="100%">
-</p>
-
----
-
-<p align="center">
   <img src="img/readme/architecture_v2.png" alt="Arquitetura Multi-Agent System" width="100%">
 </p>
 
