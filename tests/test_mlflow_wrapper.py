@@ -97,9 +97,7 @@ class TestClaudeDataAgent:
         self.agent._ready = True
         self.agent._init_error = None
         with patch("agents.mlflow_wrapper.asyncio.run", side_effect=RuntimeError("async fail")):
-            response = self.agent.predict(
-                None, {"messages": [{"role": "user", "content": "test"}]}
-            )
+            response = self.agent.predict(None, {"messages": [{"role": "user", "content": "test"}]})
         assert "error" in response
         assert "RuntimeError" in response["choices"][0]["message"]["content"]
 
@@ -121,6 +119,7 @@ class TestClaudeDataAgent:
         with patch.dict("os.environ", {"ANTHROPIC_API_KEY": ""}, clear=False):
             # Remove a key do ambiente temporariamente
             import os
+
             env_backup = os.environ.pop("ANTHROPIC_API_KEY", None)
             try:
                 agent.load_context(mock_context)
@@ -143,6 +142,7 @@ class TestClaudeDataAgent:
 
     def test_log_result_metrics_no_active_run(self):
         """Verifica que sem run MLflow ativo apenas loga via logger (sem erro)."""
+
         class FakeResult:
             total_cost_usd = 0.5
             num_turns = 3
@@ -154,6 +154,7 @@ class TestClaudeDataAgent:
 
     def test_log_result_metrics_with_active_run_logs_metrics(self):
         """Verifica que com run MLflow ativo as métricas são logadas."""
+
         class FakeResult:
             total_cost_usd = 0.25
             num_turns = 5
@@ -171,6 +172,7 @@ class TestClaudeDataAgent:
 
     def test_log_result_metrics_none_values_not_logged(self):
         """Verifica que valores None não são incluídos nas métricas."""
+
         class FakeResult:
             total_cost_usd = None
             num_turns = None
@@ -184,6 +186,7 @@ class TestClaudeDataAgent:
 
     def test_log_result_metrics_partial_values(self):
         """Verifica que apenas métricas com valor não-None são logadas."""
+
         class FakeResult:
             total_cost_usd = 0.1
             num_turns = None
@@ -200,13 +203,12 @@ class TestClaudeDataAgent:
 
     def test_log_result_metrics_exception_is_swallowed(self):
         """Verifica que exceção em log não propaga para o caller."""
+
         class FakeResult:
             total_cost_usd = 0.5
             num_turns = 3
             duration_ms = 1500
 
-        with patch(
-            "agents.mlflow_wrapper.mlflow.active_run", side_effect=Exception("mlflow down")
-        ):
+        with patch("agents.mlflow_wrapper.mlflow.active_run", side_effect=Exception("mlflow down")):
             # Deve ser silenciado — não lança exceção
             self.agent._log_result_metrics(FakeResult())

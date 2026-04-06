@@ -24,6 +24,7 @@ class TestBuildSupervisorOptions:
         mock_class, mock_instance = self._make_mock_options_class()
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             from agents.supervisor import build_supervisor_options
+
             result = build_supervisor_options()
             assert result is mock_instance
             mock_class.assert_called_once()
@@ -35,6 +36,7 @@ class TestBuildSupervisorOptions:
             with patch("agents.supervisor.load_all_agents") as mock_load:
                 mock_load.return_value = {"sql-expert": MagicMock()}
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options()
                 mock_load.assert_called_once()
 
@@ -45,6 +47,7 @@ class TestBuildSupervisorOptions:
             with patch("agents.supervisor.build_mcp_registry") as mock_mcp:
                 mock_mcp.return_value = []
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options(platforms=["databricks"])
                 mock_mcp.assert_called_once_with(["databricks"])
 
@@ -55,6 +58,7 @@ class TestBuildSupervisorOptions:
             with patch("agents.supervisor.build_mcp_registry") as mock_mcp:
                 mock_mcp.return_value = []
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options()
                 mock_mcp.assert_called_once_with(None)
 
@@ -71,6 +75,7 @@ class TestBuildSupervisorOptions:
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry", return_value=[]):
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options(enable_thinking=False)
                 assert captured_kwargs.get("thinking") == {"type": "disabled"}
 
@@ -87,6 +92,7 @@ class TestBuildSupervisorOptions:
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry", return_value=[]):
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options(enable_thinking=True)
                 thinking = captured_kwargs.get("thinking")
                 assert thinking is not None
@@ -106,6 +112,7 @@ class TestBuildSupervisorOptions:
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry", return_value=[]):
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options()
                 assert captured_kwargs.get("permission_mode") == "bypassPermissions"
 
@@ -122,12 +129,13 @@ class TestBuildSupervisorOptions:
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry", return_value=[]):
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options()
                 hooks = captured_kwargs.get("hooks", {})
                 assert "PostToolUse" in hooks
                 assert "PreToolUse" in hooks
                 assert len(hooks["PostToolUse"]) == 2  # audit + cost guard
-                assert len(hooks["PreToolUse"]) == 1   # security
+                assert len(hooks["PreToolUse"]) == 1  # security
 
     def test_build_includes_partial_messages(self):
         """Verifica que include_partial_messages está ativo para feedback visual."""
@@ -142,5 +150,6 @@ class TestBuildSupervisorOptions:
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry", return_value=[]):
                 from agents.supervisor import build_supervisor_options
+
                 build_supervisor_options()
                 assert captured_kwargs.get("include_partial_messages") is True
