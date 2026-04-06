@@ -6,6 +6,15 @@
 bundle:
   name: data_agents
 
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    default: "dev_vendas"
+  schema:
+    default: "vendas"
+
 workspace:
   host: ${workspace.host}
 

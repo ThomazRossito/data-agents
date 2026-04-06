@@ -63,6 +63,30 @@ class TestParseCommand:
         assert result.command == "/review"
         assert result.bmad_mode == "internal"
 
+    def test_quality_command(self):
+        result = parse_command("/quality Valide a tabela silver_vendas")
+        assert result is not None
+        assert result.command == "/quality"
+        assert result.agent == "data-quality-steward"
+        assert result.bmad_mode == "express"
+        assert "data-quality-steward" in result.bmad_prompt
+
+    def test_governance_command(self):
+        result = parse_command("/governance Audite acessos ao catálogo de produção")
+        assert result is not None
+        assert result.command == "/governance"
+        assert result.agent == "governance-auditor"
+        assert result.bmad_mode == "express"
+        assert "governance-auditor" in result.bmad_prompt
+
+    def test_semantic_command(self):
+        result = parse_command("/semantic Crie modelo semântico para tabelas Gold")
+        assert result is not None
+        assert result.command == "/semantic"
+        assert result.agent == "semantic-modeler"
+        assert result.bmad_mode == "express"
+        assert "semantic-modeler" in result.bmad_prompt
+
     def test_unknown_command_returns_none(self):
         result = parse_command("/unknown teste")
         assert result is None

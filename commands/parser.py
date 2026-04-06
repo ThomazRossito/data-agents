@@ -197,6 +197,48 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         ),
         display_template="[bold purple]🔄 [Review] Revisitando PRD existente...[/bold purple]",
     ),
+    "quality": CommandDefinition(
+        name="quality",
+        agent="data-quality-steward",
+        bmad_mode="express",
+        description="Envia tarefa de qualidade de dados para o Data Quality Steward (BMAD Express).",
+        skills=["kb/data-quality/index.md", "skills/data_quality.md"],
+        prompt_template=(
+            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para data-quality-steward. "
+            "Não crie PRD, não peça aprovação. "
+            "Instrua o agente a ler `kb/data-quality/index.md` antes de executar. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]🔍 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+    ),
+    "governance": CommandDefinition(
+        name="governance",
+        agent="governance-auditor",
+        bmad_mode="express",
+        description="Envia tarefa de governança para o Governance Auditor (BMAD Express).",
+        skills=["kb/governance/index.md"],
+        prompt_template=(
+            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para governance-auditor. "
+            "Não crie PRD, não peça aprovação. "
+            "Instrua o agente a ler `kb/governance/index.md` antes de executar. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]🔐 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+    ),
+    "semantic": CommandDefinition(
+        name="semantic",
+        agent="semantic-modeler",
+        bmad_mode="express",
+        description="Envia tarefa de modelagem semântica para o Semantic Modeler (BMAD Express).",
+        skills=["kb/semantic-modeling/index.md", "skills/fabric/fabric-direct-lake/SKILL.md"],
+        prompt_template=(
+            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para semantic-modeler. "
+            "Não crie PRD, não peça aprovação. "
+            "Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]📊 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+    ),
 }
 
 

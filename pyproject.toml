@@ -1,7 +1,7 @@
 [project]
 name = "data-agents"
 version = "0.1.0"
-description = "Sistema Multi-Agentes para Engenharia e Análise de Dados — Databricks + Microsoft Fabric"
+description = "Sistema Multi-Agentes para Engenharia, Qualidade, Governança e Análise de Dados — Databricks + Microsoft Fabric"
 readme = "README.md"
 requires-python = ">=3.11"
 
@@ -58,6 +58,7 @@ include = [
     "/hooks",
     "/commands",
     "/skills",
+    "/kb",
     "/tools",
     "/tests",
     "/main.py",
