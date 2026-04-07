@@ -5,10 +5,7 @@ Lê os logs reais do projeto data-agents e gera monitoring/dashboard.html.
 Uso:
     python monitoring/generate.py
 """
-
 import json
-import os
-import sys
 from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
