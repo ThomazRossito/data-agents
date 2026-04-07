@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "fabric_community": {
+      "command": "/opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp",
+      "args": [],
+      "env": {
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "FABRIC_WORKSPACE_ID": "${FABRIC_WORKSPACE_ID}",
+        "FABRIC_API_BASE_URL": "${FABRIC_API_BASE_URL}"
+      }
+    }
+  }
+}
