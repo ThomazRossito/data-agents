@@ -10,6 +10,11 @@
         "FABRIC_WORKSPACE_ID": "${FABRIC_WORKSPACE_ID}",
         "FABRIC_API_BASE_URL": "${FABRIC_API_BASE_URL}"
       }
+    },
+    "fabric_official": {
+      "command": "npx",
+      "args": ["-y", "@microsoft/fabric-mcp@latest", "server", "start", "--mode", "all"],
+      "type": "stdio"
     }
   }
 }

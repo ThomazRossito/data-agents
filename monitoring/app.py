@@ -342,9 +342,7 @@ if page == "📊 Overview":
                 missing_str = ", ".join(plat["missing"])
                 st.warning(f"{plat['icon']} **{plat['label']}** — ausentes: `{missing_str}`")
             else:
-                st.info(
-                    f"{plat['icon']} **{plat['label']}** — não utilizado nesta sessão"
-                )
+                st.info(f"{plat['icon']} **{plat['label']}** — não utilizado nesta sessão")
 
         st.divider()
         st.subheader("📋 Níveis do App Log")
