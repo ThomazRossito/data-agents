@@ -47,3 +47,6 @@ to_do/
 
 # Databricks 
 .databricks/
+
+# Servidor MCP oficial Microsoft (instalação local — não versionar)
+mcp_servers/fabric/Fabric.Mcp.Server/

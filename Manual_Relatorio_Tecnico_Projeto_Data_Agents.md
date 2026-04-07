@@ -61,8 +61,9 @@ Repositório:  [github.com/ThomazRossito/data-agents](https://github.com/ThomazR
 12. [Configuração e Credenciais](#12-configuração-e-credenciais)
 13. [Qualidade de Código e Testes](#13-qualidade-de-código-e-testes)
 14. [Deploy e CI/CD (Publicação Automática)](#14-deploy-e-cicd-publicação-automática)
-15. [Como Começar a Usar](#15-como-começar-a-usar)
-16. [Conclusão](#16-conclusão)
+15. [Dashboard de Monitoramento](#15-dashboard-de-monitoramento)
+16. [Como Começar a Usar](#16-como-começar-a-usar)
+17. [Conclusão](#17-conclusão)
 
 ---
 
@@ -241,10 +242,14 @@ data-agents/
 │   ├── databricks/             # Como criar tabelas, rodar jobs, etc.
 │   ├── fabric/                 # Como usar o Data Factory, Eventhouse, etc.
 │   └── ...                     # Outros manuais
+├── monitoring/
+│   ├── app.py                  # Dashboard Streamlit em tempo real (logs, MCPs, agentes)
+│   └── README.md               # Instruções para iniciar o dashboard
 ├── tests/                      # Robôs que testam se a IA está funcionando bem
 ├── main.py                     # O arquivo que você roda para iniciar o programa
 ├── pyproject.toml              # Lista de dependências (o que o Python precisa baixar)
-└── .env.example                # Molde para você colocar suas senhas com segurança
+├── .env.example                # Molde para você colocar suas senhas com segurança
+└── .mcp.json                   # Configuração do Fabric Community MCP para o Claude Code
 ```
 
 ---
@@ -316,15 +321,67 @@ Essa separação (KBs para o Gerente, Skills para os Operários) reduz a sobreca
 
 ## 10. Conexões com a Nuvem (MCP Servers)
 
-O MCP (Model Context Protocol) é a tecnologia que permite que a IA "saia" do seu computador e interaja com o mundo real. O Data Agents possui três conexões prontas (na pasta `mcp_servers/`):
+O MCP (Model Context Protocol) é a tecnologia que permite que a IA "saia" do seu computador e interaja com o mundo real. O Data Agents possui quatro conexões de nuvem:
 
-1. **Databricks MCP:** Permite que a IA liste catálogos (Unity Catalog), veja esquemas de tabelas, execute consultas SQL nos Warehouses e crie pipelines de dados (SDP).
-2. **Fabric MCP:** Permite que a IA acesse a nuvem da Microsoft, liste os Workspaces, crie Lakehouses e envie arquivos para o OneLake (o "OneDrive" do Fabric).
-3. **Fabric RTI MCP (Real-Time Intelligence):** Uma conexão especial para dados em tempo real. Permite que a IA consulte bancos de dados Kusto (KQL), configure Eventstreams e crie alertas no Activator.
+| Servidor | Plataforma | Configuração | Principais Capacidades |
+| --- | --- | --- | --- |
+| **Databricks** | Databricks | `mcp_servers.py` | Listar Unity Catalog, executar SQL em Warehouses, criar e monitorar Pipelines SDP |
+| **Fabric (oficial)** | Microsoft Fabric | `mcp_servers.py` | Listar Workspaces, criar Lakehouses, enviar arquivos para OneLake |
+| **Fabric Community** | Microsoft Fabric | `.mcp.json` | Consultas a Semantic Models, ferramentas adicionais da comunidade |
+| **Fabric RTI** | Eventhouse / Kusto | `mcp_servers.py` | Executar KQL, criar Eventstreams e alertas no Activator |
 
 **O Truque Inteligente:** O arquivo `mcp_servers.py` é inteligente. Quando você liga o sistema, ele olha as suas senhas. Se você só colocou a senha do Databricks, ele desliga as conexões do Fabric para não dar erro, e vice-versa.
 
-**Por que as credenciais chegam corretamente ao MCP:** O servidor MCP (`databricks-mcp-server`) é um processo externo iniciado em *stdio*. Ele precisa receber as credenciais como variáveis de ambiente próprias. O código dos `server_config.py` usa `settings.databricks_host`, `settings.databricks_token` etc. para montar o dicionário `"env"` que é passado ao processo MCP na inicialização — garantindo que as credenciais do `.env` sempre cheguem ao servidor, independente do estado do `os.environ` do processo pai.
+**Por que as credenciais chegam corretamente ao MCP:** O servidor MCP é um processo externo iniciado em *stdio*. Ele precisa receber as credenciais como variáveis de ambiente próprias. O código dos `server_config.py` usa `settings.databricks_host`, `settings.databricks_token` etc. para montar o dicionário `"env"` que é passado ao processo MCP na inicialização — garantindo que as credenciais do `.env` sempre cheguem ao servidor.
+
+### O `.mcp.json` e o Fabric Community MCP
+
+A quarta conexão — o **Fabric Community MCP** — funciona de maneira diferente das outras três. Em vez de ser gerenciada pelo código Python (`mcp_servers.py`), ela é declarada no arquivo `.mcp.json` na raiz do projeto. Esse arquivo é lido diretamente pelo **Claude Code** (o motor subjacente do sistema), que spawna o servidor como um subprocesso do shell.
+
+O `.mcp.json` usa a sintaxe `${VARIAVEL}` para preencher as credenciais:
+
+```json
+{
+  "mcpServers": {
+    "fabric_community": {
+      "command": "/opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp",
+      "env": {
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "FABRIC_WORKSPACE_ID": "${FABRIC_WORKSPACE_ID}"
+      }
+    }
+  }
+}
+```
+
+### Por que foi necessário exportar as variáveis no `.zshrc`?
+
+Essa é uma dúvida comum e a resposta está em **como cada mecanismo funciona**:
+
+O arquivo `.env` é lido pela biblioteca pydantic-settings **dentro do processo Python**. Quando você executa `python main.py`, o pydantic lê o `.env` e popula a classe `Settings` em memória — mas essas variáveis existem apenas como atributos Python. Elas **nunca entram no ambiente do shell** que vai ser herdado por subprocessos.
+
+O `.mcp.json` usa substituição `${VAR}` do shell. Quem processa esse arquivo é o Claude Code — ele lê o JSON, substitui `${VAR}` com o valor que existe no *ambiente do shell atual*, e então spawna o servidor MCP como um subprocesso. Se a variável não existir no ambiente do shell, o `${VAR}` não é substituído e a credencial fica vazia.
+
+| Mecanismo | Quem lê | Quando carrega | Quem tem acesso |
+| --- | --- | --- | --- |
+| `.env` + pydantic | Python (Settings class) | Ao importar `config/settings.py` | Apenas o código Python |
+| `~/.zshrc` exports | zsh | A cada novo terminal | Todos os processos filhos do shell |
+| `.mcp.json` `${VAR}` | Claude Code | Ao spawnar MCP servers | O subprocesso MCP |
+
+A solução é exportar as variáveis do Fabric no `~/.zshrc` (MacOS/Linux) para que estejam disponíveis no ambiente de qualquer terminal onde o sistema for executado:
+
+```bash
+# Adicionar ao ~/.zshrc
+export AZURE_TENANT_ID="seu-tenant-id"
+export AZURE_CLIENT_ID="seu-client-id"
+export AZURE_CLIENT_SECRET="seu-client-secret"
+export FABRIC_WORKSPACE_ID="seu-workspace-id"
+export FABRIC_API_BASE_URL="https://api.fabric.microsoft.com/v1"
+```
+
+Após adicionar, execute `source ~/.zshrc` para que as variáveis entrem em vigor na sessão atual.
 
 ---
 
@@ -366,10 +423,12 @@ Se você for usar o Databricks, preencha:
 - **`DATABRICKS_SQL_WAREHOUSE_ID`**: O ID do computador que vai rodar as consultas SQL (você acha isso na aba SQL Warehouses).
 
 ### Microsoft Fabric (Opcional)
-Se você for usar o Microsoft Fabric, preencha:
+Se você for usar o Microsoft Fabric, preencha no `.env`:
 - **`AZURE_TENANT_ID`**: O ID da sua empresa na nuvem da Microsoft.
 - **`FABRIC_WORKSPACE_ID`**: O ID da "pasta" (Workspace) onde a IA vai trabalhar.
-- **`AZURE_CLIENT_ID`** e **`AZURE_CLIENT_SECRET`**: (Opcional) Se você quiser usar um "usuário robô" (Service Principal) em vez do seu próprio usuário.
+- **`AZURE_CLIENT_ID`** e **`AZURE_CLIENT_SECRET`**: (Service Principal) Se quiser usar um "usuário robô" em vez do seu usuário pessoal.
+
+> **Importante para o Fabric Community MCP:** se você usar o `.mcp.json`, essas variáveis também precisam estar exportadas no `~/.zshrc` do seu Mac. Veja a explicação completa na seção [10. Conexões com a Nuvem](#10-conexões-com-a-nuvem-mcp-servers).
 
 ### Fabric Real-Time Intelligence (Opcional)
 Se você for trabalhar com dados em tempo real (Kusto/Eventhouse):
@@ -414,6 +473,10 @@ make test
 3. **O Parser de Comandos:** Ele digita comandos como `/quality` e verifica se o sistema sabe que deve chamar o `data-quality-steward`.
 4. **Os Agentes T2:** Verifica se os novos agentes (`data-quality-steward`, `governance-auditor`, `semantic-modeler`) possuem as ferramentas MCP corretas configuradas.
 5. **Os Wrappers MLflow:** Verifica se o sistema de servimento de modelos consegue formatar respostas e extrair prompts corretamente.
+6. **O Sistema de Logging (`test_logging_config.py`):** Verifica o `JSONLFormatter` (saída JSON válida, campos obrigatórios, formato ISO de timestamps, campos extras como tool_name) e a função `setup_logging` (configuração de handlers, silenciamento de loggers ruidosos, idempotência).
+7. **O Supervisor (`test_supervisor.py`):** Verifica a função `build_supervisor_options` — modo thinking ativado/desativado, `bypassPermissions`, hooks configurados (2 PostToolUse + 1 PreToolUse) e `include_partial_messages`.
+
+> **Cobertura de código:** A suíte de testes mantém cobertura mínima de **80%** (configurado via `--cov-fail-under=80` no CI). Com os arquivos de teste atuais, a cobertura real está acima de **89%**.
 
 > **Nota sobre a pasta `skills/`:** Os arquivos Python dentro da pasta `skills/` são arquivos de referência/exemplos de tecnologias externas (Databricks SDK, Fabric, etc.) e **não fazem parte do código do projeto**. Por isso, estão excluídos das verificações do `ruff` — eles não precisam seguir os padrões de código do projeto.
 
@@ -445,7 +508,74 @@ Se qualquer um desses passos falhar, o GitHub bloqueia o merge para o branch pri
 
 ---
 
-## 15. Como Começar a Usar
+## 15. Dashboard de Monitoramento
+
+Para acompanhar o que o sistema está fazendo em tempo real — quais ferramentas foram usadas, quais MCP servers estão ativos, qual foi o custo de cada execução — o projeto inclui um **Dashboard de Monitoramento** construído com Streamlit.
+
+### O que é o Streamlit?
+
+Streamlit é uma biblioteca Python que transforma scripts em aplicativos web interativos com poucas linhas de código. É amplamente usada por engenheiros de dados para criar dashboards de análise e monitoramento sem precisar aprender HTML ou JavaScript.
+
+### Como funciona o Dashboard
+
+O arquivo `monitoring/app.py` lê diretamente os dois arquivos de log do projeto:
+
+- **`logs/audit.jsonl`**: Gerado pelo `audit_hook.py`. Registra cada tool call da IA: nome da ferramenta, horário, input utilizado. Este arquivo é a fonte de verdade para saber o que a IA realmente fez.
+- **`logs/app.jsonl`**: Gerado pelo `logging_config.py`. Registra eventos internos do sistema: erros, avisos, mensagens de configuração.
+
+O dashboard usa `@st.cache_data(ttl=5)` para reler os logs a cada 5 segundos, tornando o painel **dinâmico e em tempo real**.
+
+### Como instalar e iniciar
+
+```bash
+# 1. Ative o ambiente conda do projeto
+conda activate multi_agents
+
+# 2. Instale as dependências de monitoramento (apenas na primeira vez)
+pip install -e ".[monitoring]"
+
+# 3. Inicie o dashboard (na raiz do projeto)
+streamlit run monitoring/app.py
+```
+
+O dashboard abre automaticamente em **http://localhost:8501**.
+
+> **Nota sobre instalação:** o comando `pip install -e "."` (sem `[monitoring]`) instala apenas as dependências principais do projeto e **não inclui** o Streamlit. É necessário usar `pip install -e ".[monitoring]"` para instalar o grupo de dependências opcional de monitoramento.
+
+### As abas do Dashboard
+
+| Aba | O que mostra |
+| --- | --- |
+| 📊 **Overview** | KPIs gerais (total de execuções, ferramentas usadas, tokens estimados), gráfico de atividade por data e top ferramentas mais utilizadas |
+| 🤖 **Agentes** | Cartões dos 6 agentes do registry com modelo de IA, tier, lista de tools e MCP servers configurados |
+| ⚡ **Execuções** | Volume de cada ferramenta chamada, chamadas MCP reais por plataforma e histórico completo das últimas execuções |
+| 🔌 **MCP Servers** | Status real de cada plataforma (Databricks, Fabric, Fabric RTI) baseado em chamadas reais do `audit.jsonl` |
+| 📋 **Logs** | Viewer ao vivo dos dois arquivos de log com filtros por nível (INFO/WARNING/ERROR) e busca por texto |
+| ⚙️ **Configurações** | Modelo padrão, budget máximo, max_turns e mapa completo de arquivos do projeto |
+| ℹ️ **Sobre** | Autor, data de criação, versão do sistema e texto da licença MIT |
+
+### Detalhes técnicos
+
+**Status dos MCP Servers:** O dashboard detecta se um servidor MCP está "Ativo" baseando-se nas chamadas reais registradas no `audit.jsonl`. Se há chamadas para `mcp__databricks__*`, o Databricks é marcado como Ativo — independente de mensagens de log. Isso garante que o status seja **baseado em evidências reais**, não em inferências.
+
+**Fuso horário:** todos os timestamps são convertidos de UTC para **horário de São Paulo (UTC-3 / America/Sao_Paulo)** usando a biblioteca `zoneinfo` do Python:
+
+```python
+from zoneinfo import ZoneInfo
+SP_TZ = ZoneInfo("America/Sao_Paulo")
+
+def to_sp(ts: str) -> str:
+    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(SP_TZ).strftime("%Y-%m-%d %H:%M:%S")
+```
+
+**Auto-refresh:** o seletor na sidebar permite configurar atualização automática a cada 5, 10, 30 ou 60 segundos — ideal para acompanhar execuções longas em tempo real.
+
+---
+
+## 16. Como Começar a Usar
 
 Pronto para ver a IA trabalhar? Siga este passo a passo simples.
 
@@ -481,7 +611,7 @@ Você verá o banner do Data Agents e o prompt `Você:`. Digite `/help` para ver
 
 ---
 
-## 16. Conclusão
+## 17. Conclusão
 
 O projeto **Data Agents v2.0** não é apenas um chatbot. É uma plataforma de automação corporativa. 
 

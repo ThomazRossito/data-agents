@@ -220,6 +220,9 @@ def infer_mcp_status(audit: dict, app_records: list[dict]) -> dict:
                 if "FABRIC: variáveis ausentes:" in line and "FABRIC_RTI" not in line:
                     missing = line.split("variáveis ausentes:")[-1].split(".")[0].strip()
                     platforms["fabric"]["missing"] = [v.strip() for v in missing.split(",")]
+        else:
+            # Sem warning e sem chamadas → ainda não foi utilizado nesta sessão
+            platforms["fabric"]["configured"] = None  # type: ignore
 
     if not platforms["fabric_rti"]["configured"]:
         if "FABRIC_RTI: variáveis ausentes:" in warn_text:
@@ -227,6 +230,9 @@ def infer_mcp_status(audit: dict, app_records: list[dict]) -> dict:
                 if "FABRIC_RTI: variáveis ausentes:" in line:
                     missing = line.split("variáveis ausentes:")[-1].split(".")[0].strip()
                     platforms["fabric_rti"]["missing"] = [v.strip() for v in missing.split(",")]
+        else:
+            # Sem warning e sem chamadas → ainda não foi utilizado nesta sessão
+            platforms["fabric_rti"]["configured"] = None  # type: ignore
 
     return platforms
 
@@ -333,14 +339,10 @@ if page == "📊 Overview":
             if configured is True:
                 st.success(f"{plat['icon']} **{plat['label']}** — {plat['calls']} chamadas")
             elif configured is False:
-                missing_str = (
-                    ", ".join(plat["missing"]) if plat["missing"] else "vars não encontradas"
-                )
+                missing_str = ", ".join(plat["missing"])
                 st.warning(f"{plat['icon']} **{plat['label']}** — ausentes: `{missing_str}`")
             else:
-                st.info(
-                    f"{plat['icon']} **{plat['label']}** — status desconhecido (sem logs recentes)"
-                )
+                st.info(f"{plat['icon']} **{plat['label']}** — não utilizado nesta sessão")
 
         st.divider()
         st.subheader("📋 Níveis do App Log")
@@ -477,11 +479,11 @@ elif page == "🔌 MCP Servers":
                 st.markdown(f"### {plat['icon']} {plat['label']}")
             with col_status:
                 if configured is True:
-                    st.success("✓ Configurado")
+                    st.success("✓ Ativo")
                 elif configured is False:
-                    st.warning("⚠ Não configurado")
+                    st.error("✗ Credenciais ausentes")
                 else:
-                    st.info("? Desconhecido")
+                    st.info("— Não utilizado")
 
             col_a, col_b = st.columns(2)
             col_a.metric("Chamadas Registradas", plat["calls"])

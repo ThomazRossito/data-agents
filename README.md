@@ -230,12 +230,69 @@ Todos os hooks são registrados no Supervisor e interceptam chamadas em tempo re
 
 ## 🔌 Servidores MCP
 
-| Servidor             | Plataforma        | Tipo           | Tools                                                                    |
-| -------------------- | ----------------- | -------------- | ------------------------------------------------------------------------ |
-| `databricks`       | Databricks        | stdio (Python) | 50+ tools: execute_sql, run_job_now, start_pipeline, list_catalogs, etc. |
-| `fabric`           | Microsoft Fabric  | stdio (dotnet) | Tools oficiais Microsoft para Workspaces, Lakehouses, Datasets           |
-| `fabric_community` | Microsoft Fabric  | stdio (Python) | Tools da comunidade para OneLake, Semantic Models                        |
-| `fabric_rti`       | Fabric Eventhouse | stdio (Python) | kusto_query, kusto_command, eventstream_create, activator_create_trigger |
+| Servidor             | Plataforma        | Tipo           | Configuração     | Tools                                                                    |
+| -------------------- | ----------------- | -------------- | ---------------- | ------------------------------------------------------------------------ |
+| `databricks`       | Databricks        | stdio (Python) | `mcp_servers.py` | 50+ tools: execute_sql, run_job_now, start_pipeline, list_catalogs, etc. |
+| `fabric`           | Microsoft Fabric  | stdio (dotnet) | `mcp_servers.py` | Tools oficiais Microsoft para Workspaces, Lakehouses, Datasets           |
+| `fabric_community` | Microsoft Fabric  | stdio (Python) | `.mcp.json`      | Tools da comunidade para OneLake, Semantic Models                        |
+| `fabric_rti`       | Fabric Eventhouse | stdio (Python) | `mcp_servers.py` | kusto_query, kusto_command, eventstream_create, activator_create_trigger |
+
+### `.mcp.json` — Configuração do Fabric Community MCP
+
+O servidor `fabric_community` é configurado via `.mcp.json` na raiz do projeto (usado pelo Claude Code diretamente). Ao contrário dos demais servidores que são carregados pelo `mcp_servers.py`, este utiliza **interpolação de variáveis de shell** (`${VAR}`):
+
+```json
+{
+  "mcpServers": {
+    "fabric_community": {
+      "command": "/opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp",
+      "env": {
+        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
+        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
+        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
+        "FABRIC_WORKSPACE_ID": "${FABRIC_WORKSPACE_ID}"
+      }
+    }
+  }
+}
+```
+
+> **Importante:** como o `.mcp.json` usa `${VAR}` (substituição do shell), as variáveis precisam estar no **ambiente do shell** — não apenas no `.env`. A solução é exportá-las no `~/.zshrc` (ou `~/.bashrc`):
+> ```bash
+> export AZURE_TENANT_ID="..."
+> export AZURE_CLIENT_ID="..."
+> export AZURE_CLIENT_SECRET="..."
+> export FABRIC_WORKSPACE_ID="..."
+> ```
+> O arquivo `.env` é lido pelo Python (pydantic-settings) e funciona para os servidores configurados via `mcp_servers.py`, mas o Claude Code spawna o processo do `.mcp.json` diretamente do shell — e esse processo herda apenas o ambiente do shell, não o `.env`.
+
+---
+
+## 📊 Dashboard de Monitoramento
+
+O projeto inclui um dashboard Streamlit em tempo real para acompanhar execuções, logs, status dos MCPs e configurações.
+
+```bash
+# Instale as dependências de monitoramento (uma vez só)
+pip install -e ".[monitoring]"
+
+# Inicie o dashboard
+streamlit run monitoring/app.py
+```
+
+Abre automaticamente em **http://localhost:8501**
+
+| Aba              | Conteúdo                                                              |
+| ---------------- | --------------------------------------------------------------------- |
+| 📊 Overview       | KPIs gerais, atividade por data, top ferramentas, status dos MCPs     |
+| 🤖 Agentes        | Os 6 agentes do registry com modelo, tier, tools e MCP servers        |
+| ⚡ Execuções      | Volume de cada ferramenta, chamadas MCP reais, histórico              |
+| 🔌 MCP Servers    | Status real baseado em chamadas do `audit.jsonl`                      |
+| 📋 Logs           | Viewer ao vivo do `app.jsonl` e `audit.jsonl` com filtros e busca     |
+| ⚙️ Configurações  | Modelo, budget, max_turns, mapa de arquivos do projeto                |
+| ℹ️ Sobre          | Autoria, versão, licença e descrição detalhada do sistema             |
+
+Use o seletor **Auto-refresh** na sidebar para atualizar automaticamente enquanto os agentes rodam (5s, 10s, 30s ou 60s). Todos os horários são exibidos no fuso de **São Paulo (UTC-3)**.
 
 ---
 
