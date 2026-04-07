@@ -15,10 +15,17 @@ def test_databricks_config_has_required_keys():
     assert "env" in server
 
 
-def test_fabric_config_has_two_servers():
+def test_fabric_config_has_community_server():
+    """Fabric config deve expor o servidor community (credenciais via .env/pydantic)."""
     config = get_fabric_mcp_config()
-    assert "fabric" in config
     assert "fabric_community" in config
+    server = config["fabric_community"]
+    assert server["type"] == "stdio"
+    assert "command" in server
+    assert "env" in server
+    # Servidor oficial Microsoft foi removido do config Python —
+    # é local-first (sem credenciais) e configurável separadamente via .mcp.json
+    assert "fabric" not in config
 
 
 def test_fabric_rti_config_has_required_keys():
@@ -31,8 +38,10 @@ def test_registry_all_platforms():
     # Passa plataformas explícitas para não depender de credenciais do ambiente
     registry = build_mcp_registry(platforms=["databricks", "fabric", "fabric_rti"])
     assert "databricks" in registry
-    assert "fabric" in registry
+    # "fabric" plataforma → registra "fabric_community" (servidor community Python)
     assert "fabric_community" in registry
+    # servidor oficial Microsoft não é registrado via Python (é local-first, sem credenciais)
+    assert "fabric" not in registry
     assert "fabric_rti" in registry
 
 

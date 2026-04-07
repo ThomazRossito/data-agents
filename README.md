@@ -113,12 +113,13 @@ Passo 4: Síntese      — Valida e consolida os artefatos produzidos
 
 ## 📋 Pré-Requisitos e Credenciais
 
-1. **Python 3.11+**: Recomenda-se instalação via `pyenv` ou `virtualenv`.
-2. **.NET SDK 8.0+**: Necessário para o servidor MCP oficial do Microsoft Fabric.
-3. **Anthropic API**: Variável `ANTHROPIC_API_KEY` (obrigatória).
-4. **Databricks**: CLI configurado + `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_SQL_WAREHOUSE_ID`.
-5. **Microsoft Fabric**: Azure CLI autenticado (`az login`) ou Service Principal (`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`) + `FABRIC_WORKSPACE_ID`.
-6. **Fabric RTI (Real-Time Intelligence)**: `KUSTO_SERVICE_URI` e `KUSTO_SERVICE_DEFAULT_DB`.
+1. **Python 3.11+**: Recomenda-se instalação via `pyenv`, `conda` ou `virtualenv`.
+2. **Anthropic API**: Variável `ANTHROPIC_API_KEY` (obrigatória).
+3. **Databricks** (opcional): `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `DATABRICKS_SQL_WAREHOUSE_ID`.
+4. **Microsoft Fabric** (opcional): Service Principal com `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` + `FABRIC_WORKSPACE_ID`.
+5. **Fabric RTI** (opcional): `KUSTO_SERVICE_URI` e `KUSTO_SERVICE_DEFAULT_DB`.
+
+Todas as credenciais são configuradas no arquivo `.env` — nenhum `export` manual no shell é necessário.
 
 ---
 
@@ -129,21 +130,27 @@ Passo 4: Síntese      — Valida e consolida os artefatos produzidos
 git clone git@github.com:ThomazRossito/data-agents.git
 cd data-agents
 
-# 2. Crie e ative o ambiente virtual
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# 2. Crie e ative o ambiente virtual (conda ou venv)
+conda create -n data-agents python=3.11
+conda activate data-agents
+# ou: python3 -m venv .venv && source .venv/bin/activate
 
 # 3. Instale as dependências
-pip install -e "."          # produção
-pip install -e ".[dev]"     # + ferramentas de desenvolvimento
+pip install -e ".[dev]"      # produção + ferramentas de desenvolvimento
+pip install -e ".[monitoring]"  # + dashboard Streamlit (opcional)
 
 # 4. Configure as credenciais
 cp .env.example .env
-# Edite .env com suas credenciais
+# Edite .env com suas credenciais (Anthropic API key é obrigatória)
 
 # 5. Inicie o sistema
 python main.py
 ```
+
+> **Fabric Community MCP:** se o binário `microsoft-fabric-mcp` não for encontrado no PATH, adicione o caminho absoluto no `.env`:
+> ```
+> FABRIC_COMMUNITY_COMMAND=/opt/anaconda3/envs/data-agents/bin/microsoft-fabric-mcp
+> ```
 
 ---
 
@@ -233,38 +240,16 @@ Todos os hooks são registrados no Supervisor e interceptam chamadas em tempo re
 | Servidor             | Plataforma        | Tipo           | Configuração     | Tools                                                                    |
 | -------------------- | ----------------- | -------------- | ---------------- | ------------------------------------------------------------------------ |
 | `databricks`       | Databricks        | stdio (Python) | `mcp_servers.py` | 50+ tools: execute_sql, run_job_now, start_pipeline, list_catalogs, etc. |
-| `fabric`           | Microsoft Fabric  | stdio (dotnet) | `mcp_servers.py` | Tools oficiais Microsoft para Workspaces, Lakehouses, Datasets           |
-| `fabric_community` | Microsoft Fabric  | stdio (Python) | `.mcp.json`      | Tools da comunidade para OneLake, Semantic Models                        |
+| `fabric_community` | Microsoft Fabric  | stdio (Python) | `mcp_servers.py` | list_workspaces, list_tables, get_table_schema, get_lineage, list_jobs   |
 | `fabric_rti`       | Fabric Eventhouse | stdio (Python) | `mcp_servers.py` | kusto_query, kusto_command, eventstream_create, activator_create_trigger |
 
-### `.mcp.json` — Configuração do Fabric Community MCP
+### Como funciona a configuração dos MCP Servers
 
-O servidor `fabric_community` é configurado via `.mcp.json` na raiz do projeto (usado pelo Claude Code diretamente). Ao contrário dos demais servidores que são carregados pelo `mcp_servers.py`, este utiliza **interpolação de variáveis de shell** (`${VAR}`):
+Os servidores MCP são gerenciados **exclusivamente via Python** (`mcp_servers/fabric/server_config.py`). As credenciais vêm do `.env` através do pydantic-settings — **não é necessário fazer `export` no shell**.
 
-```json
-{
-  "mcpServers": {
-    "fabric_community": {
-      "command": "/opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp",
-      "env": {
-        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
-        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
-        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
-        "FABRIC_WORKSPACE_ID": "${FABRIC_WORKSPACE_ID}"
-      }
-    }
-  }
-}
-```
+O arquivo `.mcp.json` na raiz está intencionalmente vazio (`{"mcpServers": {}}`). Colocar `fabric_community` no `.mcp.json` causaria conflito: o Claude Code leria as variáveis `${VAR}` do shell (potencialmente vazias) e ignoraria as credenciais do `.env`, quebrando a autenticação.
 
-> **Importante:** como o `.mcp.json` usa `${VAR}` (substituição do shell), as variáveis precisam estar no **ambiente do shell** — não apenas no `.env`. A solução é exportá-las no `~/.zshrc` (ou `~/.bashrc`):
-> ```bash
-> export AZURE_TENANT_ID="..."
-> export AZURE_CLIENT_ID="..."
-> export AZURE_CLIENT_SECRET="..."
-> export FABRIC_WORKSPACE_ID="..."
-> ```
-> O arquivo `.env` é lido pelo Python (pydantic-settings) e funciona para os servidores configurados via `mcp_servers.py`, mas o Claude Code spawna o processo do `.mcp.json` diretamente do shell — e esse processo herda apenas o ambiente do shell, não o `.env`.
+> **Regra prática:** configure tudo no `.env` e nunca duplique servidores no `.mcp.json`.
 
 ---
 

@@ -1,22 +1,28 @@
 """
 Configuração dos MCP Servers para Microsoft Fabric.
 
-Combina dois servidores MCP complementares:
+Servidor ativo por padrão:
+  Fabric Community MCP (Python) — REST API wrapper:
+  https://github.com/Augustab/microsoft_fabric_mcp
+  Capabilities: lakehouses, schemas Delta, jobs, schedules, lineage,
+  compute usage, dependências entre items.
 
-1. Fabric MCP Server oficial (Microsoft) — dotnet:
-   https://github.com/microsoft/mcp/tree/main/servers/Fabric.Mcp.Server
-   Capabilities: OneLake (upload/download/delete), workspaces, items,
-   API specs OpenAPI completas, best practices.
-
-2. Fabric Community MCP (Python) — REST API wrapper:
-   https://github.com/Augustab/microsoft_fabric_mcp
-   Capabilities: lakehouses, schemas Delta, jobs, schedules, lineage,
-   compute usage, dependências entre items.
+Servidor opcional (documentação local, sem conexão ao tenant):
+  Fabric MCP Server oficial (Microsoft) — local-first:
+  https://github.com/microsoft/mcp/tree/main/servers/Fabric.Mcp.Server
+  Não requer credenciais. Fornece: OpenAPI specs, schemas de items, best practices.
+  Para ativar: adicione manualmente ao .mcp.json após build do binário.
 
 Pré-requisitos:
-  dotnet SDK 8.0+ (para servidor oficial)
-  pip install microsoft-fabric-mcp (para community)
-  az login  (ou configurar AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_TENANT_ID)
+  pip install -e ".[dev]"  (inclui microsoft-fabric-mcp via pyproject.toml)
+  Credenciais no .env: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
+                       FABRIC_WORKSPACE_ID, FABRIC_API_BASE_URL
+
+Importante:
+  As credenciais são lidas do .env via pydantic-settings.
+  NÃO é necessário fazer export das variáveis no shell.
+  NÃO configure fabric_community no .mcp.json — isso sobrescreveria
+  as credenciais do .env com variáveis de shell potencialmente vazias.
 """
 
 
@@ -25,27 +31,13 @@ def get_fabric_mcp_config() -> dict:
     from config.settings import settings  # importação local para evitar circular import
 
     return {
-        # Servidor oficial Microsoft (dotnet) — OneLake + Workspaces + API Specs
-        "fabric": {
-            "type": "stdio",
-            "command": "dotnet",
-            "args": [
-                "run",
-                "--project",
-                settings.fabric_mcp_server_path,
-            ],
-            "env": {
-                "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
-                "AZURE_TENANT_ID": settings.azure_tenant_id,
-                "AZURE_CLIENT_ID": settings.azure_client_id,
-                "AZURE_CLIENT_SECRET": settings.azure_client_secret,
-            },
-        },
         # Servidor community Python — Lakehouses + Jobs + Lineage
+        # Comando configurável via FABRIC_COMMUNITY_COMMAND no .env
+        # Padrão: "microsoft-fabric-mcp" (binário instalado pelo pip)
         "fabric_community": {
             "type": "stdio",
-            "command": "python",
-            "args": ["-m", "microsoft_fabric_mcp"],
+            "command": settings.fabric_community_command,
+            "args": [],
             "env": {
                 "AZURE_TENANT_ID": settings.azure_tenant_id,
                 "AZURE_CLIENT_ID": settings.azure_client_id,
@@ -57,29 +49,10 @@ def get_fabric_mcp_config() -> dict:
     }
 
 
-# Tools do servidor oficial Microsoft
-FABRIC_MCP_TOOLS = [
-    # OneLake — Operações de arquivo
-    "mcp__fabric__onelake_download_file",
-    "mcp__fabric__onelake_upload_file",
-    "mcp__fabric__onelake_delete_file",
-    "mcp__fabric__onelake_create_directory",
-    "mcp__fabric__onelake_list_files",
-    # Workspaces & Items
-    "mcp__fabric__list_workspaces",
-    "mcp__fabric__get_workspace",
-    "mcp__fabric__list_items",
-    "mcp__fabric__get_item",
-    # API Specs & Best Practices
-    "mcp__fabric__list_workload_types",
-    "mcp__fabric__get_workload_api_spec",
-    "mcp__fabric__get_core_api_spec",
-    "mcp__fabric__get_item_schema",
-    "mcp__fabric__get_best_practices",
-]
-
-# Tools do servidor community
+# Tools do servidor community (ativo — credenciais via .env)
 FABRIC_COMMUNITY_MCP_TOOLS = [
+    # Workspaces
+    "mcp__fabric_community__list_workspaces",
     # Lakehouse — Schema e tabelas
     "mcp__fabric_community__list_tables",
     "mcp__fabric_community__get_table_schema",
@@ -96,5 +69,28 @@ FABRIC_COMMUNITY_MCP_TOOLS = [
     "mcp__fabric_community__get_compute_usage",
 ]
 
-# Lista consolidada de todas as tools Fabric
-ALL_FABRIC_TOOLS = FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS
+# Tools do servidor oficial Microsoft (opcional — local-first, sem conexão ao tenant)
+# Ref: https://github.com/microsoft/mcp/tree/main/servers/Fabric.Mcp.Server
+# Não está ativo por padrão. Para ativar, adicione ao .mcp.json após build/npx.
+FABRIC_MCP_TOOLS = [
+    # OneLake — Operações de arquivo
+    "mcp__fabric__onelake_download_file",
+    "mcp__fabric__onelake_upload_file",
+    "mcp__fabric__onelake_delete_file",
+    "mcp__fabric__onelake_create_directory",
+    "mcp__fabric__onelake_list_files",
+    # Workspaces & Items
+    "mcp__fabric__list_workspaces",
+    "mcp__fabric__get_workspace",
+    "mcp__fabric__list_items",
+    "mcp__fabric__get_item",
+    # API Specs & Best Practices (documentação local)
+    "mcp__fabric__list_workload_types",
+    "mcp__fabric__get_workload_api_spec",
+    "mcp__fabric__get_core_api_spec",
+    "mcp__fabric__get_item_schema",
+    "mcp__fabric__get_best_practices",
+]
+
+# Lista consolidada (community ativo + oficial como referência)
+ALL_FABRIC_TOOLS = FABRIC_COMMUNITY_MCP_TOOLS + FABRIC_MCP_TOOLS
