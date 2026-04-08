@@ -113,18 +113,25 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         name="fabric",
         agent="pipeline-architect",
         bmad_mode="express",
-        description="Envia tarefa Fabric para o Pipeline Architect com contexto Fabric (BMAD Express).",
+        description="Envia tarefa Fabric para o agente correto (BMAD Express). Roteia automaticamente para semantic-modeler quando a tarefa envolve Semantic Model, Direct Lake, DAX ou Power BI.",
         skills=[
             "skills/fabric/fabric-medallion/SKILL.md",
             "skills/fabric/fabric-direct-lake/SKILL.md",
             "skills/fabric/fabric-data-factory/SKILL.md",
         ],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para pipeline-architect. "
-            "Não crie PRD, não peça aprovação. "
-            "Instrua o agente a ler as skills de Fabric "
-            "(skills/fabric/) antes de gerar código. "
-            "Use os MCP tools do Fabric (fabric, fabric_community, fabric_rti). "
+            "[BMAD EXPRESS — FABRIC] Avalie a tarefa abaixo e delegue IMEDIATAMENTE ao agente correto. "
+            "NÃO crie PRD, NÃO peça aprovação. "
+            "\n\nREGRAS DE ROTEAMENTO (aplique antes de delegar):\n"
+            "→ Se a tarefa mencionar: Semantic Model, semantic model, modelo semântico, Direct Lake, "
+            "DirectLake, Power BI, DAX, medida DAX, dataset Power BI, análise semântica — "
+            "DELEGAR para semantic-modeler. "
+            "Instrua o agente a ler `kb/semantic-modeling/index.md` e `skills/fabric/fabric-direct-lake/SKILL.md`.\n"
+            "→ Para TODOS os outros casos Fabric (pipelines, Lakehouse, Data Factory, RTI, Eventhouse, "
+            "notebooks, shortcuts, jobs, ingestão, Bronze/Silver/Gold) — "
+            "DELEGAR para pipeline-architect. "
+            "Instrua o agente a ler as skills de Fabric (skills/fabric/) antes de executar.\n"
+            "\nEm ambos os casos: use os MCP tools do Fabric (fabric_community, fabric_rti). "
             "Tarefa: {task}"
         ),
         display_template="[bold yellow]🚀 [BMAD Express] Direcionando para: {agent} (Fabric)[/bold yellow]",

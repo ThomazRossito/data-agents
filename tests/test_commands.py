@@ -36,6 +36,38 @@ class TestParseCommand:
         assert result.bmad_mode == "express"
         assert "Fabric" in result.bmad_prompt
 
+    def test_fabric_semantic_model_routes_to_semantic_modeler(self):
+        """Quando task menciona Semantic Model, o prompt deve instruir roteamento para semantic-modeler."""
+        result = parse_command("/fabric analise o semantic model do microsoft fabric")
+        assert result is not None
+        assert result.command == "/fabric"
+        # O prompt template deve conter instrução de roteamento para semantic-modeler
+        assert "semantic-modeler" in result.bmad_prompt
+        # E a tarefa do usuário deve estar presente no prompt
+        assert "analise o semantic model do microsoft fabric" in result.bmad_prompt
+
+    def test_fabric_semantic_model_routing_rule_covers_keywords(self):
+        """O prompt do /fabric deve cobrir todas as palavras-chave de semântica."""
+        result = parse_command("/fabric crie medidas DAX para o modelo Power BI")
+        assert result is not None
+        # O prompt template deve mencionar DAX e Power BI como gatilhos para semantic-modeler
+        assert "DAX" in result.bmad_prompt
+        assert "Power BI" in result.bmad_prompt
+        assert "semantic-modeler" in result.bmad_prompt
+
+    def test_fabric_pipeline_task_keeps_pipeline_architect(self):
+        """Tasks de pipeline no /fabric devem manter pipeline-architect na instrução."""
+        result = parse_command("/fabric crie um pipeline de ingestão Bronze")
+        assert result is not None
+        assert "pipeline-architect" in result.bmad_prompt
+
+    def test_fabric_routing_covers_direct_lake(self):
+        """Direct Lake deve acionar roteamento para semantic-modeler."""
+        result = parse_command("/fabric otimize as tabelas para Direct Lake")
+        assert result is not None
+        assert "semantic-modeler" in result.bmad_prompt
+        assert "Direct Lake" in result.bmad_prompt
+
     def test_plan_command(self):
         result = parse_command("/plan Crie um pipeline completo com SCD2")
         assert result is not None

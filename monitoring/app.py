@@ -3,7 +3,7 @@ monitoring/app.py — Dashboard de Monitoramento em Tempo Real
 Data Agents Project
 
 Uso:
-    streamlit run monitoring/app.py
+   python -m streamlit run monitoring/app.py
 
 Auto-refresh: use o seletor na sidebar para atualizar automaticamente.
 """

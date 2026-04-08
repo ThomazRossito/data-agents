@@ -70,6 +70,7 @@ os padrões arquiteturais e regras de negócio do time. As KBs estão em `kb/`.
 | AI Functions (ai_query, ai_forecast)             | `kb/databricks/index.md`            | `skills/databricks/databricks-ai-functions/SKILL.md`                                                |
 | Fabric Lakehouse / Medallion                     | `kb/fabric/index.md`                | `skills/fabric/fabric-medallion/SKILL.md` + `skills/pipeline_design.md`                            |
 | Fabric Direct Lake / Power BI                    | `kb/fabric/index.md`                | `skills/fabric/fabric-direct-lake/SKILL.md`                                                         |
+| Semantic Model Fabric (análise/criação/DAX)      | `kb/semantic-modeling/index.md`     | `skills/fabric/fabric-direct-lake/SKILL.md`                                                         |
 | Fabric RTI / Eventhouse / KQL / Activator        | `kb/fabric/index.md`                | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                                      |
 | Fabric Data Factory / Pipelines / Dataflows Gen2 | `kb/fabric/index.md`                | `skills/fabric/fabric-data-factory/SKILL.md`                                                        |
 | Fabric ↔ Databricks (Cross-Platform)             | `kb/pipeline-design/index.md`       | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md`                       |
@@ -107,6 +108,8 @@ Para cada subtarefa prevista no plano aprovado:
 | Tabela nova ingerida → validar qualidade         | data-quality-steward      |
 | Pipeline modificado → verificar conformidade     | governance-auditor        |
 | Gold Layer criada → preparar para consumo BI     | semantic-modeler          |
+| Semantic Model mencionado (Fabric/Power BI/DAX)  | semantic-modeler          |
+| "analise o semantic model" (com ou sem /fabric)  | semantic-modeler          |
 | Alerta de qualidade disparado → investigar       | data-quality-steward      |
 | Acesso incomum detectado → auditar               | governance-auditor        |
 | Relatório de métricas solicitado                 | semantic-modeler          |
