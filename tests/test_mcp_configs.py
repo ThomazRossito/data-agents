@@ -40,8 +40,9 @@ def test_registry_all_platforms():
     assert "databricks" in registry
     # "fabric" plataforma → registra "fabric_community" (servidor community Python)
     assert "fabric_community" in registry
-    # servidor oficial Microsoft não é registrado via Python (é local-first, sem credenciais)
-    assert "fabric" not in registry
+    # "fabric" plataforma → registra "fabric_community" (servidor community Python)
+    # e também o alias "fabric" para conveniência.
+    assert "fabric" in registry
     assert "fabric_rti" in registry
 
 

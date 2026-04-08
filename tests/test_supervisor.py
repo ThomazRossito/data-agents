@@ -45,7 +45,7 @@ class TestBuildSupervisorOptions:
         mock_class, _ = self._make_mock_options_class()
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry") as mock_mcp:
-                mock_mcp.return_value = []
+                mock_mcp.return_value = {}
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options(platforms=["databricks"])
@@ -56,7 +56,7 @@ class TestBuildSupervisorOptions:
         mock_class, _ = self._make_mock_options_class()
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.build_mcp_registry") as mock_mcp:
-                mock_mcp.return_value = []
+                mock_mcp.return_value = {}
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options()
@@ -73,7 +73,7 @@ class TestBuildSupervisorOptions:
 
         mock_class.side_effect = capture
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
-            with patch("agents.supervisor.build_mcp_registry", return_value=[]):
+            with patch("agents.supervisor.build_mcp_registry", return_value={}):
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options(enable_thinking=False)
@@ -90,7 +90,7 @@ class TestBuildSupervisorOptions:
 
         mock_class.side_effect = capture
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
-            with patch("agents.supervisor.build_mcp_registry", return_value=[]):
+            with patch("agents.supervisor.build_mcp_registry", return_value={}):
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options(enable_thinking=True)
@@ -110,7 +110,7 @@ class TestBuildSupervisorOptions:
 
         mock_class.side_effect = capture
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
-            with patch("agents.supervisor.build_mcp_registry", return_value=[]):
+            with patch("agents.supervisor.build_mcp_registry", return_value={}):
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options()
@@ -127,7 +127,7 @@ class TestBuildSupervisorOptions:
 
         mock_class.side_effect = capture
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
-            with patch("agents.supervisor.build_mcp_registry", return_value=[]):
+            with patch("agents.supervisor.build_mcp_registry", return_value={}):
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options()
@@ -148,7 +148,7 @@ class TestBuildSupervisorOptions:
 
         mock_class.side_effect = capture
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
-            with patch("agents.supervisor.build_mcp_registry", return_value=[]):
+            with patch("agents.supervisor.build_mcp_registry", return_value={}):
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options()

@@ -222,8 +222,17 @@ def load_all_agents(
             # Filtra mcp_servers indisponíveis para evitar erros silenciosos no SDK
             if available_mcp_servers is not None and agent.mcpServers:
                 original = list(agent.mcpServers)
-                filtered = [s for s in original if s in available_mcp_servers]
-                removed = [s for s in original if s not in available_mcp_servers]
+                filtered: list[str | dict[str, Any]] = []
+                removed: list[str] = []
+                for s in original:
+                    if isinstance(s, str):
+                        if s in available_mcp_servers:
+                            filtered.append(s)
+                        else:
+                            removed.append(s)
+                    else:
+                        filtered.append(s)  # Ignora verificação para configs inline (dicts)
+
                 agent.mcpServers = filtered if filtered else None
                 if removed:
                     logger.info(f"Agente '{name}': mcp_servers indisponíveis removidos: {removed}")
