@@ -164,9 +164,9 @@ class TestCommandRegistry:
     def test_prompt_template_has_task_placeholder(self):
         for name, definition in COMMAND_REGISTRY.items():
             if definition.bmad_mode in ("express", "full"):
-                assert (
-                    "{task}" in definition.prompt_template
-                ), f"/{name} sem {{task}} no prompt_template"
+                assert "{task}" in definition.prompt_template, (
+                    f"/{name} sem {{task}} no prompt_template"
+                )
 
 
 class TestHelpText:

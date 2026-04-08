@@ -180,9 +180,9 @@ class TestDataQualitySteward:
         """Data Quality Steward precisa de execute_sql para profiling."""
         agents = load_all_agents()
         agent = agents["data-quality-steward"]
-        assert "mcp__databricks__execute_sql" in (
-            agent.tools or []
-        ), "Data Quality Steward deve ter execute_sql para profiling"
+        assert "mcp__databricks__execute_sql" in (agent.tools or []), (
+            "Data Quality Steward deve ter execute_sql para profiling"
+        )
 
     def test_data_quality_steward_has_no_write_mcp(self):
         """Data Quality Steward não deve ter tools de escrita no Fabric."""
@@ -191,17 +191,17 @@ class TestDataQualitySteward:
         write_tools = [
             t for t in (agent.tools or []) if "upload" in t or "create" in t or "ingest" in t
         ]
-        assert (
-            len(write_tools) == 0
-        ), f"Data Quality Steward não deve ter tools de escrita: {write_tools}"
+        assert len(write_tools) == 0, (
+            f"Data Quality Steward não deve ter tools de escrita: {write_tools}"
+        )
 
     def test_data_quality_steward_has_rti_query(self):
         """Data Quality Steward precisa de KQL para monitoramento em tempo real."""
         agents = load_all_agents()
         agent = agents["data-quality-steward"]
-        assert "mcp__fabric_rti__kusto_query" in (
-            agent.tools or []
-        ), "Data Quality Steward deve ter kusto_query para monitoramento RTI"
+        assert "mcp__fabric_rti__kusto_query" in (agent.tools or []), (
+            "Data Quality Steward deve ter kusto_query para monitoramento RTI"
+        )
 
 
 class TestGovernanceAuditor:
@@ -211,9 +211,9 @@ class TestGovernanceAuditor:
         """Governance Auditor precisa de get_lineage para documentar linhagem."""
         agents = load_all_agents()
         agent = agents["governance-auditor"]
-        assert "mcp__fabric_community__get_lineage" in (
-            agent.tools or []
-        ), "Governance Auditor deve ter get_lineage"
+        assert "mcp__fabric_community__get_lineage" in (agent.tools or []), (
+            "Governance Auditor deve ter get_lineage"
+        )
 
     def test_governance_auditor_has_no_rti_write(self):
         """Governance Auditor não deve ter tools de escrita no RTI."""
@@ -222,17 +222,17 @@ class TestGovernanceAuditor:
         rti_write = [
             t for t in (agent.tools or []) if "fabric_rti" in t and ("ingest" in t or "create" in t)
         ]
-        assert (
-            len(rti_write) == 0
-        ), f"Governance Auditor não deve ter tools de escrita RTI: {rti_write}"
+        assert len(rti_write) == 0, (
+            f"Governance Auditor não deve ter tools de escrita RTI: {rti_write}"
+        )
 
     def test_governance_auditor_has_execute_sql(self):
         """Governance Auditor precisa de execute_sql para consultar System Tables."""
         agents = load_all_agents()
         agent = agents["governance-auditor"]
-        assert "mcp__databricks__execute_sql" in (
-            agent.tools or []
-        ), "Governance Auditor deve ter execute_sql para System Tables de auditoria"
+        assert "mcp__databricks__execute_sql" in (agent.tools or []), (
+            "Governance Auditor deve ter execute_sql para System Tables de auditoria"
+        )
 
 
 class TestSemanticModeler:
