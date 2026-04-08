@@ -39,6 +39,48 @@
 - Defina thresholds de qualidade por tabela no arquivo `sla-contracts.md`.
 - Alertas de qualidade devem ser enviados para o canal de dados do time (Teams/Slack).
 
+### SQL Alert Tasks — Verificação de Qualidade no DAG (Databricks Beta)
+
+> **Status:** Beta — habilitar em _Admin Console → Workspace Settings → Previews → SQL Alert Tasks_.
+
+**O que é:** tipo nativo de task em Databricks Jobs que executa uma condição SQL dentro do DAG de pipeline. Se a condição falhar, o job para antes de disparar as tasks downstream — evitando propagação de dados incorretos.
+
+**Casos de uso recomendados:**
+
+| Condição SQL | Objetivo |
+|---|---|
+| `SELECT COUNT(*) FROM silver_vendas WHERE data_carga = current_date() HAVING COUNT(*) < 1000` | Garantir volume mínimo de ingestão antes do Gold |
+| `SELECT COUNT(*) FROM fact_receita WHERE receita_total < 0` | Bloquear valores negativos inválidos antes de relatórios |
+| `SELECT COUNT(DISTINCT chave_nf) - COUNT(*) FROM silver_nf` | Detectar duplicatas antes de joins com dimensões |
+| `SELECT MAX(data_evento) FROM silver_eventos HAVING MAX(data_evento) < current_date() - 1` | Alertar sobre dados atrasados (freshness check) |
+
+**Como configurar via DABs (`databricks.yml`):**
+
+```yaml
+resources:
+  jobs:
+    pipeline_gold_receita:
+      tasks:
+        - task_key: check_volume_silver
+          sql_task:
+            alert:
+              alert_id: "<uuid-do-alert-criado-no-sql-editor>"
+              pause_subscriptions: false
+            warehouse_id: "<sql-warehouse-id>"
+
+        - task_key: build_gold_receita
+          depends_on:
+            - task_key: check_volume_silver
+          notebook_task:
+            notebook_path: /pipelines/gold_receita
+```
+
+**Boas práticas:**
+- Crie o SQL Alert primeiro no Databricks SQL Editor (salva um `alert_id` reutilizável).
+- Use `pause_subscriptions: true` em ambientes de dev para não disparar notificações de email.
+- Posicione a SQL Alert Task **antes** de qualquer task que grava no Gold ou envia dados externos.
+- Combine com `@dp.expect_or_fail` no Spark Declarative Pipelines para dupla camada de proteção.
+
 ### Data Profiling
 - Execute profiling completo ao ingerir uma nova fonte de dados.
 - Perfil mínimo: contagem de linhas, % nulos por coluna, cardinalidade, min/max/avg.

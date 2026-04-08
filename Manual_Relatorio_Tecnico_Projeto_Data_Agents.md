@@ -334,54 +334,52 @@ O MCP (Model Context Protocol) é a tecnologia que permite que a IA "saia" do se
 
 **Por que as credenciais chegam corretamente ao MCP:** O servidor MCP é um processo externo iniciado em *stdio*. Ele precisa receber as credenciais como variáveis de ambiente próprias. O código dos `server_config.py` usa `settings.databricks_host`, `settings.databricks_token` etc. para montar o dicionário `"env"` que é passado ao processo MCP na inicialização — garantindo que as credenciais do `.env` sempre cheguem ao servidor.
 
-### O `.mcp.json` e o Fabric Community MCP
+### Como o Fabric Community MCP é configurado
 
-A quarta conexão — o **Fabric Community MCP** — funciona de maneira diferente das outras três. Em vez de ser gerenciada pelo código Python (`mcp_servers.py`), ela é declarada no arquivo `.mcp.json` na raiz do projeto. Esse arquivo é lido diretamente pelo **Claude Code** (o motor subjacente do sistema), que spawna o servidor como um subprocesso do shell.
+O **Fabric Community MCP** é gerenciado **exclusivamente pelo Python**, via `mcp_servers/fabric/server_config.py`. As credenciais são passadas diretamente pelo código Python, lidas do `.env` via pydantic-settings:
 
-O `.mcp.json` usa a sintaxe `${VARIAVEL}` para preencher as credenciais:
-
-```json
-{
-  "mcpServers": {
-    "fabric_community": {
-      "command": "/opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp",
-      "env": {
-        "AZURE_TENANT_ID": "${AZURE_TENANT_ID}",
-        "AZURE_CLIENT_ID": "${AZURE_CLIENT_ID}",
-        "AZURE_CLIENT_SECRET": "${AZURE_CLIENT_SECRET}",
-        "FABRIC_WORKSPACE_ID": "${FABRIC_WORKSPACE_ID}"
-      }
-    }
-  }
-}
+```python
+"fabric_community": {
+    "type": "stdio",
+    "command": settings.fabric_community_command,  # lido do .env
+    "args": [],
+    "env": {
+        "AZURE_TENANT_ID": settings.azure_tenant_id,
+        "AZURE_CLIENT_ID": settings.azure_client_id,
+        "AZURE_CLIENT_SECRET": settings.azure_client_secret,
+        "FABRIC_WORKSPACE_ID": settings.fabric_workspace_id,
+        "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
+    },
+},
 ```
 
-### Por que foi necessário exportar as variáveis no `.zshrc`?
+**Nenhum `export` manual no shell é necessário.** Basta preencher o `.env`.
 
-Essa é uma dúvida comum e a resposta está em **como cada mecanismo funciona**:
+O arquivo `.mcp.json` na raiz do projeto está intencionalmente vazio. Configurar `fabric_community` no `.mcp.json` causaria um conflito crítico: quando o Claude Code lê o `.mcp.json`, ele substitui `${VAR}` com variáveis do *shell* (não do `.env`). Se o terminal for aberto sem os exports, as credenciais ficam vazias e a autenticação falha — mesmo com o `.env` corretamente preenchido.
 
-O arquivo `.env` é lido pela biblioteca pydantic-settings **dentro do processo Python**. Quando você executa `python main.py`, o pydantic lê o `.env` e popula a classe `Settings` em memória — mas essas variáveis existem apenas como atributos Python. Elas **nunca entram no ambiente do shell** que vai ser herdado por subprocessos.
+### Por que `export` no `.zshrc` não é mais necessário para o Fabric
 
-O `.mcp.json` usa substituição `${VAR}` do shell. Quem processa esse arquivo é o Claude Code — ele lê o JSON, substitui `${VAR}` com o valor que existe no *ambiente do shell atual*, e então spawna o servidor MCP como um subprocesso. Se a variável não existir no ambiente do shell, o `${VAR}` não é substituído e a credencial fica vazia.
+O histórico desta decisão é importante para entender a arquitetura:
 
-| Mecanismo | Quem lê | Quando carrega | Quem tem acesso |
+| Mecanismo | Quem lê | Quando carrega | Problema |
 | --- | --- | --- | --- |
-| `.env` + pydantic | Python (Settings class) | Ao importar `config/settings.py` | Apenas o código Python |
-| `~/.zshrc` exports | zsh | A cada novo terminal | Todos os processos filhos do shell |
-| `.mcp.json` `${VAR}` | Claude Code | Ao spawnar MCP servers | O subprocesso MCP |
+| `.env` + pydantic | Python (Settings) | Ao importar `config/settings.py` | Funciona corretamente para o Python |
+| `~/.zshrc` exports | zsh | A cada novo terminal | Necessário apenas se usar `.mcp.json` |
+| `.mcp.json` `${VAR}` | Claude Code | Ao spawnar MCP servers | Ignora o `.env` — lê só o shell |
 
-A solução é exportar as variáveis do Fabric no `~/.zshrc` (MacOS/Linux) para que estejam disponíveis no ambiente de qualquer terminal onde o sistema for executado:
+A solução adotada: **mover `fabric_community` para o Python** (`server_config.py`) e deixar o `.mcp.json` vazio. Assim, todo o gerenciamento de credenciais passa pelo `.env` + pydantic, que é a abordagem correta e portável para qualquer desenvolvedor que clone o repositório.
 
-```bash
-# Adicionar ao ~/.zshrc
-export AZURE_TENANT_ID="seu-tenant-id"
-export AZURE_CLIENT_ID="seu-client-id"
-export AZURE_CLIENT_SECRET="seu-client-secret"
-export FABRIC_WORKSPACE_ID="seu-workspace-id"
-export FABRIC_API_BASE_URL="https://api.fabric.microsoft.com/v1"
+### Configurando o comando do Fabric Community MCP
+
+O comando padrão é `microsoft-fabric-mcp` (binário instalado pelo pip, disponível no PATH quando o ambiente está ativado). Se necessário, pode ser sobrescrito no `.env`:
+
+```env
+# Padrão — funciona com conda/venv ativado
+FABRIC_COMMUNITY_COMMAND=microsoft-fabric-mcp
+
+# Caminho absoluto — use se o binário não estiver no PATH
+FABRIC_COMMUNITY_COMMAND=/opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp
 ```
-
-Após adicionar, execute `source ~/.zshrc` para que as variáveis entrem em vigor na sessão atual.
 
 ---
 
@@ -428,7 +426,7 @@ Se você for usar o Microsoft Fabric, preencha no `.env`:
 - **`FABRIC_WORKSPACE_ID`**: O ID da "pasta" (Workspace) onde a IA vai trabalhar.
 - **`AZURE_CLIENT_ID`** e **`AZURE_CLIENT_SECRET`**: (Service Principal) Se quiser usar um "usuário robô" em vez do seu usuário pessoal.
 
-> **Importante para o Fabric Community MCP:** se você usar o `.mcp.json`, essas variáveis também precisam estar exportadas no `~/.zshrc` do seu Mac. Veja a explicação completa na seção [10. Conexões com a Nuvem](#10-conexões-com-a-nuvem-mcp-servers).
+> **Configuração do Fabric Community MCP:** preencha as variáveis acima no `.env`. O sistema as lê automaticamente via pydantic-settings — **não é necessário `export` no shell**. Se o binário `microsoft-fabric-mcp` não for encontrado no PATH, adicione `FABRIC_COMMUNITY_COMMAND=/caminho/absoluto/microsoft-fabric-mcp` no `.env`.
 
 ### Fabric Real-Time Intelligence (Opcional)
 Se você for trabalhar com dados em tempo real (Kusto/Eventhouse):

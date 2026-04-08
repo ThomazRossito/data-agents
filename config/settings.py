@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     fabric_workspace_id: str = ""
     fabric_api_base_url: str = "https://api.fabric.microsoft.com/v1"
     fabric_mcp_server_path: str = "./mcp_servers/fabric/Fabric.Mcp.Server"
+    # Comando do Fabric Community MCP — pode ser sobrescrito no .env com caminho absoluto
+    # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp
+    fabric_community_command: str = "microsoft-fabric-mcp"
 
     # --- Fabric RTI ---
     kusto_service_uri: str = ""

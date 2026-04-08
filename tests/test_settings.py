@@ -93,9 +93,17 @@ class TestPlatformCredentials:
 
     def test_get_available_platforms_filters_correctly(self):
         """Apenas plataformas com credenciais devem aparecer."""
+        # Passa explicitamente credenciais de Fabric/RTI como vazias para isolar
+        # o teste do .env local (que pode ter credenciais reais preenchidas)
         s = Settings(
             databricks_host="https://adb-123.azuredatabricks.net",
             databricks_token="dapi12345",
+            azure_tenant_id="",
+            azure_client_id="",
+            azure_client_secret="",
+            fabric_workspace_id="",
+            kusto_service_uri="",
+            kusto_service_default_db="",
         )
         available = s.get_available_platforms()
         assert "databricks" in available

@@ -128,8 +128,9 @@ def print_banner() -> None:
     )
     console.print(
         "[dim]Slash: [bold]/plan[/bold] | [bold]/sql[/bold] | [bold]/spark[/bold] | "
-        "[bold]/pipeline[/bold] | [bold]/fabric[/bold] | [bold]/health[/bold] | "
-        "[bold]/status[/bold] | [bold]/review[/bold][/dim]\n"
+        "[bold]/pipeline[/bold] | [bold]/fabric[/bold] | [bold]/semantic[/bold] | "
+        "[bold]/quality[/bold] | [bold]/governance[/bold] | "
+        "[bold]/health[/bold] | [bold]/status[/bold] | [bold]/review[/bold][/dim]\n"
     )
 
 
