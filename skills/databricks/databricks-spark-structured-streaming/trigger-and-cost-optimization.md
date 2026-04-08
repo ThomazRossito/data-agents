@@ -211,7 +211,7 @@ ALTER TABLE table SET TBLPROPERTIES (
 ## Cost Formula
 
 ```
-Daily Cost = 
+Daily Cost =
     (Cluster DBU/hour × Hours running) +
     (Storage GB × Storage rate) +
     (Network egress if applicable)
@@ -254,7 +254,7 @@ Optimize cluster utilization:
 # Run multiple streams on one cluster
 def start_all_streams():
     streams = []
-    
+
     # Start multiple streams
     for i in range(100):
         stream = (spark
@@ -267,7 +267,7 @@ def start_all_streams():
             .start(f"/delta/target_{i}")
         )
         streams.append(stream)
-    
+
     return streams
 
 # Monitor aggregate CPU/memory
@@ -288,7 +288,7 @@ df.writeStream \
 
 # Required configurations:
 spark.conf.set("spark.databricks.photon.enabled", "true")
-spark.conf.set("spark.sql.streaming.stateStore.providerClass", 
+spark.conf.set("spark.sql.streaming.stateStore.providerClass",
                "com.databricks.sql.streaming.state.RocksDBStateProvider")
 
 # Latency: < 800ms
@@ -305,7 +305,7 @@ spark.conf.set("spark.sql.streaming.stateStore.providerClass",
 
 # Required configurations:
 spark.conf.set("spark.databricks.photon.enabled", "true")
-spark.conf.set("spark.sql.streaming.stateStore.providerClass", 
+spark.conf.set("spark.sql.streaming.stateStore.providerClass",
                "com.databricks.sql.streaming.state.RocksDBStateProvider")
 
 # Cluster requirements:

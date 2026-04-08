@@ -27,7 +27,7 @@ class MyAgent(ResponsesAgent):
     def __init__(self):
         from databricks_langchain import ChatDatabricks
         self.llm = ChatDatabricks(endpoint="databricks-meta-llama-3-3-70b-instruct")
-    
+
     def predict(self, request: ResponsesAgentRequest) -> ResponsesAgentResponse:
         """Non-streaming prediction."""
         messages = [{"role": m.role, "content": m.content} for m in request.input]
@@ -36,7 +36,7 @@ class MyAgent(ResponsesAgent):
         return ResponsesAgentResponse(
             output=[self.create_text_output_item(text=response.content, id="msg_1")]
         )
-    
+
     def predict_stream(
         self, request: ResponsesAgentRequest
     ) -> Generator[ResponsesAgentStreamEvent, None, None]:
@@ -89,38 +89,38 @@ class LangGraphAgent(ResponsesAgent):
     def __init__(self):
         self.llm = ChatDatabricks(endpoint=LLM_ENDPOINT)
         self.tools = []
-        
+
         # Add UC Function tools
         # uc_toolkit = UCFunctionToolkit(function_names=["catalog.schema.function"])
         # self.tools.extend(uc_toolkit.tools)
-        
+
         self.llm_with_tools = self.llm.bind_tools(self.tools) if self.tools else self.llm
-    
+
     def _build_graph(self):
         def should_continue(state):
             last = state["messages"][-1]
             if isinstance(last, AIMessage) and last.tool_calls:
                 return "tools"
             return "end"
-        
+
         def call_model(state):
             messages = [{"role": "system", "content": SYSTEM_PROMPT}] + state["messages"]
             response = self.llm_with_tools.invoke(messages)
             return {"messages": [response]}
-        
+
         graph = StateGraph(AgentState)
         graph.add_node("agent", RunnableLambda(call_model))
-        
+
         if self.tools:
             graph.add_node("tools", ToolNode(self.tools))
             graph.add_conditional_edges("agent", should_continue, {"tools": "tools", "end": END})
             graph.add_edge("tools", "agent")
         else:
             graph.add_edge("agent", END)
-        
+
         graph.set_entry_point("agent")
         return graph.compile()
-    
+
     def predict(self, request: ResponsesAgentRequest) -> ResponsesAgentResponse:
         # Collect output items from streaming
         outputs = [
@@ -129,18 +129,18 @@ class LangGraphAgent(ResponsesAgent):
             if event.type == "response.output_item.done"
         ]
         return ResponsesAgentResponse(output=outputs)
-    
+
     # Helper methods inherited from ResponsesAgent:
     # - self.create_text_output_item(text, id) - for text responses
     # - self.create_function_call_item(id, call_id, name, arguments) - for tool calls
     # - self.create_function_call_output_item(call_id, output) - for tool results
-    
+
     def predict_stream(
         self, request: ResponsesAgentRequest
     ) -> Generator[ResponsesAgentStreamEvent, None, None]:
         messages = to_chat_completions_input([m.model_dump() for m in request.input])
         graph = self._build_graph()
-        
+
         for event in graph.stream({"messages": messages}, stream_mode=["updates"]):
             if event[0] == "updates":
                 for node_data in event[1].values():
@@ -265,7 +265,7 @@ See [7-deployment.md](7-deployment.md) for async job-based deployment.
 from databricks import agents
 
 agents.deploy(
-    "main.agents.my_agent", 
+    "main.agents.my_agent",
     version="1",
     tags={"source": "mcp"}
 )

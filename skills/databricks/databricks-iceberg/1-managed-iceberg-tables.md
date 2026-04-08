@@ -258,5 +258,3 @@ TBLPROPERTIES ('format-version' = '3')
 CLUSTER BY (event_date)
 AS SELECT * FROM foreign_catalog.foreign_schema.events;
 ```
-
-

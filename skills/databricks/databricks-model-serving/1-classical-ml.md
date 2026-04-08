@@ -56,15 +56,15 @@ with mlflow.start_run():
     # Train model
     model = RandomForestClassifier(n_estimators=100)
     model.fit(X_train, y_train)
-    
+
     # Log metrics
     accuracy = model.score(X_test, y_test)
     mlflow.log_metric("accuracy", accuracy)
-    
+
     # Log model with signature
     from mlflow.models import infer_signature
     signature = infer_signature(X_train, model.predict(X_train))
-    
+
     model_info = mlflow.sklearn.log_model(
         model,
         artifact_path="model",

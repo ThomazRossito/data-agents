@@ -11,7 +11,7 @@ dependencies:
     # Ferramentas Essenciais do Ecossistema Microsoft Dynamics/Azure para uso in-notebook
     - azure-identity>=1.15.0
     - semantic-link>=0.1.0
-    
+
     # Adaptadores opcionais caso esse Compute precise atuar sobre Data Warehouses ou Lakehouses legados
     - pyodbc
     - msrestazure

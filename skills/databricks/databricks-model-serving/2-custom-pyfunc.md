@@ -24,7 +24,7 @@ class MyCustomModel(mlflow.pyfunc.PythonModel):
             self.preprocessor = pickle.load(f)
         with open(context.artifacts["model"], "rb") as f:
             self.model = pickle.load(f)
-    
+
     def predict(self, context, model_input: pd.DataFrame) -> pd.DataFrame:
         """Run prediction with preprocessing."""
         # Preprocess

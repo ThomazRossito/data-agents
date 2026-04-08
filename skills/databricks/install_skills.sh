@@ -70,9 +70,9 @@ get_skill_description() {
         "databricks-agent-bricks") echo "Knowledge Assistants, Genie Spaces, Supervisor Agents" ;;
         "databricks-ai-functions") echo "Built-in AI Functions (classify, extract, query, forecast, parse, etc.), doc processing & custom RAG" ;;
         "databricks-aibi-dashboards") echo "Databricks AI/BI Dashboards - create and manage dashboards" ;;
-        "databricks-asset-bundles") echo "Databricks Asset Bundles - deployment and configuration" ;;                                                                                                                          
-        "databricks-app-apx") echo "Databricks Apps with React/Next.js (APX framework)" ;;                                                                                                                                     
-        "databricks-app-python") echo "Databricks Apps with Python (Dash, Streamlit) and foundation model integration" ;;     
+        "databricks-asset-bundles") echo "Databricks Asset Bundles - deployment and configuration" ;;
+        "databricks-app-apx") echo "Databricks Apps with React/Next.js (APX framework)" ;;
+        "databricks-app-python") echo "Databricks Apps with Python (Dash, Streamlit) and foundation model integration" ;;
         "databricks-config") echo "Profile authentication setup for Databricks" ;;
         "databricks-dbsql") echo "Databricks SQL - SQL scripting, MVs, geospatial, AI functions, federation" ;;
         "databricks-docs") echo "Documentation reference via llms.txt" ;;
@@ -679,4 +679,3 @@ done
 if [ "$INSTALL_TO_GENIE" = true ]; then
     install_skills_to_genie_workspace || exit 1
 fi
-

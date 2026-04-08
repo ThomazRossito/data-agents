@@ -128,7 +128,7 @@ def retrieve_docs(query: str) -> list[Document]:
 def rag_app(query: str):
     docs = retrieve_docs(query)
     context = "\n".join([d.page_content for d in docs])
-    
+
     response = generate_response(query, context)
     return {"response": response}
 
@@ -186,7 +186,7 @@ def response_length_check(outputs):
     """Check if response length is appropriate."""
     response = str(outputs.get("response", ""))
     word_count = len(response.split())
-    
+
     if word_count < 10:
         return Feedback(
             value="no",
@@ -194,7 +194,7 @@ def response_length_check(outputs):
         )
     elif word_count > 500:
         return Feedback(
-            value="no", 
+            value="no",
             rationale=f"Response too long: {word_count} words (maximum 500)"
         )
     else:
@@ -219,16 +219,16 @@ def comprehensive_check(inputs, outputs):
     """Return multiple metrics from one scorer."""
     response = str(outputs.get("response", ""))
     query = inputs.get("query", "")
-    
+
     feedbacks = []
-    
+
     # Check 1: Response exists
     feedbacks.append(Feedback(
         name="has_response",
         value=len(response) > 0,
         rationale="Response is present" if response else "No response"
     ))
-    
+
     # Check 2: Word count
     word_count = len(response.split())
     feedbacks.append(Feedback(
@@ -236,7 +236,7 @@ def comprehensive_check(inputs, outputs):
         value=word_count,
         rationale=f"Response contains {word_count} words"
     ))
-    
+
     # Check 3: Query terms in response
     query_terms = set(query.lower().split())
     response_terms = set(response.lower().split())
@@ -246,7 +246,7 @@ def comprehensive_check(inputs, outputs):
         value=round(overlap, 2),
         rationale=f"{overlap*100:.0f}% of query terms found in response"
     ))
-    
+
     return feedbacks
 ```
 
@@ -263,14 +263,14 @@ from mlflow.genai.judges import meets_guidelines
 @scorer
 def custom_grounding_check(inputs, outputs, trace=None):
     """Check if response is grounded with custom context extraction."""
-    
+
     # Extract what you need from inputs/outputs
     query = inputs.get("query", "")
     response = outputs.get("response", "")
-    
+
     # Get retrieved docs from outputs (or extract from trace)
     retrieved_docs = outputs.get("retrieved_documents", [])
-    
+
     # Call the judge with custom context
     return meets_guidelines(
         name="factual_grounding",
@@ -299,24 +299,24 @@ from mlflow.entities import Feedback, Trace, SpanType
 @scorer
 def llm_latency_check(trace: Trace) -> Feedback:
     """Check if LLM response time is acceptable."""
-    
+
     # Find LLM spans in trace
     llm_spans = trace.search_spans(span_type=SpanType.CHAT_MODEL)
-    
+
     if not llm_spans:
         return Feedback(
             value="no",
             rationale="No LLM calls found in trace"
         )
-    
+
     # Calculate total LLM time
     total_llm_time = 0
     for span in llm_spans:
         duration = (span.end_time_ns - span.start_time_ns) / 1e9
         total_llm_time += duration
-    
+
     max_acceptable = 5.0  # seconds
-    
+
     if total_llm_time <= max_acceptable:
         return Feedback(
             value="yes",
@@ -328,14 +328,14 @@ def llm_latency_check(trace: Trace) -> Feedback:
             rationale=f"LLM latency {total_llm_time:.2f}s exceeds {max_acceptable}s limit"
         )
 
-@scorer  
+@scorer
 def tool_usage_check(trace: Trace) -> Feedback:
     """Check if appropriate tools were called."""
-    
+
     tool_spans = trace.search_spans(span_type=SpanType.TOOL)
-    
+
     tool_names = [span.name for span in tool_spans]
-    
+
     return Feedback(
         value=len(tool_spans) > 0,
         rationale=f"Tools called: {tool_names}" if tool_names else "No tools called"
@@ -355,22 +355,22 @@ from typing import Optional, List
 
 class KeywordRequirementScorer(Scorer):
     """Configurable scorer that checks for required keywords."""
-    
+
     name: str = "keyword_requirement"
     required_keywords: List[str] = []
     case_sensitive: bool = False
-    
+
     def __call__(self, outputs) -> Feedback:
         response = str(outputs.get("response", ""))
-        
+
         if not self.case_sensitive:
             response = response.lower()
             keywords = [k.lower() for k in self.required_keywords]
         else:
             keywords = self.required_keywords
-        
+
         missing = [k for k in keywords if k not in response]
-        
+
         if not missing:
             return Feedback(
                 value="yes",
@@ -414,9 +414,9 @@ from mlflow.genai.scorers import scorer, Guidelines
 @scorer
 def conditional_scorer(inputs, outputs):
     """Apply different guidelines based on query type."""
-    
+
     query = inputs.get("query", "").lower()
-    
+
     if "technical" in query or "how to" in query:
         # Technical queries need detailed responses
         judge = Guidelines(
@@ -444,7 +444,7 @@ def conditional_scorer(inputs, outputs):
                 "Response must be clear and concise"
             ]
         )
-    
+
     return judge(inputs=inputs, outputs=outputs)
 ```
 
@@ -487,15 +487,15 @@ resolution_judge = make_judge(
     name="issue_resolution",
     instructions="""
     Evaluate if the customer's issue was resolved.
-    
+
     User's messages: {{ inputs }}
     Agent's responses: {{ outputs }}
-    
+
     Assess the resolution status and respond with exactly one of:
     - 'fully_resolved': Issue completely addressed with clear solution
-    - 'partially_resolved': Some help provided but not fully solved  
+    - 'partially_resolved': Some help provided but not fully solved
     - 'needs_follow_up': Issue not adequately addressed
-    
+
     Your response must be exactly one of these three values.
     """,
     model="databricks:/databricks-gpt-5-mini"  # Optional

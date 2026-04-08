@@ -315,7 +315,9 @@ if page == "📊 Overview":
     # Custo total das sessões registradas
     if session_records:
         total_session_cost = sum(r.get("total_cost_usd", 0) or 0 for r in session_records)
-        st.info(f"💰 Custo total acumulado: **${total_session_cost:.4f}** em **{len(session_records)}** sessões registradas")
+        st.info(
+            f"💰 Custo total acumulado: **${total_session_cost:.4f}** em **{len(session_records)}** sessões registradas"
+        )
 
     st.divider()
 
@@ -685,7 +687,9 @@ elif page == "💰 Custo & Tokens":
         df_sessions["cost_per_turn"] = df_sessions["cost_per_turn"].fillna(0).astype(float)
         df_sessions["date"] = df_sessions["timestamp"].str[:10]
 
-        st.caption(f"Baseado em **{len(session_records)}** sessões registradas em `logs/sessions.jsonl`")
+        st.caption(
+            f"Baseado em **{len(session_records)}** sessões registradas em `logs/sessions.jsonl`"
+        )
 
         # ── KPIs ──
         total_cost = df_sessions["total_cost_usd"].sum()
@@ -724,13 +728,23 @@ elif page == "💰 Custo & Tokens":
             # ── Custo por Tipo de Sessão ──
             st.subheader("🏷️ Custo por Tipo de Sessão")
             if "session_type" in df_sessions.columns:
-                cost_by_type = df_sessions.groupby("session_type").agg(
-                    Sessões=("session_type", "count"),
-                    Custo_Total=("total_cost_usd", "sum"),
-                    Custo_Médio=("total_cost_usd", "mean"),
-                    Turns_Total=("num_turns", "sum"),
-                ).reset_index()
-                cost_by_type.columns = ["Tipo", "Sessões", "Custo Total", "Custo Médio", "Turns Total"]
+                cost_by_type = (
+                    df_sessions.groupby("session_type")
+                    .agg(
+                        Sessões=("session_type", "count"),
+                        Custo_Total=("total_cost_usd", "sum"),
+                        Custo_Médio=("total_cost_usd", "mean"),
+                        Turns_Total=("num_turns", "sum"),
+                    )
+                    .reset_index()
+                )
+                cost_by_type.columns = [
+                    "Tipo",
+                    "Sessões",
+                    "Custo Total",
+                    "Custo Médio",
+                    "Turns Total",
+                ]
                 st.dataframe(cost_by_type, use_container_width=True, hide_index=True)
 
             # ── Distribuição de Custo por Sessão ──
@@ -747,9 +761,25 @@ elif page == "💰 Custo & Tokens":
 
         # Formatar para exibição
         df_display = df_sessions[
-            ["timestamp", "session_type", "total_cost_usd", "num_turns", "duration_s", "cost_per_turn", "prompt_preview"]
+            [
+                "timestamp",
+                "session_type",
+                "total_cost_usd",
+                "num_turns",
+                "duration_s",
+                "cost_per_turn",
+                "prompt_preview",
+            ]
         ].copy()
-        df_display.columns = ["Timestamp", "Tipo", "Custo (USD)", "Turns", "Duração (s)", "Custo/Turn", "Prompt"]
+        df_display.columns = [
+            "Timestamp",
+            "Tipo",
+            "Custo (USD)",
+            "Turns",
+            "Duração (s)",
+            "Custo/Turn",
+            "Prompt",
+        ]
         df_display = df_display.sort_values("Timestamp", ascending=False)
         df_display["Prompt"] = df_display["Prompt"].str[:80]  # truncar preview
 
@@ -772,11 +802,31 @@ elif page == "💰 Custo & Tokens":
         st.subheader("💡 Referência de Pricing (Anthropic API)")
         st.caption("Valores de referência — o custo real é calculado pelo SDK")
 
-        pricing_data = pd.DataFrame([
-            {"Modelo": "claude-opus-4-6", "Input ($/1M tokens)": "$15.00", "Output ($/1M tokens)": "$75.00", "Cache Read": "$1.50", "Cache Write": "$18.75"},
-            {"Modelo": "claude-sonnet-4-20250514", "Input ($/1M tokens)": "$3.00", "Output ($/1M tokens)": "$15.00", "Cache Read": "$0.30", "Cache Write": "$3.75"},
-            {"Modelo": "claude-haiku-3-5", "Input ($/1M tokens)": "$0.80", "Output ($/1M tokens)": "$4.00", "Cache Read": "$0.08", "Cache Write": "$1.00"},
-        ])
+        pricing_data = pd.DataFrame(
+            [
+                {
+                    "Modelo": "claude-opus-4-6",
+                    "Input ($/1M tokens)": "$15.00",
+                    "Output ($/1M tokens)": "$75.00",
+                    "Cache Read": "$1.50",
+                    "Cache Write": "$18.75",
+                },
+                {
+                    "Modelo": "claude-sonnet-4-20250514",
+                    "Input ($/1M tokens)": "$3.00",
+                    "Output ($/1M tokens)": "$15.00",
+                    "Cache Read": "$0.30",
+                    "Cache Write": "$3.75",
+                },
+                {
+                    "Modelo": "claude-haiku-3-5",
+                    "Input ($/1M tokens)": "$0.80",
+                    "Output ($/1M tokens)": "$4.00",
+                    "Cache Read": "$0.08",
+                    "Cache Write": "$1.00",
+                },
+            ]
+        )
         st.dataframe(pricing_data, use_container_width=True, hide_index=True)
 
 

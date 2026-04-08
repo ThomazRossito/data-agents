@@ -55,7 +55,7 @@ Save the returned `cluster_id` and `context_id` for subsequent calls.
 
 Smart Installation Approach
 
-# Check protobuf version first, then install compatible 
+# Check protobuf version first, then install compatible
 grpcio-tools
 import google.protobuf
 runtime_version = google.protobuf.__version__
@@ -65,13 +65,13 @@ if runtime_version.startswith("5.26") or
 runtime_version.startswith("5.29"):
     %pip install grpcio-tools==1.62.0
 else:
-    %pip install grpcio-tools  # Use latest for newer protobuf 
+    %pip install grpcio-tools  # Use latest for newer protobuf
 versions
 ---
 
 ## Prerequisites
 
-You must never execute the skill without confirming the below objects are valid: 
+You must never execute the skill without confirming the below objects are valid:
 
 1. **A Unity Catalog managed Delta table** to ingest into
 2. **A service principal id and secret** with `MODIFY` and `SELECT` on the target table

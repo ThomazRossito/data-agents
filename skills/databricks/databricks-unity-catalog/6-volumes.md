@@ -391,14 +391,14 @@ for grant in grants.privilege_assignments:
        name="my_s3_cred",
        aws_iam_role={"role_arn": "arn:aws:iam::..."}
    )
-   
+
    # Create external location
    w.external_locations.create(
        name="my_s3_location",
        url="s3://my-bucket/path",
        credential_name="my_s3_cred"
    )
-   
+
    # Then create external volume
    w.volumes.create(
        ...

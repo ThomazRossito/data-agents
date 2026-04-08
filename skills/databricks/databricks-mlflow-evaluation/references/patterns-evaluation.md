@@ -165,7 +165,7 @@ eval_data = [
         "expectations": {
             "expected_facts": [
                 "Tracking",
-                "Projects", 
+                "Projects",
                 "Models",
                 "Registry"
             ]
@@ -198,7 +198,7 @@ with mlflow.start_run(run_name="prompt_v1"):
         scorers=scorers
     )
 
-# Version 2 evaluation  
+# Version 2 evaluation
 with mlflow.start_run(run_name="prompt_v2"):
     results_v2 = mlflow.genai.evaluate(
         data=eval_data,
@@ -230,7 +230,7 @@ for idx, row in traces_df.iterrows():
     print(f"\n--- Row {idx} ---")
     print(f"Input: {row['request']}")
     print(f"Output: {row['response']}")
-    
+
     # Access assessments (scorer results)
     for assessment in row['assessments']:
         name = assessment['assessment_name']
@@ -241,7 +241,7 @@ for idx, row in traces_df.iterrows():
 # Filter to failures
 def has_failures(assessments):
     return any(
-        a['feedback']['value'] in ['no', False, 0] 
+        a['feedback']['value'] in ['no', False, 0]
         for a in assessments
     )
 
@@ -262,7 +262,7 @@ run_v1 = mlflow.search_runs(filter_string=f"run_id = '{results_v1.run_id}'")
 run_v2 = mlflow.search_runs(filter_string=f"run_id = '{results_v2.run_id}'")
 
 # Extract metrics (they end with /mean)
-metric_cols = [col for col in run_v1.columns 
+metric_cols = [col for col in run_v1.columns
                if col.startswith('metrics.') and col.endswith('/mean')]
 
 # Build comparison
@@ -272,7 +272,7 @@ for metric in metric_cols:
     v1_val = run_v1[metric].iloc[0]
     v2_val = run_v2[metric].iloc[0]
     improvement = v2_val - v1_val
-    
+
     comparison.append({
         'Metric': metric_name,
         'V1': f"{v1_val:.3f}",
@@ -308,11 +308,11 @@ regressions = []
 for idx, row in merged.iterrows():
     v1_assessments = {a['assessment_name']: a for a in row['assessments_v1']}
     v2_assessments = {a['assessment_name']: a for a in row['assessments_v2']}
-    
+
     for scorer_name in v1_assessments:
         v1_val = v1_assessments[scorer_name]['feedback']['value']
         v2_val = v2_assessments.get(scorer_name, {}).get('feedback', {}).get('value')
-        
+
         # Check for regression (yes->no or True->False)
         if v1_val in ['yes', True] and v2_val in ['no', False]:
             regressions.append({
@@ -344,48 +344,48 @@ QUALITY_THRESHOLD = 0.9  # 90% pass rate
 
 def evaluate_and_improve(app_fn, eval_data, scorers, max_iterations=5):
     """Iteratively improve until quality threshold is met."""
-    
+
     for iteration in range(max_iterations):
         print(f"\n=== Iteration {iteration + 1} ===")
-        
+
         with mlflow.start_run(run_name=f"iteration_{iteration + 1}"):
             results = mlflow.genai.evaluate(
                 data=eval_data,
                 predict_fn=app_fn,
                 scorers=scorers
             )
-        
+
         # Calculate overall pass rate
         pass_rates = {}
         for metric, value in results.metrics.items():
             if metric.endswith('/mean'):
                 metric_name = metric.replace('/mean', '')
                 pass_rates[metric_name] = value
-        
+
         avg_pass_rate = sum(pass_rates.values()) / len(pass_rates)
         print(f"Average pass rate: {avg_pass_rate:.2%}")
-        
+
         if avg_pass_rate >= QUALITY_THRESHOLD:
             print(f"✓ Quality threshold {QUALITY_THRESHOLD:.0%} met!")
             return results
-        
+
         # Find worst performing metric
         worst_metric = min(pass_rates, key=pass_rates.get)
         print(f"Worst metric: {worst_metric} ({pass_rates[worst_metric]:.2%})")
-        
+
         # Analyze failures for that metric
         traces = mlflow.search_traces(run_id=results.run_id)
         failures = analyze_failures(traces, worst_metric)
-        
+
         print(f"Sample failures for {worst_metric}:")
         for f in failures[:3]:
             print(f"  - Input: {f['input'][:50]}...")
             print(f"    Rationale: {f['rationale']}")
-        
+
         # Here you would update app_fn based on failures
         # This could be manual or automated prompt refinement
         print("\n[Update your app based on failures before next iteration]")
-    
+
     print(f"✗ Did not meet threshold after {max_iterations} iterations")
     return results
 
@@ -394,7 +394,7 @@ def analyze_failures(traces, metric_name):
     failures = []
     for _, row in traces.iterrows():
         for assessment in row['assessments']:
-            if (assessment['assessment_name'] == metric_name and 
+            if (assessment['assessment_name'] == metric_name and
                 assessment['feedback']['value'] in ['no', False]):
                 failures.append({
                     'input': row['request'],
@@ -417,7 +417,7 @@ one_day_ago = int((time.time() - 86400) * 1000)  # 24 hours in ms
 
 prod_traces = mlflow.search_traces(
     filter_string=f"""
-        attributes.status = 'OK' AND 
+        attributes.status = 'OK' AND
         attributes.timestamp_ms > {one_day_ago} AND
         tags.environment = 'production'
     """,
@@ -527,17 +527,17 @@ import sys
 
 def run_ci_evaluation():
     """Run evaluation as part of CI/CD pipeline."""
-    
+
     # Load test data
     eval_data = load_test_data()  # From file or test fixtures
-    
+
     # Define quality gates
     QUALITY_GATES = {
         "safety": 1.0,           # 100% must pass
         "helpful": 0.9,          # 90% must pass
         "concise": 0.8,          # 80% must pass
     }
-    
+
     # Run evaluation
     results = mlflow.genai.evaluate(
         data=eval_data,
@@ -548,14 +548,14 @@ def run_ci_evaluation():
             Guidelines(name="concise", guidelines="Must be concise"),
         ]
     )
-    
+
     # Check quality gates
     failures = []
     for metric, threshold in QUALITY_GATES.items():
         actual = results.metrics.get(f"{metric}/mean", 0)
         if actual < threshold:
             failures.append(f"{metric}: {actual:.2%} < {threshold:.2%}")
-    
+
     if failures:
         print("❌ Quality gates failed:")
         for f in failures:

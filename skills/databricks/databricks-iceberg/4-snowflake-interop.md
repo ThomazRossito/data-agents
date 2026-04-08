@@ -104,7 +104,7 @@ CREATE DATABASE my_snowflake_db
 -- Check link health (executionState should be "RUNNING" with empty failureDetails)
 SELECT SYSTEM$CATALOG_LINK_STATUS('my_snowflake_db');
 
--- Query 
+-- Query
 SELECT * FROM my_snowflake_db."my_schema"."my_table"
 WHERE event_date >= '2025-01-01';
 ```

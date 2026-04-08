@@ -291,10 +291,10 @@ backup_checkpoint("/checkpoints/stream", "20240101")
 def migrate_checkpoint(old_path, new_path):
     # Copy checkpoint folder
     dbutils.fs.cp(old_path, new_path, recurse=True)
-    
+
     # Update code to use new path
     # Old checkpoint remains for rollback
-    
+
     # Restart stream with new checkpoint location
 ```
 

@@ -130,16 +130,16 @@ async def _token_refresh_loop(instance_name: str):
 def init_database(instance_name: str, database_name: str, username: str) -> AsyncEngine:
     """Initialize database with OAuth token injection."""
     global _current_token
-    
+
     w = WorkspaceClient()
     instance = w.database.get_database_instance(name=instance_name)
-    
+
     # Generate initial token
     _current_token = _generate_token(instance_name)
-    
+
     # Build URL (password injected via do_connect)
     url = f"postgresql+psycopg://{username}@{instance.read_write_dns}:5432/{database_name}"
-    
+
     engine = create_async_engine(
         url,
         pool_size=5,
@@ -147,12 +147,12 @@ def init_database(instance_name: str, database_name: str, username: str) -> Asyn
         pool_recycle=3600,
         connect_args={"sslmode": "require"}
     )
-    
+
     # Inject token on each connection
     @event.listens_for(engine.sync_engine, "do_connect")
     def provide_token(dialect, conn_rec, cargs, cparams):
         cparams["password"] = _current_token
-    
+
     return engine
 ```
 
@@ -172,7 +172,7 @@ def is_lakebase_configured() -> bool:
     """Check if Lakebase is configured for this app."""
     return bool(
         os.environ.get("LAKEBASE_PG_URL") or
-        (os.environ.get("LAKEBASE_INSTANCE_NAME") and 
+        (os.environ.get("LAKEBASE_INSTANCE_NAME") and
          os.environ.get("LAKEBASE_DATABASE_NAME"))
     )
 ```

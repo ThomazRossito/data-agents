@@ -123,13 +123,13 @@ from langchain_core.runnables import RunnableConfig
 @tool
 def get_current_time(timezone: str = "UTC") -> str:
     """Get the current time in the specified timezone.
-    
+
     Args:
         timezone: The timezone (e.g., 'UTC', 'America/New_York')
     """
     from datetime import datetime
     import pytz
-    
+
     tz = pytz.timezone(timezone)
     now = datetime.now(tz)
     return now.strftime("%Y-%m-%d %H:%M:%S %Z")
@@ -137,7 +137,7 @@ def get_current_time(timezone: str = "UTC") -> str:
 @tool
 def calculate(expression: str) -> str:
     """Evaluate a mathematical expression.
-    
+
     Args:
         expression: A math expression like '2 + 2' or 'sqrt(16)'
     """
@@ -165,7 +165,7 @@ def get_user_preferences(config: RunnableConfig) -> str:
     user_id = config.get("configurable", {}).get("user_id")
     if not user_id:
         return "No user ID provided"
-    
+
     # Fetch from database
     # ...
     return f"Preferences for {user_id}: ..."

@@ -45,7 +45,7 @@ Inputs/
 # To DO
 to_do/
 
-# Databricks 
+# Databricks
 .databricks/
 
 # Servidor MCP oficial Microsoft (instalação local — não versionar)

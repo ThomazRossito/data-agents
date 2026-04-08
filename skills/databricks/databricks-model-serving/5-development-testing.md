@@ -53,7 +53,7 @@ LLM_ENDPOINT = "databricks-meta-llama-3-3-70b-instruct"
 class MyAgent(ResponsesAgent):
     def __init__(self):
         self.llm = ChatDatabricks(endpoint=LLM_ENDPOINT)
-    
+
     def predict(self, request: ResponsesAgentRequest) -> ResponsesAgentResponse:
         messages = [{"role": m.role, "content": m.content} for m in request.input]
         response = self.llm.invoke(messages)

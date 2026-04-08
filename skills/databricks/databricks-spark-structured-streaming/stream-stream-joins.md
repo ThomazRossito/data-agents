@@ -167,7 +167,7 @@ attributed = (impressions
         """),
         "inner"
     )
-    .withColumn("attribution_window_hours", 
+    .withColumn("attribution_window_hours",
                 (col("conversion_time").cast("long") - col("impression_time").cast("long")) / 3600)
 )
 
@@ -236,8 +236,8 @@ joined_sessions = (pageview_sessions
         ["user_id", "session_window"],
         "outer"
     )
-    .withColumn("total_events", 
-                coalesce(col("pageview_count"), lit(0)) + 
+    .withColumn("total_events",
+                coalesce(col("pageview_count"), lit(0)) +
                 coalesce(col("click_count"), lit(0)))
 )
 
@@ -255,19 +255,19 @@ Route late-arriving events to a separate table:
 def write_with_late_data_handling(batch_df, batch_id):
     """Separate on-time and late data"""
     from pyspark.sql.functions import current_timestamp, unix_timestamp
-    
+
     # Calculate delay
     processed = batch_df.withColumn(
         "processing_delay_seconds",
         unix_timestamp(current_timestamp()) - unix_timestamp(col("event_time"))
     )
-    
+
     # On-time data (within watermark)
     on_time = processed.filter(col("processing_delay_seconds") < 600)  # 10 minutes
-    
+
     # Late data
     late = processed.filter(col("processing_delay_seconds") >= 600)
-    
+
     # Write on-time data
     (on_time
         .drop("processing_delay_seconds")
@@ -278,7 +278,7 @@ def write_with_late_data_handling(batch_df, batch_id):
         .option("txnAppId", "stream_join_job")
         .saveAsTable("matched_events")
     )
-    
+
     # Write late data to DLQ
     if late.count() > 0:
         (late
@@ -464,18 +464,18 @@ spark.conf.set("spark.sql.shuffle.partitions", "200")
 for stream in spark.streams.active:
     status = stream.status
     progress = stream.lastProgress
-    
+
     if progress:
         print(f"Stream: {stream.name}")
         print(f"Input rate: {progress.get('inputRowsPerSecond', 0)} rows/sec")
         print(f"Processing rate: {progress.get('processedRowsPerSecond', 0)} rows/sec")
-        
+
         # State metrics
         if "stateOperators" in progress:
             for op in progress["stateOperators"]:
                 print(f"State rows: {op.get('numRowsTotal', 0)}")
                 print(f"State memory: {op.get('memoryUsedBytes', 0)}")
-        
+
         # Watermark
         if "eventTime" in progress:
             print(f"Watermark: {progress['eventTime'].get('watermark', 'N/A')}")

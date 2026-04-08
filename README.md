@@ -17,7 +17,7 @@
   </p>
 </p>
 
-Construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Este ecossistema transforma o seu assistente de IA em uma verdadeira equipe de dados autônoma, operando recursos diretamente nas suas nuvens corporativas. O sistema atua em Engenharia de Dados, Qualidade de Dados, Governança e Modelagem Semântica, garantindo aderência estrita às melhores práticas corporativas por meio de uma arquitetura declarativa de Knowledge Bases. 
+Construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Este ecossistema transforma o seu assistente de IA em uma verdadeira equipe de dados autônoma, operando recursos diretamente nas suas nuvens corporativas. O sistema atua em Engenharia de Dados, Qualidade de Dados, Governança e Modelagem Semântica, garantindo aderência estrita às melhores práticas corporativas por meio de uma arquitetura declarativa de Knowledge Bases.
 
 ---
 
@@ -29,12 +29,12 @@ Construído sobre o **Claude Agent SDK** da Anthropic com integração nativa vi
 
 ## Educação Acadêmica
 
-> **MBA: Ciência de Dados com ênfase em Big Data**                          
+> **MBA: Ciência de Dados com ênfase em Big Data**
 > **MBA: Engenharia de Dados com ênfase em Big Data**
 
 ## Contatos
 
-> **LinkedIn:** [https://www.linkedin.com/in/thomaz-antonio-rossito-neto/](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/)                      
+> **LinkedIn:** [https://www.linkedin.com/in/thomaz-antonio-rossito-neto/](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/)
 > **GitHub:** [https://github.com/ThomazRossito/](https://github.com/ThomazRossito/)
 
 ---

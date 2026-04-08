@@ -18,16 +18,16 @@ import uuid
 def get_connection(instance_name: str, database_name: str = "postgres"):
     """Get a database connection with fresh OAuth token."""
     w = WorkspaceClient()
-    
+
     # Get instance details
     instance = w.database.get_database_instance(name=instance_name)
-    
+
     # Generate OAuth token (valid for 1 hour)
     cred = w.database.generate_database_credential(
         request_id=str(uuid.uuid4()),
         instance_names=[instance_name]
     )
-    
+
     # Build connection string
     conn_string = (
         f"host={instance.read_write_dns} "
@@ -36,7 +36,7 @@ def get_connection(instance_name: str, database_name: str = "postgres"):
         f"password={cred.token} "
         f"sslmode=require"
     )
-    
+
     return psycopg.connect(conn_string)
 
 # Usage
@@ -62,7 +62,7 @@ from databricks.sdk import WorkspaceClient
 
 class LakebaseConnectionManager:
     """Manages Lakebase connections with automatic token refresh."""
-    
+
     def __init__(
         self,
         instance_name: str,
@@ -76,12 +76,12 @@ class LakebaseConnectionManager:
         self.pool_size = pool_size
         self.max_overflow = max_overflow
         self.token_refresh_seconds = token_refresh_seconds
-        
+
         self._current_token: Optional[str] = None
         self._refresh_task: Optional[asyncio.Task] = None
         self._engine = None
         self._session_maker = None
-    
+
     def _generate_token(self) -> str:
         """Generate fresh OAuth token."""
         w = WorkspaceClient()
@@ -90,7 +90,7 @@ class LakebaseConnectionManager:
             instance_names=[self.instance_name]
         )
         return cred.token
-    
+
     async def _refresh_loop(self):
         """Background task to refresh token periodically."""
         while True:
@@ -99,24 +99,24 @@ class LakebaseConnectionManager:
                 self._current_token = await asyncio.to_thread(self._generate_token)
             except Exception as e:
                 print(f"Token refresh failed: {e}")
-    
+
     def initialize(self):
         """Initialize database engine and start token refresh."""
         w = WorkspaceClient()
-        
+
         # Get instance info
         instance = w.database.get_database_instance(name=self.instance_name)
         username = w.current_user.me().user_name
-        
+
         # Generate initial token
         self._current_token = self._generate_token()
-        
+
         # Create engine (password injected via event)
         url = (
             f"postgresql+psycopg://{username}@"
             f"{instance.read_write_dns}:5432/{self.database_name}"
         )
-        
+
         self._engine = create_async_engine(
             url,
             pool_size=self.pool_size,
@@ -124,23 +124,23 @@ class LakebaseConnectionManager:
             pool_recycle=3600,
             connect_args={"sslmode": "require"}
         )
-        
+
         # Inject token on connect
         @event.listens_for(self._engine.sync_engine, "do_connect")
         def inject_token(dialect, conn_rec, cargs, cparams):
             cparams["password"] = self._current_token
-        
+
         self._session_maker = async_sessionmaker(
-            self._engine, 
+            self._engine,
             class_=AsyncSession,
             expire_on_commit=False
         )
-    
+
     def start_refresh(self):
         """Start background token refresh task."""
         if not self._refresh_task:
             self._refresh_task = asyncio.create_task(self._refresh_loop())
-    
+
     async def stop_refresh(self):
         """Stop token refresh task."""
         if self._refresh_task:
@@ -150,13 +150,13 @@ class LakebaseConnectionManager:
             except asyncio.CancelledError:
                 pass
             self._refresh_task = None
-    
+
     @asynccontextmanager
     async def session(self) -> AsyncGenerator[AsyncSession, None]:
         """Get a database session."""
         async with self._session_maker() as session:
             yield session
-    
+
     async def close(self):
         """Close all connections."""
         await self.stop_refresh()
@@ -226,7 +226,7 @@ def resolve_hostname(hostname: str) -> str:
         return socket.gethostbyname(hostname)
     except socket.gaierror:
         pass
-    
+
     # Fallback to dig command
     try:
         result = subprocess.run(
@@ -241,7 +241,7 @@ def resolve_hostname(hostname: str) -> str:
                 return ip
     except Exception:
         pass
-    
+
     raise RuntimeError(f"Could not resolve hostname: {hostname}")
 
 # Use with psycopg

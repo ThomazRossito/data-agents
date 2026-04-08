@@ -197,17 +197,17 @@ Check for state store skew:
 def check_state_balance(checkpoint_path):
     """Check state store partition balance"""
     state_df = spark.read.format("statestore").load(f"{checkpoint_path}/state")
-    
+
     partition_counts = state_df.groupBy("partitionId").count().orderBy(desc("count"))
     partition_counts.show()
-    
+
     # Calculate skew
     counts = [row['count'] for row in partition_counts.collect()]
     if counts:
         max_count = max(counts)
         min_count = min(counts)
         skew_ratio = max_count / min_count if min_count > 0 else float('inf')
-        
+
         print(f"State skew ratio: {skew_ratio:.2f}")
         if skew_ratio > 10:
             print("WARNING: High state skew detected")
@@ -221,17 +221,17 @@ def check_state_balance(checkpoint_path):
 def monitor_state_growth(checkpoint_path):
     """Track state store growth"""
     state_df = spark.read.format("statestore").load(f"{checkpoint_path}/state")
-    
+
     # Current state size
     total_rows = state_df.count()
-    
+
     print(f"State rows: {total_rows}")
-    
+
     # Check expiration
     from pyspark.sql.functions import current_timestamp, col
     expired = state_df.filter(col("expirationMs") < current_timestamp().cast("long") * 1000)
     expired_count = expired.count()
-    
+
     print(f"Expired state rows: {expired_count}")
     print(f"Active state rows: {total_rows - expired_count}")
 ```
@@ -270,7 +270,7 @@ Watermarks automatically clean up expired state:
 # Monitor state size programmatically
 for stream in spark.streams.active:
     progress = stream.lastProgress
-    
+
     if progress and "stateOperators" in progress:
         for op in progress["stateOperators"]:
             print(f"Operator: {op.get('operatorName', 'unknown')}")
@@ -284,12 +284,12 @@ for stream in spark.streams.active:
 ```python
 # Monitor late data impact
 late_data_stats = spark.sql("""
-    SELECT 
+    SELECT
         date_trunc('hour', event_time) as hour,
         COUNT(*) as total_events,
-        SUM(CASE 
-            WHEN unix_timestamp(processing_time) - unix_timestamp(event_time) > 600 
-            THEN 1 ELSE 0 
+        SUM(CASE
+            WHEN unix_timestamp(processing_time) - unix_timestamp(event_time) > 600
+            THEN 1 ELSE 0
         END) as late_events,
         AVG(unix_timestamp(processing_time) - unix_timestamp(event_time)) as avg_delay_seconds,
         MAX(unix_timestamp(processing_time) - unix_timestamp(event_time)) as max_delay_seconds

@@ -226,9 +226,7 @@ def load_all_agents(
                 removed = [s for s in original if s not in available_mcp_servers]
                 agent.mcpServers = filtered if filtered else None
                 if removed:
-                    logger.info(
-                        f"Agente '{name}': mcp_servers indisponíveis removidos: {removed}"
-                    )
+                    logger.info(f"Agente '{name}': mcp_servers indisponíveis removidos: {removed}")
 
             agents[name] = agent
         except Exception as e:

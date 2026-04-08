@@ -48,13 +48,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def parallel_merge_multiple_tables(batch_df, batch_id):
     """Merge into multiple tables in parallel"""
-    
+
     batch_df.cache()
-    
+
     def merge_table(table_name, merge_key):
         target = DeltaTable.forName(spark, table_name)
         source = batch_df.alias("source")
-        
+
         (target.alias("target")
             .merge(source, f"target.{merge_key} = source.{merge_key}")
             .whenMatchedUpdateAll()
@@ -62,23 +62,23 @@ def parallel_merge_multiple_tables(batch_df, batch_id):
             .execute()
         )
         return f"Merged {table_name}"
-    
+
     tables = [
         ("silver.customers", "customer_id"),
         ("silver.orders", "order_id"),
         ("silver.products", "product_id")
     ]
-    
+
     # Parallel merges
     with ThreadPoolExecutor(max_workers=3) as executor:
         futures = {
             executor.submit(merge_table, table_name, merge_key): table_name
             for table_name, merge_key in tables
         }
-        
+
         for future in as_completed(futures):
             future.result()  # Raise on error
-    
+
     batch_df.unpersist()
 
 stream.writeStream \
@@ -116,7 +116,7 @@ ALTER TABLE target_table SET TBLPROPERTIES (
 def optimized_merge(batch_df, batch_id):
     """MERGE with optimized table"""
     batch_df.createOrReplaceTempView("updates")
-    
+
     spark.sql("""
         MERGE INTO target_table t
         USING updates s ON t.id = s.id
@@ -138,13 +138,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 def parallel_merge(batch_df, batch_id):
     """Merge into multiple tables in parallel"""
-    
+
     batch_df.cache()
-    
+
     def merge_one_table(table_name, merge_key):
         target = DeltaTable.forName(spark, table_name)
         source = batch_df.alias("source")
-        
+
         (target.alias("target")
             .merge(source, f"target.{merge_key} = source.{merge_key}")
             .whenMatchedUpdateAll()
@@ -152,22 +152,22 @@ def parallel_merge(batch_df, batch_id):
             .execute()
         )
         return table_name
-    
+
     tables = [
         ("silver.customers", "customer_id"),
         ("silver.orders", "order_id"),
         ("silver.products", "product_id")
     ]
-    
+
     # Optimal thread count: min(number_of_tables, cluster_cores / 2)
     max_workers = min(len(tables), max(2, total_cores // 2))
-    
+
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
             executor.submit(merge_one_table, table_name, merge_key): table_name
             for table_name, merge_key in tables
         }
-        
+
         errors = []
         for future in as_completed(futures):
             table_name = futures[future]
@@ -175,9 +175,9 @@ def parallel_merge(batch_df, batch_id):
                 future.result()
             except Exception as e:
                 errors.append((table_name, str(e)))
-    
+
     batch_df.unpersist()
-    
+
     if errors:
         raise Exception(f"Merge failures: {errors}")
 ```
@@ -188,11 +188,11 @@ def parallel_merge(batch_df, batch_id):
 def partition_pruned_merge(batch_df, batch_id):
     """MERGE with partition column in condition"""
     batch_df.createOrReplaceTempView("updates")
-    
+
     # Include partition column in merge condition
     spark.sql("""
         MERGE INTO target_table t
-        USING updates s 
+        USING updates s
         ON t.id = s.id AND t.date = s.date  -- partition column
         WHEN MATCHED THEN UPDATE SET *
         WHEN NOT MATCHED THEN INSERT *
@@ -205,16 +205,16 @@ def partition_pruned_merge(batch_df, batch_id):
 ```python
 def cdc_parallel_merge(batch_df, batch_id):
     """Apply CDC changes to multiple tables in parallel"""
-    
+
     batch_df.cache()
-    
+
     # Split by operation type
     deletes = batch_df.filter(col("_op") == "DELETE")
     upserts = batch_df.filter(col("_op").isin(["INSERT", "UPDATE"]))
-    
+
     def merge_cdc_table(table_name, merge_key):
         target = DeltaTable.forName(spark, table_name)
-        
+
         # Upserts
         if upserts.count() > 0:
             (target.alias("target")
@@ -223,7 +223,7 @@ def cdc_parallel_merge(batch_df, batch_id):
                 .whenNotMatchedInsertAll()
                 .execute()
             )
-        
+
         # Deletes
         if deletes.count() > 0:
             (target.alias("target")
@@ -231,21 +231,21 @@ def cdc_parallel_merge(batch_df, batch_id):
                 .whenMatchedDelete()
                 .execute()
             )
-    
+
     tables = [
         ("silver.customers", "customer_id"),
         ("silver.orders", "order_id")
     ]
-    
+
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = {
             executor.submit(merge_cdc_table, table_name, merge_key): table_name
             for table_name, merge_key in tables
         }
-        
+
         for future in as_completed(futures):
             future.result()
-    
+
     batch_df.unpersist()
 ```
 
@@ -313,7 +313,7 @@ import time
 
 def monitored_merge(batch_df, batch_id):
     start_time = time.time()
-    
+
     batch_df.createOrReplaceTempView("updates")
     spark.sql("""
         MERGE INTO target_table t
@@ -321,10 +321,10 @@ def monitored_merge(batch_df, batch_id):
         WHEN MATCHED THEN UPDATE SET *
         WHEN NOT MATCHED THEN INSERT *
     """)
-    
+
     duration = time.time() - start_time
     print(f"Merge duration: {duration:.2f}s")
-    
+
     # Alert if duration exceeds threshold
     if duration > 30:
         print(f"WARNING: Merge duration {duration:.2f}s exceeds threshold")

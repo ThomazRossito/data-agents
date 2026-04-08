@@ -198,7 +198,7 @@ def my_scorer(inputs, outputs):
 def bad_scorer(outputs):
     # ❌ WRONG - Can't return dict
     return {"score": 0.5, "reason": "..."}
-    
+
     # ❌ WRONG - Can't return tuple
     return (True, "rationale")
 ```
@@ -213,13 +213,13 @@ def good_scorer(outputs):
     return True
     return 0.85
     return "yes"
-    
+
     # ✅ CORRECT - Return Feedback object
     return Feedback(
         value=True,
         rationale="Explanation"
     )
-    
+
     # ✅ CORRECT - Return list of Feedbacks
     return [
         Feedback(name="metric_1", value=True),

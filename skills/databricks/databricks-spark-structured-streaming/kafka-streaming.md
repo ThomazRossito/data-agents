@@ -204,7 +204,7 @@ Route events to different Kafka topics:
 ```python
 def route_events(batch_df, batch_id):
     """Route events to different Kafka topics"""
-    
+
     # High priority → urgent topic
     high_priority = batch_df.filter(col("priority") == "high")
     if high_priority.count() > 0:
@@ -213,7 +213,7 @@ def route_events(batch_df, batch_id):
             .option("kafka.bootstrap.servers", brokers) \
             .option("topic", "urgent-events") \
             .save()
-    
+
     # Errors → DLQ topic
     errors = batch_df.filter(col("event_type") == "error")
     if errors.count() > 0:
@@ -222,7 +222,7 @@ def route_events(batch_df, batch_id):
             .option("kafka.bootstrap.servers", brokers) \
             .option("topic", "error-events-dlq") \
             .save()
-    
+
     # All events → standard topic
     batch_df.select("key", "value").write \
         .format("kafka") \
@@ -246,16 +246,16 @@ from pyspark.sql.functions import from_json, col, lit, to_json, struct, current_
 
 def validate_and_route(batch_df, batch_id):
     """Validate schema, route bad records to DLQ"""
-    
+
     # Try to parse with strict schema
     parsed = batch_df.withColumn(
         "parsed",
         from_json(col("value").cast("string"), validated_schema)
     )
-    
+
     # Valid records
     valid = parsed.filter(col("parsed").isNotNull()).select("key", "value")
-    
+
     # Invalid records → DLQ
     invalid = parsed.filter(col("parsed").isNull()).select(
         col("key"),
@@ -265,14 +265,14 @@ def validate_and_route(batch_df, batch_id):
             current_timestamp().alias("dlq_timestamp")
         )).alias("value")
     )
-    
+
     # Write valid to main topic
     if valid.count() > 0:
         valid.write.format("kafka") \
             .option("kafka.bootstrap.servers", brokers) \
             .option("topic", "valid-events") \
             .save()
-    
+
     # Write invalid to DLQ
     if invalid.count() > 0:
         invalid.write.format("kafka") \
@@ -339,7 +339,7 @@ df.writeStream \
     .option("topic", target_topic) \
     .option("kafka.security.protocol", "SASL_SSL") \
     .option("kafka.sasl.mechanism", "PLAIN") \
-    .option("kafka.sasl.jaas.config", 
+    .option("kafka.sasl.jaas.config",
             f'org.apache.kafka.common.security.plain.PlainLoginModule required username="{kafka_username}" password="{kafka_password}";') \
     .option("checkpointLocation", checkpoint_path) \
     .start()
@@ -365,13 +365,13 @@ for stream in spark.streams.active:
     if progress:
         print(f"Input rate: {progress.get('inputRowsPerSecond', 0)} rows/sec")
         print(f"Processing rate: {progress.get('processedRowsPerSecond', 0)} rows/sec")
-        
+
         # Kafka-specific metrics
         sources = progress.get("sources", [])
         for source in sources:
             end_offset = source.get("endOffset", {})
             latest_offset = source.get("latestOffset", {})
-            
+
             # Calculate lag per partition
             for topic, partitions in end_offset.items():
                 for partition, end in partitions.items():

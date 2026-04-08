@@ -198,7 +198,7 @@ A more efficient mode for streaming tables and materialized views is expected in
 | **Predictive Optimization** | Auto-enabled | Auto-enabled (Delta) | Auto-enabled (Delta) |
 | **DBR requirement** | 16.1+ | 14.3+ | 16.1+ |
 
-*given that Iceberg doesn't have CDF so the features dependent on it are not supported e.g., 
+*given that Iceberg doesn't have CDF so the features dependent on it are not supported e.g.,
 streaming tables, materialized views, data classification, vector search, data profiling. For Synced tables to Lakebase, only snapshot mode is supported.
 ### When to Choose Each
 

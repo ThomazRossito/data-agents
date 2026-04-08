@@ -38,7 +38,7 @@ results = mlflow.genai.evaluate(
 #   - results.metrics: dict - Aggregate metrics
 ```
 
-**CRITICAL**: 
+**CRITICAL**:
 - `predict_fn` receives **unpacked** `inputs` dict as kwargs
 - If `data` has pre-computed `outputs`, `predict_fn` is optional
 - Traces are automatically created for each row
@@ -175,18 +175,18 @@ def my_scorer(
     trace: Trace = None    # Full MLflow Trace object (optional)
 ) -> Feedback | bool | int | float | str | list[Feedback]:
     """Custom scorer implementation"""
-    
+
     # Return options:
     # 1. Simple value (metric name = function name)
     return True
-    
+
     # 2. Feedback object with custom name
     return Feedback(
         name="custom_metric",
         value="yes",  # or "no", True/False, int, float
         rationale="Explanation of score"
     )
-    
+
     # 3. Multiple feedbacks
     return [
         Feedback(name="metric_1", value=True),
@@ -204,9 +204,9 @@ from typing import Optional
 class MyScorer(Scorer):
     name: str = "my_scorer"  # REQUIRED
     threshold: int = 50      # Custom fields allowed (Pydantic)
-    
+
     def __call__(
-        self, 
+        self,
         outputs: str,
         inputs: dict = None,
         expectations: dict = None,
@@ -275,10 +275,10 @@ issue_judge = make_judge(
     Evaluate if the customer's issue was resolved.
     User's messages: {{ inputs }}
     Agent's responses: {{ outputs }}
-    
+
     Rate and respond with exactly one of:
     - 'fully_resolved'
-    - 'partially_resolved' 
+    - 'partially_resolved'
     - 'needs_follow_up'
     """,
     model="databricks:/databricks-gpt-5-mini"  # Optional
@@ -337,7 +337,7 @@ def trace_scorer(trace: Trace) -> Feedback:
     # Search spans by type
     llm_spans = trace.search_spans(span_type=SpanType.CHAT_MODEL)
     retriever_spans = trace.search_spans(span_type=SpanType.RETRIEVER)
-    
+
     # Access span data
     for span in llm_spans:
         duration = (span.end_time_ns - span.start_time_ns) / 1e9

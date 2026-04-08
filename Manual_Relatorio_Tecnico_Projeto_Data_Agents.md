@@ -14,12 +14,12 @@ Repositório:  [github.com/ThomazRossito/data-agents](https://github.com/ThomazR
 
 ## Educação Acadêmica
 
-> **MBA: Ciência de Dados com ênfase em Big Data**                           
+> **MBA: Ciência de Dados com ênfase em Big Data**
 > **MBA: Engenharia de Dados com ênfase em Big Data**
 
 ## Contatos
 
-> **LinkedIn:** [https://www.linkedin.com/in/thomaz-antonio-rossito-neto/](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/)                            
+> **LinkedIn:** [https://www.linkedin.com/in/thomaz-antonio-rossito-neto/](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/)
 > **GitHub:** [https://github.com/ThomazRossito/](https://github.com/ThomazRossito/)
 
 ---
@@ -143,7 +143,7 @@ Estes agentes são os construtores da fundação de dados.
 - **Arquivo:** `agents/registry/spark-expert.md`
 - **Modelo:** `claude-sonnet-4-6`
 - **Analogia:** O Desenvolvedor Back-end de Big Data.
-- **O que faz:** É o mestre em Python e Apache Spark. Ele escreve o código complexo que transforma bilhões de linhas de dados (pipelines SDP, Delta Lake, MERGEs). 
+- **O que faz:** É o mestre em Python e Apache Spark. Ele escreve o código complexo que transforma bilhões de linhas de dados (pipelines SDP, Delta Lake, MERGEs).
 - **Segurança:** Este agente **não tem acesso à nuvem** (não possui MCP). Ele vive isolado; o trabalho dele é receber um problema matemático/lógico e devolver um código Python perfeito, que será executado por outro agente.
 
 #### 3. Pipeline Architect (`/pipeline` e `/fabric`)
@@ -405,7 +405,7 @@ O arquivo `commands/parser.py` define os atalhos que você pode usar no terminal
 
 ## 12. Configuração e Credenciais
 
-Para que a IA possa trabalhar por você, ela precisa das "chaves" do seu escritório. Isso é feito criando um arquivo chamado `.env` (com um ponto no começo mesmo) na raiz do projeto. 
+Para que a IA possa trabalhar por você, ela precisa das "chaves" do seu escritório. Isso é feito criando um arquivo chamado `.env` (com um ponto no começo mesmo) na raiz do projeto.
 
 > **Aviso de Segurança:** Nunca envie o arquivo `.env` para o GitHub. Ele contém suas senhas. O projeto já vem com um arquivo `.gitignore` que impede que isso aconteça acidentalmente.
 
@@ -611,7 +611,7 @@ Você verá o banner do Data Agents e o prompt `Você:`. Digite `/help` para ver
 
 ## 17. Conclusão
 
-O projeto **Data Agents v2.0** não é apenas um chatbot. É uma plataforma de automação corporativa. 
+O projeto **Data Agents v2.0** não é apenas um chatbot. É uma plataforma de automação corporativa.
 
 Ao separar as **Regras de Negócio (KBs)** dos **Manuais Técnicos (Skills)**, e ao permitir a criação de novos agentes simplesmente escrevendo arquivos de texto (Markdown), o projeto resolve o maior gargalo da Inteligência Artificial em empresas: a dificuldade de manter a IA atualizada e alinhada com a arquitetura da companhia.
 

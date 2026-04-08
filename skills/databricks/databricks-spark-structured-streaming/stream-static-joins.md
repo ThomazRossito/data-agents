@@ -177,7 +177,7 @@ enriched = (iot_stream
     .join(device_dim, "device_id", "left")
     .withColumn(
         "dim_lag_seconds",
-        unix_timestamp(current_timestamp()) - 
+        unix_timestamp(current_timestamp()) -
         unix_timestamp(col("dim_updated_at"))
     )
     .withColumn(
@@ -200,13 +200,13 @@ from delta import DeltaTable
 def enrich_with_time_travel(batch_df, batch_id):
     """Enrich with dimension version at event time"""
     from pyspark.sql.functions import max as spark_max
-    
+
     # Get latest dimension version
     latest_version = DeltaTable.forName(spark, "device_dimensions") \
         .history() \
         .select(spark_max("version").alias("max_version")) \
         .first()[0]
-    
+
     # Read dimension at specific version
     dim_at_version = (spark
         .read
@@ -214,10 +214,10 @@ def enrich_with_time_travel(batch_df, batch_id):
         .option("versionAsOf", latest_version)
         .table("device_dimensions")
     )
-    
+
     # Join with batch
     enriched = batch_df.join(dim_at_version, "device_id", "left")
-    
+
     # Write
     (enriched
         .write
@@ -245,8 +245,8 @@ spark.sql("""
     USING device_dimensions source
     ON target.device_id = source.device_id
       AND target.device_type IS NULL
-    WHEN MATCHED THEN 
-        UPDATE SET 
+    WHEN MATCHED THEN
+        UPDATE SET
             device_type = source.device_type,
             location = source.location,
             manufacturer = source.manufacturer,
@@ -330,7 +330,7 @@ enriched = iot_stream.join(active_dim, "device_id", "left")
 ```python
 # Null rate (left join quality)
 spark.sql("""
-    SELECT 
+    SELECT
         date_trunc('hour', timestamp) as hour,
         count(*) as total_events,
         count(device_type) as matched_events,
@@ -343,7 +343,7 @@ spark.sql("""
 
 # Dimension freshness
 spark.sql("""
-    SELECT 
+    SELECT
         date_trunc('hour', timestamp) as hour,
         avg(dim_lag_seconds) as avg_lag_seconds,
         max(dim_lag_seconds) as max_lag_seconds,
@@ -362,7 +362,7 @@ spark.sql("""
 for stream in spark.streams.active:
     status = stream.status
     progress = stream.lastProgress
-    
+
     if progress:
         print(f"Stream: {stream.name}")
         print(f"Input rate: {progress.get('inputRowsPerSecond', 0)} rows/sec")
