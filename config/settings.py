@@ -53,6 +53,22 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     audit_log_path: str = "./logs/audit.jsonl"
 
+    # --- Model Routing por Tier ---
+    # Mapeamento tier -> modelo. Permite override global da estratégia de modelo por tier.
+    # Se um tier não estiver no mapa, o agente usa o model declarado no seu frontmatter.
+    # Override via .env: TIER_MODEL_MAP='{"T1": "claude-opus-4-6", "T2": "claude-haiku-3-5"}'
+    tier_model_map: dict[str, str] = {}
+
+    # --- KB Injection ---
+    # Se True, injeta o conteúdo dos index.md das KBs relevantes no prompt de cada agente.
+    # Baseado no campo kb_domains do frontmatter. Desabilite para economizar tokens no prompt.
+    inject_kb_index: bool = True
+
+    # --- Idle Timeout ---
+    # Tempo de inatividade (em minutos) antes de oferecer reset automático da sessão.
+    # Se 0, desabilita o idle timeout. Padrão: 30 minutos.
+    idle_timeout_minutes: int = 30
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
     # --- Campos internos (não carregados do .env) ---

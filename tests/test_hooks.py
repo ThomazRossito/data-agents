@@ -309,6 +309,70 @@ class TestCheckSqlCostHook:
         )
         assert result == {}
 
+    @pytest.mark.asyncio
+    async def test_blocks_select_star_without_where_or_limit(self):
+        """SELECT * FROM tabela sem WHERE e sem LIMIT deve ser bloqueado."""
+        result = await check_sql_cost(
+            {
+                "tool_name": "mcp__databricks__execute_sql",
+                "tool_input": {"query": "SELECT * FROM big_table"},
+            },
+            tool_use_id="test-1",
+            context=None,
+        )
+        assert "permissionDecision" in result.get("hookSpecificOutput", {})
+        assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+    @pytest.mark.asyncio
+    async def test_allows_select_with_limit(self):
+        """SELECT * com LIMIT deve ser permitido."""
+        result = await check_sql_cost(
+            {
+                "tool_name": "mcp__databricks__execute_sql",
+                "tool_input": {"query": "SELECT * FROM big_table LIMIT 100"},
+            },
+            tool_use_id="test-2",
+            context=None,
+        )
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_allows_select_with_where(self):
+        """SELECT com WHERE deve ser permitido."""
+        result = await check_sql_cost(
+            {
+                "tool_name": "mcp__databricks__execute_sql",
+                "tool_input": {"query": "SELECT col1 FROM tabela WHERE id = 1"},
+            },
+            tool_use_id="test-3",
+            context=None,
+        )
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_allows_non_sql_tools(self):
+        """Tools que não contêm SQL não devem ser afetadas."""
+        result = await check_sql_cost(
+            {"tool_name": "Read", "tool_input": {"file_path": "/some/file.py"}},
+            tool_use_id="test-4",
+            context=None,
+        )
+        assert result == {}
+
+    @pytest.mark.asyncio
+    async def test_detects_sql_in_bash_command(self):
+        """SQL inline em comando Bash (spark-sql -e) deve ser detectado."""
+        result = await check_sql_cost(
+            {
+                "tool_name": "Bash",
+                "tool_input": {"command": "spark-sql -e 'SELECT * FROM huge_table'"},
+            },
+            tool_use_id="test-5",
+            context=None,
+        )
+        assert "permissionDecision" in result.get("hookSpecificOutput", {})
+        assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+
 
 # ─── Audit Hook ──────────────────────────────────────────────────
 
@@ -453,3 +517,30 @@ class TestCostGuardHook:
     async def test_handles_none_input_gracefully(self):
         result = await log_cost_generating_operations(None, tool_use_id=None, context=None)
         assert result == {}
+
+
+# ─── Testes do reset_session_counters ───────────────────────────────────────
+
+
+class TestResetSessionCounters:
+    """Testes para reset_session_counters do cost_guard_hook."""
+
+    def test_reset_clears_counters(self):
+        """reset_session_counters deve limpar todos os contadores."""
+        from hooks.cost_guard_hook import _session_counters, reset_session_counters
+
+        # Simula contadores acumulados
+        _session_counters["mcp__databricks__execute_sql"] = 10
+        _session_counters["mcp__databricks__run_job_now"] = 3
+
+        reset_session_counters()
+
+        assert len(_session_counters) == 0
+
+    def test_reset_is_idempotent(self):
+        """Chamar reset_session_counters em contadores já vazios não deve falhar."""
+        from hooks.cost_guard_hook import _session_counters, reset_session_counters
+
+        _session_counters.clear()
+        reset_session_counters()  # Não deve levantar exceção
+        assert len(_session_counters) == 0

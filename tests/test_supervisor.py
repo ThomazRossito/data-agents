@@ -134,8 +134,8 @@ class TestBuildSupervisorOptions:
                 hooks = captured_kwargs.get("hooks", {})
                 assert "PostToolUse" in hooks
                 assert "PreToolUse" in hooks
-                assert len(hooks["PostToolUse"]) == 2  # audit + cost guard
-                assert len(hooks["PreToolUse"]) == 1  # security
+                assert len(hooks["PostToolUse"]) == 3  # audit + cost guard + output compressor
+                assert len(hooks["PreToolUse"]) == 2  # security + sql cost check
 
     def test_build_includes_partial_messages(self):
         """Verifica que include_partial_messages está ativo para feedback visual."""
@@ -153,3 +153,50 @@ class TestBuildSupervisorOptions:
 
                 build_supervisor_options()
                 assert captured_kwargs.get("include_partial_messages") is True
+
+
+class TestModelRoutingIntegration:
+    """Testes de integração do model routing no supervisor."""
+
+    def _make_mock_options_class(self):
+        """Retorna um mock de ClaudeAgentOptions que captura os kwargs."""
+        mock_instance = MagicMock()
+        mock_class = MagicMock(return_value=mock_instance)
+        return mock_class, mock_instance
+
+    def test_build_passes_tier_model_map_to_loader(self):
+        """Verifica que tier_model_map do settings é passado para load_all_agents."""
+        mock_class, _ = self._make_mock_options_class()
+        with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
+            with patch("agents.supervisor.load_all_agents") as mock_load:
+                mock_load.return_value = {}
+                with patch("agents.supervisor.settings") as mock_settings:
+                    mock_settings.default_model = "claude-opus-4-6"
+                    mock_settings.max_turns = 50
+                    mock_settings.max_budget_usd = 5.0
+                    mock_settings.tier_model_map = {"T1": "claude-sonnet-4-6"}
+                    from agents.supervisor import build_supervisor_options
+
+                    build_supervisor_options()
+                    call_kwargs = mock_load.call_args
+                    assert call_kwargs is not None
+                    assert "tier_model_map" in (call_kwargs.kwargs or {})
+
+    def test_build_passes_none_when_tier_map_empty(self):
+        """Verifica que None é passado quando tier_model_map está vazio."""
+        mock_class, _ = self._make_mock_options_class()
+        with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
+            with patch("agents.supervisor.load_all_agents") as mock_load:
+                mock_load.return_value = {}
+                with patch("agents.supervisor.settings") as mock_settings:
+                    mock_settings.default_model = "claude-opus-4-6"
+                    mock_settings.max_turns = 50
+                    mock_settings.max_budget_usd = 5.0
+                    mock_settings.tier_model_map = {}
+                    from agents.supervisor import build_supervisor_options
+
+                    build_supervisor_options()
+                    call_kwargs = mock_load.call_args
+                    assert call_kwargs is not None
+                    # tier_model_map deve ser None quando vazio
+                    assert call_kwargs.kwargs.get("tier_model_map") is None

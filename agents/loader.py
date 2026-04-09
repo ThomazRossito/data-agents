@@ -46,6 +46,9 @@ logger = logging.getLogger("data_agents.loader")
 # Diretório padrão de definições de agentes
 AGENTS_REGISTRY_DIR = Path(__file__).parent / "registry"
 
+# Diretório base das Knowledge Bases
+KB_BASE_DIR = Path(__file__).parent.parent / "kb"
+
 # Mapeamento de aliases de tool sets para listas concretas de tools MCP
 MCP_TOOL_SETS: dict[str, list[str]] = {
     "databricks_all": DATABRICKS_MCP_TOOLS,
@@ -130,12 +133,69 @@ def _resolve_tools(tool_list: list[str]) -> list[str]:
     return resolved
 
 
-def load_agent(path: Path) -> tuple[str, AgentDefinition]:
+def _load_kb_indexes(
+    kb_domains: list[str],
+    kb_base_dir: Path | None = None,
+) -> str:
+    """
+    Carrega o conteúdo dos index.md das KBs relevantes para um agente.
+
+    Lê kb/{domain}/index.md para cada domínio em kb_domains.
+    Domínios cujo index.md não exista são silenciosamente ignorados.
+
+    Args:
+        kb_domains: Lista de domínios de KB (ex: ["sql-patterns", "databricks"])
+        kb_base_dir: Diretório base das KBs. Padrão: kb/ na raiz do projeto.
+
+    Returns:
+        String com o conteúdo concatenado dos index.md, formatada para
+        injeção no prompt do agente. Retorna string vazia se nenhum index
+        for encontrado.
+    """
+    base = kb_base_dir or KB_BASE_DIR
+    sections: list[str] = []
+
+    for domain in kb_domains:
+        index_path = base / domain / "index.md"
+        if index_path.exists():
+            try:
+                content = index_path.read_text(encoding="utf-8").strip()
+                sections.append(content)
+                logger.debug(f"KB index carregado: {domain}/index.md ({len(content)} chars)")
+            except Exception as e:
+                logger.warning(f"Erro ao ler KB index '{domain}/index.md': {e}")
+        else:
+            logger.debug(f"KB index não encontrado (ignorado): {domain}/index.md")
+
+    if not sections:
+        return ""
+
+    header = (
+        "\n\n---\n\n"
+        "## [Contexto Injetado] Knowledge Base — Índices Relevantes\n\n"
+        "Os índices abaixo foram pré-carregados dos seus domínios de KB (`kb_domains`).\n"
+        "Use-os como referência para saber quais arquivos aprofundar via `Read` quando necessário.\n\n"
+    )
+
+    return header + "\n\n---\n\n".join(sections)
+
+
+def load_agent(
+    path: Path,
+    tier_model_map: dict[str, str] | None = None,
+    inject_kb_index: bool = False,
+    kb_base_dir: Path | None = None,
+) -> tuple[str, AgentDefinition]:
     """
     Carrega um único arquivo .md e retorna (name, AgentDefinition).
 
     Args:
         path: Caminho absoluto para o arquivo .md do agente.
+        tier_model_map: Mapeamento tier -> modelo para model routing.
+            Se None ou vazio, usa o model do frontmatter (comportamento padrão).
+        inject_kb_index: Se True, injeta o conteúdo dos index.md das KBs
+            declaradas em kb_domains no prompt do agente.
+        kb_base_dir: Diretório base das KBs. Padrão: kb/ na raiz do projeto.
 
     Returns:
         Tupla (agent_name, AgentDefinition)
@@ -158,20 +218,39 @@ def load_agent(path: Path) -> tuple[str, AgentDefinition]:
     tools_raw: list[str] = metadata["tools"]
     mcp_servers: list[str | dict[str, Any]] = metadata.get("mcp_servers", [])
 
+    # Model routing por tier: se tier_model_map fornecido, usa modelo do mapa
+    tier: str = metadata.get("tier", "")
+    if tier_model_map and tier in tier_model_map:
+        routed_model = tier_model_map[tier]
+        logger.info(
+            f"Model routing: agente '{name}' tier={tier} → "
+            f"model overridden de '{model}' para '{routed_model}'"
+        )
+        model = routed_model
+
+    # KB injection: carrega e injeta index.md das KBs relevantes no prompt
+    kb_domains: list[str] = metadata.get("kb_domains", [])
+    kb_content = ""
+    if inject_kb_index and kb_domains:
+        kb_content = _load_kb_indexes(kb_domains, kb_base_dir=kb_base_dir)
+        if kb_content:
+            logger.info(f"KB injection: agente '{name}' ← {len(kb_domains)} domínios: {kb_domains}")
+
     # Resolve aliases de tool sets para tools MCP concretas
     tools = _resolve_tools(tools_raw)
 
     agent = AgentDefinition(
         description=description,
-        prompt=body,
+        prompt=body + kb_content,
         tools=tools,
         model=model,
         mcpServers=mcp_servers if mcp_servers else None,
     )
 
     logger.info(
-        f"Agente carregado: '{name}' | model={model} | "
-        f"tools={len(tools)} | mcp_servers={mcp_servers}"
+        f"Agente carregado: '{name}' | tier={tier} | model={model} | "
+        f"tools={len(tools)} | mcp_servers={mcp_servers} | "
+        f"kb_injected={len(kb_domains) if kb_content else 0}"
     )
     return name, agent
 
@@ -179,6 +258,9 @@ def load_agent(path: Path) -> tuple[str, AgentDefinition]:
 def load_all_agents(
     registry_dir: Path | None = None,
     available_mcp_servers: set[str] | None = None,
+    tier_model_map: dict[str, str] | None = None,
+    inject_kb_index: bool = False,
+    kb_base_dir: Path | None = None,
 ) -> dict[str, AgentDefinition]:
     """
     Carrega todos os agentes do diretório de registry.
@@ -195,6 +277,10 @@ def load_all_agents(
         registry_dir: Diretório de registry. Padrão: agents/registry/
         available_mcp_servers: Conjunto de nomes de MCP servers disponíveis
             no registry. Se None, não filtra (mantém todos os declarados).
+        tier_model_map: Mapeamento tier -> modelo para model routing.
+            Se None ou vazio, usa o model do frontmatter (comportamento padrão).
+        inject_kb_index: Se True, injeta index.md das KBs no prompt dos agentes.
+        kb_base_dir: Diretório base das KBs. Padrão: kb/ na raiz do projeto.
 
     Returns:
         Dicionário {agent_name: AgentDefinition}
@@ -217,7 +303,12 @@ def load_all_agents(
 
     for path in agent_files:
         try:
-            name, agent = load_agent(path)
+            name, agent = load_agent(
+                path,
+                tier_model_map=tier_model_map,
+                inject_kb_index=inject_kb_index,
+                kb_base_dir=kb_base_dir,
+            )
 
             # Filtra mcp_servers indisponíveis para evitar erros silenciosos no SDK
             if available_mcp_servers is not None and agent.mcpServers:

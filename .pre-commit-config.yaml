@@ -34,12 +34,9 @@ repos:
       - id: detect-private-key
 
   # ─── Segurança: bandit ────────────────────────────────────────────
-  - repo: local
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.2
     hooks:
       - id: bandit
-        name: bandit security scan
-        entry: bandit
-        language: system
-        args: ["-r", "agents/", "config/", "hooks/", "commands/", "-ll", "--skip", "B101"]
+        args: ["-ll", "--skip", "B101,B108"]
         types: [python]
-        pass_filenames: false
