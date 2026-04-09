@@ -8,7 +8,7 @@
     <strong>Sistema Multi-Agentes para Engenharia de Dados, Qualidade, Governança e Análise Corporativa</strong>
   </p>
   <p align="center">
-    <img src="https://img.shields.io/badge/Version-0.2.0-brightgreen.svg" alt="Version 0.2.0">
+    <img src="https://img.shields.io/badge/Version-0.3.0-brightgreen.svg" alt="Version 0.3.0">
     <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python Version">
     <img src="https://img.shields.io/badge/Databricks-MCP-FF3621.svg" alt="Databricks MCP">
     <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4.svg" alt="Fabric MCP">
@@ -62,11 +62,11 @@ Construído sobre o **Claude Agent SDK** da Anthropic com integração nativa vi
 
 ---
 
-## 🏗️ Visão Geral e Arquitetura v2.0
+## 🏗️ Visão Geral e Arquitetura v3.0
 
 O **Data Agents** é projetado para atuar como uma *squad* autônoma de dados. Através de um Supervisor de Agentes e o **Método BMAD** (Breakthrough Method for Agile AI-Driven Development), a sua intenção em linguagem natural é orquestrada para **6 especialistas declarativos**, abrangendo Engenharia, Qualidade, Governança e Análise.
 
-A grande inovação da versão 2.0 é a separação entre **Knowledge Bases (KB)** e **Skills**. O Supervisor lê as regras de negócio corporativas (KB) *antes* de planejar a arquitetura, enquanto os Agentes Especialistas consultam os manuais operacionais (Skills) na hora de executar. Os agentes são definidos dinamicamente via arquivos Markdown (YAML Frontmatter), permitindo escalar a equipe virtual sem escrever código Python.
+A grande inovação da versão 3.0 é a separação entre **Knowledge Bases (KB)** e **Skills** com **injeção inteligente por domínio**. Cada agente declara seus `kb_domains` no frontmatter YAML e recebe apenas as KBs relevantes no boot (lazy-loading). O Supervisor lê as regras de negócio corporativas (KB) *antes* de planejar a arquitetura, enquanto os Agentes Especialistas consultam os manuais operacionais (Skills) na hora de executar. Os agentes são definidos dinamicamente via arquivos Markdown (YAML Frontmatter) com suporte a **Model Routing por Tier** (`tier_model_map`), permitindo escalar a equipe virtual sem escrever código Python.
 
 
 <p align="center">
@@ -122,6 +122,11 @@ Passo 4: Síntese      — Valida e consolida os artefatos produzidos
 5. **Fabric RTI** (opcional): `KUSTO_SERVICE_URI` e `KUSTO_SERVICE_DEFAULT_DB`.
 
 Todas as credenciais são configuradas no arquivo `.env` — nenhum `export` manual no shell é necessário.
+
+Configurações avançadas opcionais no `.env`:
+- **`IDLE_TIMEOUT_MINUTES`**: Tempo de inatividade antes do reset automático (padrão: `30`). Use `0` para desabilitar.
+- **`TIER_MODEL_MAP`**: Override de modelo por tier. Ex: `'{"T1": "claude-opus-4-6", "T2": "claude-haiku-3-5"}'`
+- **`INJECT_KB_INDEX`**: Habilita/desabilita injeção automática de KBs nos agentes (padrão: `true`).
 
 ---
 
@@ -220,7 +225,7 @@ Regras de negócio e padrões arquiteturais lidos pelo Supervisor *antes* de pla
 
 Manuais detalhados lidos pelos especialistas *durante* a execução.
 
-- **Databricks (26 módulos):** SDP, Unity Catalog, DABs, MLflow, Vector Search, etc.
+- **Databricks (27 módulos):** SDP, Unity Catalog, DABs, MLflow, Vector Search, AI Functions, etc.
 - **Fabric (5 módulos):** Medallion, Direct Lake, RTI, Data Factory, Cross-Platform.
 
 ---
@@ -229,11 +234,16 @@ Manuais detalhados lidos pelos especialistas *durante* a execução.
 
 Todos os hooks são registrados no Supervisor e interceptam chamadas em tempo real:
 
-| Hook                   | Tipo              | Proteção                                                    |
-| ---------------------- | ----------------- | ------------------------------------------------------------- |
-| `security_hook.py`   | PreToolUse (Bash) | 17 padrões destrutivos com regex + 11 padrões de evasão    |
-| `audit_hook.py`      | PostToolUse       | Log JSONL de todas as tool calls com classificação          |
-| `cost_guard_hook.py` | PostToolUse       | Tiers HIGH/MEDIUM/LOW — alerta ao atingir limites na sessão |
+| Hook                          | Tipo              | Proteção                                                                      |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------------------- |
+| `security_hook.py`          | PreToolUse (Bash) | 17 padrões destrutivos com regex + 11 padrões de evasão                      |
+| `check_sql_cost`            | PreToolUse (All)  | Detecta `SELECT *` sem `WHERE`/`LIMIT` em qualquer tool (SQL, Bash, MCP)     |
+| `audit_hook.py`             | PostToolUse       | Log JSONL de todas as tool calls com classificação de operação               |
+| `cost_guard_hook.py`        | PostToolUse       | Tiers HIGH/MEDIUM/LOW — alerta ao atingir limites + `reset_session_counters()` |
+| `output_compressor_hook.py` | PostToolUse       | Filtra/trunca outputs MCP (SQL: 50 rows, listas: 30 items, max 8K chars)      |
+| `session_logger.py`         | Pós-query         | Grava custo, turnos e duração de cada interação em `logs/sessions.jsonl`    |
+
+**Idle Session Reset:** Após 30 minutos de inatividade (configurável via `IDLE_TIMEOUT_MINUTES`), o sistema reseta automaticamente os contadores de custo e reconecta os MCP servers.
 
 ---
 
@@ -241,9 +251,10 @@ Todos os hooks são registrados no Supervisor e interceptam chamadas em tempo re
 
 | Servidor             | Plataforma        | Tipo           | Configuração     | Tools                                                                    |
 | -------------------- | ----------------- | -------------- | ---------------- | ------------------------------------------------------------------------ |
-| `databricks`       | Databricks        | stdio (Python) | `mcp_servers.py` | 50+ tools: execute_sql, run_job_now, start_pipeline, list_catalogs, etc. |
-| `fabric_community` | Microsoft Fabric  | stdio (Python) | `mcp_servers.py` | list_workspaces, list_tables, get_table_schema, get_lineage, list_jobs   |
-| `fabric_rti`       | Fabric Eventhouse | stdio (Python) | `mcp_servers.py` | kusto_query, kusto_command, eventstream_create, activator_create_trigger |
+| `databricks`       | Databricks        | stdio (Python) | `mcp_servers.py` | 31 tools: execute_sql, run_job, start_pipeline, list_catalogs, etc.      |
+| `fabric`           | Microsoft Fabric  | stdio (Python) | `mcp_servers.py` | 13 tools: list_workspaces, onelake_upload, list_items, etc.              |
+| `fabric_community` | Microsoft Fabric  | stdio (Python) | `mcp_servers.py` | 27 tools: list_tables, get_table_schema, get_lineage, list_jobs, etc.    |
+| `fabric_rti`       | Fabric Eventhouse | stdio (Python) | `mcp_servers.py` | kusto_query, kusto_command, eventstream_create, activator_create_trigger  |
 
 ### Como funciona a configuração dos MCP Servers
 
@@ -308,10 +319,10 @@ A classe `agents/mlflow_wrapper.py` empacota toda a engine Multi-Agente como um 
 
 A v2.0 introduziu a definição declarativa de agentes. Para criar um novo agente:
 
-1. Crie um arquivo `novo-agente.md` em `agents/registry/`.
-2. Adicione o Frontmatter YAML definindo `name`, `model`, `mcp_servers`, `kb_domains` e `tools`.
+1. Crie um arquivo `novo-agente.md` em `agents/registry/` (use `_template.md` como base).
+2. Adicione o Frontmatter YAML definindo `name`, `model`, `tier` (T1 ou T2), `mcp_servers`, `kb_domains` e `tools`.
 3. Escreva o prompt do agente no corpo do Markdown.
-4. O `loader.py` carregará o agente automaticamente no próximo boot.
+4. O `loader.py` carregará o agente automaticamente no próximo boot, injetando as KBs dos domínios declarados em `kb_domains` e aplicando o modelo do `tier_model_map` (se configurado no `.env`).
 
 *"Um agente com acesso à nuvem é bom. Uma equipe de especialistas autônomos governados por Knowledge Bases declarativas é revolucionário."*
 

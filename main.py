@@ -42,6 +42,7 @@ from config.exceptions import (
 from config.logging_config import setup_logging
 from config.settings import settings
 from hooks.session_logger import log_session_result
+from hooks.cost_guard_hook import reset_session_counters
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
@@ -282,7 +283,31 @@ async def run_interactive() -> None:
         async with ClaudeSDKClient(options=options) as client:
             while True:
                 try:
-                    user_input = console.input("[bold green]Você:[/bold green] ").strip()
+                    # Input com idle timeout: detecta inatividade e oferece reset
+                    try:
+                        user_input = await asyncio.wait_for(
+                            asyncio.get_event_loop().run_in_executor(
+                                None,
+                                lambda: console.input("[bold green]Você:[/bold green] ").strip(),
+                            ),
+                            timeout=settings.idle_timeout_minutes * 60
+                            if settings.idle_timeout_minutes > 0
+                            else None,
+                        )
+                    except asyncio.TimeoutError:
+                        console.print(
+                            f"\n[yellow]⏰ Inatividade detectada "
+                            f"({settings.idle_timeout_minutes} min). "
+                            f"Resetando sessão para economizar tokens...[/yellow]"
+                        )
+                        reset_session_counters()
+                        await client.disconnect()
+                        await client.connect()
+                        logger.info(
+                            f"Sessão resetada automaticamente por idle "
+                            f"({settings.idle_timeout_minutes} min)."
+                        )
+                        continue
 
                     if not user_input:
                         continue
@@ -295,9 +320,12 @@ async def run_interactive() -> None:
                     if user_input.lower() in ("limpar", "clear", "reset"):
                         console.clear()
                         print_banner()
+                        reset_session_counters()
                         await client.disconnect()
                         await client.connect()
-                        logger.info("Sessão reiniciada pelo usuário.")
+                        logger.info(
+                            "Sessão reiniciada pelo usuário (contadores de custo resetados)."
+                        )
                         continue
 
                     if user_input.lower() in ("/help", "help", "ajuda"):

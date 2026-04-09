@@ -290,3 +290,130 @@ class TestRegistryFiles:
         """O arquivo de template deve existir para orientar novos agentes."""
         template = self.REGISTRY_DIR / "_template.md"
         assert template.exists(), "Arquivo _template.md não encontrado no registry"
+
+
+# ─── Testes de Model Routing por Tier ───────────────────────────────────────
+
+
+class TestModelRoutingByTier:
+    """Testes para model routing via tier_model_map no loader."""
+
+    def test_load_without_tier_map_uses_frontmatter_model(self):
+        """Sem tier_model_map, cada agente usa o model do seu frontmatter."""
+        agents = load_all_agents(tier_model_map=None)
+        # sql-expert declara model: claude-sonnet-4-6 no frontmatter
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        # pipeline-architect declara model: claude-opus-4-6 no frontmatter
+        assert "opus" in agents["pipeline-architect"].model.lower()
+
+    def test_load_with_empty_tier_map_uses_frontmatter_model(self):
+        """Com tier_model_map vazio, comportamento idêntico a None."""
+        agents = load_all_agents(tier_model_map={})
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        assert "opus" in agents["pipeline-architect"].model.lower()
+
+    def test_load_with_tier_map_overrides_model(self):
+        """Com tier_model_map populado, o modelo do tier sobrescreve o do frontmatter."""
+        tier_map = {"T1": "claude-opus-4-6", "T2": "claude-haiku-3-5"}
+        agents = load_all_agents(tier_model_map=tier_map)
+        # sql-expert é T1 → deve receber claude-opus-4-6
+        assert agents["sql-expert"].model == "claude-opus-4-6"
+        # data-quality-steward é T2 → deve receber claude-haiku-3-5
+        assert agents["data-quality-steward"].model == "claude-haiku-3-5"
+
+    def test_load_with_partial_tier_map(self):
+        """Se o tier_model_map não cobre todos os tiers, apenas os cobertos são roteados."""
+        tier_map = {"T2": "claude-haiku-3-5"}
+        agents = load_all_agents(tier_model_map=tier_map)
+        # sql-expert é T1, não está no mapa → mantém frontmatter (sonnet)
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        # data-quality-steward é T2 → recebe haiku
+        assert agents["data-quality-steward"].model == "claude-haiku-3-5"
+
+    def test_all_t1_agents_have_tier_field(self):
+        """Todos os agentes T1 devem declarar tier no frontmatter."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        t1_agents = ["sql-expert", "spark-expert", "pipeline-architect"]
+        for name in t1_agents:
+            path = AGENTS_REGISTRY_DIR / f"{name}.md"
+            content = path.read_text(encoding="utf-8")
+            meta, _ = _parse_frontmatter(content)
+            assert meta.get("tier") == "T1", f"Agente '{name}' deve ter tier: T1"
+
+    def test_all_t2_agents_have_tier_field(self):
+        """Todos os agentes T2 devem declarar tier no frontmatter."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        t2_agents = ["data-quality-steward", "governance-auditor", "semantic-modeler"]
+        for name in t2_agents:
+            path = AGENTS_REGISTRY_DIR / f"{name}.md"
+            content = path.read_text(encoding="utf-8")
+            meta, _ = _parse_frontmatter(content)
+            assert meta.get("tier") == "T2", f"Agente '{name}' deve ter tier: T2"
+
+
+# ─── Testes de KB Injection ─────────────────────────────────────────────────
+
+
+class TestKBInjection:
+    """Testes para injeção de index.md das KBs no prompt dos agentes."""
+
+    def test_load_with_kb_injection_adds_content_to_prompt(self):
+        """Com inject_kb_index=True, o prompt dos agentes deve conter conteúdo da KB."""
+        agents = load_all_agents(inject_kb_index=True)
+        # sql-expert tem kb_domains: [sql-patterns, databricks, fabric]
+        agent = agents["sql-expert"]
+        assert "Knowledge Base" in agent.prompt
+        assert "sql-patterns" in agent.prompt.lower() or "Padrões SQL" in agent.prompt
+
+    def test_load_without_kb_injection_preserves_original_prompt(self):
+        """Com inject_kb_index=False, o prompt deve ser o body original sem KB."""
+        agents = load_all_agents(inject_kb_index=False)
+        agent = agents["sql-expert"]
+        assert "[Contexto Injetado]" not in agent.prompt
+
+    def test_load_with_kb_injection_default_false_preserves_prompt(self):
+        """O default de inject_kb_index é False — garante retrocompatibilidade."""
+        agents = load_all_agents()
+        agent = agents["sql-expert"]
+        assert "[Contexto Injetado]" not in agent.prompt
+
+    def test_all_agents_with_kb_domains_get_injection(self):
+        """Todos os agentes que declaram kb_domains devem receber injeção quando ativado."""
+        agents = load_all_agents(inject_kb_index=True)
+        agents_with_kb = [
+            "sql-expert",
+            "spark-expert",
+            "pipeline-architect",
+            "semantic-modeler",
+            "data-quality-steward",
+            "governance-auditor",
+        ]
+        for name in agents_with_kb:
+            assert "[Contexto Injetado]" in agents[name].prompt, (
+                f"Agente '{name}' deveria ter KB injetada no prompt"
+            )
+
+    def test_kb_injection_includes_all_declared_domains(self):
+        """A injeção deve incluir conteúdo de todos os domínios declarados no kb_domains."""
+        agents = load_all_agents(inject_kb_index=True)
+        # pipeline-architect tem kb_domains: [pipeline-design, databricks, fabric]
+        prompt = agents["pipeline-architect"].prompt
+        assert "Design de Pipelines" in prompt or "pipeline-design" in prompt.lower()
+        assert "Databricks" in prompt
+        assert "Fabric" in prompt
+
+    def test_kb_injection_with_invalid_domain_ignores_gracefully(self, tmp_path):
+        """Domínios inválidos no kb_domains são silenciosamente ignorados."""
+        from agents.loader import _load_kb_indexes
+
+        result = _load_kb_indexes(["dominio-inexistente"], kb_base_dir=tmp_path)
+        assert result == ""
+
+    def test_load_kb_indexes_returns_empty_for_empty_list(self):
+        """Lista vazia de kb_domains retorna string vazia."""
+        from agents.loader import _load_kb_indexes
+
+        result = _load_kb_indexes([])
+        assert result == ""

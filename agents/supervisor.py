@@ -5,7 +5,7 @@ Constrói o ClaudeAgentOptions com:
   - System prompt do orquestrador
   - Subagents especialistas carregados dinamicamente via agents/registry/
   - Servidores MCP das plataformas com credenciais configuradas
-  - Hooks de auditoria e segurança
+  - Hooks de auditoria, segurança e compressão de output
   - Configurações de modelo, custo e permissões
 
 Arquitetura de Agentes:
@@ -32,7 +32,8 @@ from config.mcp_servers import build_mcp_registry
 from config.settings import settings
 from hooks.audit_hook import audit_tool_usage
 from hooks.cost_guard_hook import log_cost_generating_operations
-from hooks.security_hook import block_destructive_commands
+from hooks.output_compressor_hook import compress_tool_output
+from hooks.security_hook import block_destructive_commands, check_sql_cost
 
 
 def build_supervisor_options(
@@ -70,7 +71,11 @@ def build_supervisor_options(
     # Carregamento dinâmico de agentes via Markdown/YAML
     # Filtra mcp_servers dos agentes para conter apenas servidores disponíveis no registry.
     # Isso evita referências a servidores sem credenciais (ex: fabric_rti sem KUSTO_SERVICE_URI).
-    agents = load_all_agents(available_mcp_servers=set(mcp_registry.keys()))
+    agents = load_all_agents(
+        available_mcp_servers=set(mcp_registry.keys()),
+        tier_model_map=settings.tier_model_map if settings.tier_model_map else None,
+        inject_kb_index=settings.inject_kb_index,
+    )
 
     return ClaudeAgentOptions(
         # --- Modelo e System Prompt ---
@@ -107,11 +112,20 @@ def build_supervisor_options(
             "PostToolUse": [
                 HookMatcher(hooks=[audit_tool_usage]),  # type: ignore[list-item]
                 HookMatcher(hooks=[log_cost_generating_operations]),  # type: ignore[list-item]
+                # RTK-style: comprime output verboso das tools antes de enviar ao modelo.
+                # Executado por último para que audit/cost_guard observem o output original.
+                HookMatcher(hooks=[compress_tool_output]),  # type: ignore[list-item]
             ],
             "PreToolUse": [
                 HookMatcher(
                     matcher="Bash",
                     hooks=[block_destructive_commands],  # type: ignore[list-item]
+                ),
+                # check_sql_cost: detecta SELECT * sem WHERE/LIMIT em QUALQUER tool
+                # (Bash com spark-sql, execute_sql via MCP, etc.)
+                # Sem matcher → intercepta todas as tools.
+                HookMatcher(
+                    hooks=[check_sql_cost],  # type: ignore[list-item]
                 ),
             ],
         },

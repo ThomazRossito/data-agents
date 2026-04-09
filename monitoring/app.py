@@ -45,6 +45,7 @@ ROOT = Path(__file__).parent.parent
 AUDIT_LOG = ROOT / "logs" / "audit.jsonl"
 APP_LOG = ROOT / "logs" / "app.jsonl"
 SESSIONS_LOG = ROOT / "logs" / "sessions.jsonl"
+COMPRESSION_LOG = ROOT / "logs" / "compression.jsonl"
 REGISTRY = ROOT / "agents" / "registry"
 
 
@@ -281,6 +282,7 @@ with st.sidebar:
 audit_records = load_jsonl(AUDIT_LOG)
 app_records = load_jsonl(APP_LOG)
 session_records = load_jsonl(SESSIONS_LOG)
+compression_records = load_jsonl(COMPRESSION_LOG)
 agents = load_agents()
 audit = analyse_audit(audit_records)
 app = analyse_app(app_records)
@@ -652,6 +654,11 @@ elif page == "⚙️ Configurações":
         ("hooks/security_hook.py", "Bloqueia comandos destrutivos (PreToolUse)"),
         ("hooks/audit_hook.py", "Registra todas as tool calls (PostToolUse)"),
         ("hooks/cost_guard_hook.py", "Alerta operações de alto custo (PostToolUse)"),
+        (
+            "hooks/output_compressor_hook.py",
+            "Comprime outputs MCP (PostToolUse) — economia de tokens",
+        ),
+        ("hooks/session_logger.py", "Grava métricas de sessão em sessions.jsonl"),
         (f"logs/audit.jsonl ({audit['total']} entradas)", "Histórico completo de tool calls"),
         (f"logs/app.jsonl ({app['total']} entradas)", "Log estruturado da aplicação"),
     ]
@@ -829,6 +836,186 @@ elif page == "💰 Custo & Tokens":
         )
         st.dataframe(pricing_data, use_container_width=True, hide_index=True)
 
+        # ══════════════════════════════════════════════════════════════════
+        # ECONOMIA DO OUTPUT COMPRESSOR
+        # ══════════════════════════════════════════════════════════════════
+        st.divider()
+        st.header("🗜️ Economia do Output Compressor")
+        st.caption(
+            "O `output_compressor_hook` trunca outputs de ferramentas MCP antes de atingirem o modelo, "
+            "economizando tokens de input e reduzindo custos."
+        )
+
+        if not compression_records:
+            st.info(
+                "Nenhum dado de compressão registrado ainda em `logs/compression.jsonl`. "
+                "A economia será registrada automaticamente quando o compressor truncar outputs."
+            )
+        else:
+            df_comp = pd.DataFrame(compression_records)
+            df_comp["saved_chars"] = df_comp["saved_chars"].fillna(0).astype(int)
+            df_comp["saved_tokens_est"] = df_comp["saved_tokens_est"].fillna(0).astype(int)
+            df_comp["saved_cost_est_usd"] = df_comp["saved_cost_est_usd"].fillna(0).astype(float)
+            df_comp["reduction_pct"] = df_comp["reduction_pct"].fillna(0).astype(float)
+            df_comp["original_chars"] = df_comp["original_chars"].fillna(0).astype(int)
+            df_comp["compressed_chars"] = df_comp["compressed_chars"].fillna(0).astype(int)
+            df_comp["date"] = df_comp["timestamp"].str[:10]
+
+            # KPIs de economia
+            total_saved_chars = df_comp["saved_chars"].sum()
+            total_saved_tokens = df_comp["saved_tokens_est"].sum()
+            total_saved_cost = df_comp["saved_cost_est_usd"].sum()
+            total_original = df_comp["original_chars"].sum()
+            total_compressed = df_comp["compressed_chars"].sum()
+            avg_reduction = df_comp["reduction_pct"].mean()
+            total_compressions = len(df_comp)
+
+            c1, c2, c3, c4, c5 = st.columns(5)
+            c1.metric(
+                "Tokens Economizados",
+                f"{total_saved_tokens:,}",
+                help="Estimativa: 1 token ≈ 4 caracteres",
+            )
+            c2.metric(
+                "Economia Estimada",
+                f"${total_saved_cost:.4f}",
+                help="Baseado em $9/1M tokens (média opus+sonnet input)",
+            )
+            c3.metric(
+                "Chars Originais",
+                f"{total_original:,}",
+                help="Total de caracteres antes da compressão",
+            )
+            c4.metric(
+                "Chars Após Compressão",
+                f"{total_compressed:,}",
+                help="Total de caracteres após truncamento",
+            )
+            c5.metric(
+                "Redução Média",
+                f"{avg_reduction:.1f}%",
+                help="Percentual médio de redução por compressão",
+            )
+
+            st.divider()
+
+            col_left2, col_right2 = st.columns(2)
+
+            with col_left2:
+                # Economia por data
+                st.subheader("📈 Economia por Data")
+                savings_by_date = (
+                    df_comp.groupby("date")
+                    .agg(
+                        Tokens_Economizados=("saved_tokens_est", "sum"),
+                        Economia_USD=("saved_cost_est_usd", "sum"),
+                        Compressoes=("saved_chars", "count"),
+                    )
+                    .reset_index()
+                )
+                savings_by_date = savings_by_date.set_index("date")
+                st.line_chart(savings_by_date[["Tokens_Economizados"]], color="#10b981")
+
+                # Comparativo visual
+                st.subheader("⚖️ Antes vs Depois (Caracteres)")
+                compare_data = pd.DataFrame(
+                    {
+                        "Métrica": ["Output Original", "Após Compressão", "Economia"],
+                        "Caracteres": [total_original, total_compressed, total_saved_chars],
+                    }
+                )
+                st.bar_chart(compare_data.set_index("Métrica"), color="#6366f1")
+
+            with col_right2:
+                # Top tools por economia
+                st.subheader("🏆 Top Tools por Economia")
+                savings_by_tool = (
+                    df_comp.groupby("tool_name")
+                    .agg(
+                        Compressoes=("tool_name", "count"),
+                        Chars_Economizados=("saved_chars", "sum"),
+                        Tokens_Economizados=("saved_tokens_est", "sum"),
+                        Economia_USD=("saved_cost_est_usd", "sum"),
+                        Reducao_Media=("reduction_pct", "mean"),
+                    )
+                    .sort_values("Tokens_Economizados", ascending=False)
+                    .reset_index()
+                )
+                savings_by_tool.columns = [
+                    "Ferramenta",
+                    "Compressões",
+                    "Chars Economizados",
+                    "Tokens Economizados",
+                    "Economia (USD)",
+                    "Redução Média %",
+                ]
+                st.dataframe(
+                    savings_by_tool,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Economia (USD)": st.column_config.NumberColumn(format="$%.4f"),
+                        "Redução Média %": st.column_config.NumberColumn(format="%.1f%%"),
+                    },
+                )
+
+                # Custo com vs sem compressão
+                st.subheader("💡 Impacto no Custo Total")
+                if total_cost > 0:
+                    hypothetical_cost = total_cost + total_saved_cost
+                    savings_pct = (
+                        round((total_saved_cost / hypothetical_cost) * 100, 1)
+                        if hypothetical_cost > 0
+                        else 0
+                    )
+                    st.markdown(
+                        f"- **Custo real (com compressão):** `${total_cost:.4f}`\n"
+                        f"- **Custo hipotético (sem compressão):** `${hypothetical_cost:.4f}`\n"
+                        f"- **Economia pelo compressor:** `${total_saved_cost:.4f}` (**{savings_pct}%** de redução)"
+                    )
+                else:
+                    st.info("Execute sessões para ver o impacto comparativo.")
+
+            st.divider()
+
+            # Histórico de compressões
+            st.subheader("📋 Histórico de Compressões")
+            df_comp_display = df_comp[
+                [
+                    "timestamp",
+                    "tool_name",
+                    "original_chars",
+                    "compressed_chars",
+                    "saved_chars",
+                    "reduction_pct",
+                    "saved_tokens_est",
+                    "saved_cost_est_usd",
+                ]
+            ].copy()
+            df_comp_display.columns = [
+                "Timestamp",
+                "Ferramenta",
+                "Original (chars)",
+                "Comprimido (chars)",
+                "Economizado (chars)",
+                "Redução %",
+                "Tokens Economizados",
+                "Economia (USD)",
+            ]
+            df_comp_display = df_comp_display.sort_values("Timestamp", ascending=False)
+            df_comp_display["Timestamp"] = df_comp_display["Timestamp"].apply(
+                lambda x: to_sp(x) if isinstance(x, str) else x
+            )
+            st.dataframe(
+                df_comp_display.head(100),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Economia (USD)": st.column_config.NumberColumn(format="$%.6f"),
+                    "Redução %": st.column_config.NumberColumn(format="%.1f%%"),
+                },
+            )
+
 
 # ── SOBRE ─────────────────────────────────────────────────────────────────────
 elif page == "ℹ️ Sobre":
@@ -931,8 +1118,10 @@ elif page == "ℹ️ Sobre":
             "💰 Custo & Tokens",
             "Rastreamento completo de custos da API Anthropic por sessão. "
             "Exibe custo total acumulado, custo médio por sessão, total de turns e duração. "
-            "Inclui gráficos de custo por data, sessões por data, breakdown por tipo e "
-            "tabela de histórico de todas as sessões com prompt preview.",
+            "Inclui gráficos de custo por data, sessões por data, breakdown por tipo, "
+            "tabela de histórico de todas as sessões com prompt preview, e a seção "
+            "**Economia do Output Compressor** com métricas detalhadas de tokens economizados, "
+            "comparativo custo real vs hipotético (sem compressão) e ranking de tools por economia.",
         ),
     ]
 
@@ -977,9 +1166,10 @@ elif page == "ℹ️ Sobre":
         - **Semantic Modeler** (T2) — modelos semânticos DAX e Metric Views
 
         Os **hooks** interceptam cada execução de ferramenta:
-        `security_hook` bloqueia comandos destrutivos,
+        `security_hook` bloqueia comandos destrutivos e queries SQL custosas,
         `audit_hook` registra todas as chamadas,
-        `cost_guard_hook` alerta sobre operações de alto custo.
+        `cost_guard_hook` alerta sobre operações de alto custo,
+        `output_compressor_hook` filtra e trunca outputs para economia de tokens.
         """
     )
 
