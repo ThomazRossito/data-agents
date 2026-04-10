@@ -149,7 +149,7 @@ O conhecimento e organizado em 3 camadas:
 
 ```bash
 pip install -e ".[monitoring]"
-streamlit run monitoring/app.py
+python -m streamlit run monitoring/app.py
 ```
 
 9 paginas: Overview, Agentes (com metricas de performance), Workflows (delegacoes, Clarity Checkpoint, specs), Execucoes, MCP Servers, Logs, Configuracoes, Custo & Tokens (economia do compressor), Sobre. Inclui filtro global de datas e auto-refresh.
