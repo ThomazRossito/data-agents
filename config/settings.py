@@ -42,6 +42,42 @@ class Settings(BaseSettings):
     # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp
     fabric_community_command: str = "microsoft-fabric-mcp"
 
+    # --- Fabric SQL Analytics Endpoint (MCP Customizado — multi-lakehouse) ---
+    # Resolve a limitação da REST API que só lista o schema dbo.
+    # Conecta via TDS (pyodbc + AAD Bearer Token) ao SQL Analytics Endpoint.
+    #
+    # Registry de lakehouses (JSON) — recomendado para múltiplos lakehouses:
+    #   FABRIC_SQL_LAKEHOUSES={"TARN_LH_DEV": "tarn-dev.datawarehouse.fabric.microsoft.com",
+    #                          "TARN_LH_PROD": "tarn-prod.datawarehouse.fabric.microsoft.com"}
+    #   FABRIC_SQL_DEFAULT_LAKEHOUSE=TARN_LH_DEV
+    #
+    # Como encontrar o endpoint: Portal Fabric → Lakehouse → SQL Analytics Endpoint → "Server"
+    fabric_sql_lakehouses: str = "{}"  # JSON: {"NOME_LH": "endpoint.fabric.microsoft.com"}
+    fabric_sql_default_lakehouse: str = ""  # lakehouse usado quando o agente não especifica
+    # Backward compat (variáveis legadas para um único lakehouse)
+    fabric_sql_endpoint: str = ""
+    fabric_lakehouse_name: str = ""
+    # Comando do servidor — instalado via pip install -e .
+    # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/fabric-sql-mcp
+    fabric_sql_command: str = "fabric-sql-mcp"
+
+    # --- Databricks Genie (MCP Customizado — Conversation API + Space Management) ---
+    # Resolve o gap do databricks-mcp-server que não expõe as tools de Genie.
+    # Conecta à Genie REST API usando DATABRICKS_HOST + DATABRICKS_TOKEN (sem deps extras).
+    #
+    # Registry de Genie Spaces (JSON) — recomendado para múltiplos spaces:
+    #   DATABRICKS_GENIE_SPACES={"retail-sales": "01f117197b5319fb972e10a45735b28c",
+    #                             "hr-analytics": "01abc123..."}
+    #   DATABRICKS_GENIE_DEFAULT_SPACE=retail-sales
+    #
+    # Como encontrar o Space ID:
+    #   Databricks → AI/BI → Genie → abra o Space → copie o ID da URL
+    databricks_genie_spaces: str = "{}"  # JSON: {"nome-amigavel": "space_id"}
+    databricks_genie_default_space: str = ""  # space usado quando o agente não especifica
+    # Comando do servidor — instalado via pip install -e .
+    # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/databricks-genie-mcp
+    databricks_genie_command: str = "databricks-genie-mcp"
+
     # --- Fabric RTI ---
     kusto_service_uri: str = ""
     kusto_service_default_db: str = ""
@@ -155,6 +191,36 @@ class Settings(BaseSettings):
                 },
                 "required": ["AZURE_TENANT_ID", "FABRIC_WORKSPACE_ID"],
             },
+            "fabric_sql": {
+                # SQL Analytics Endpoint — resolve limitação do schema dbo da REST API
+                # Considera configurado se tiver registry OU variáveis legadas
+                "fields": {
+                    "AZURE_TENANT_ID": self.azure_tenant_id,
+                    "FABRIC_SQL_LAKEHOUSES_OR_LEGACY": (
+                        self.fabric_sql_lakehouses
+                        if self.fabric_sql_lakehouses not in ("{}", "")
+                        else self.fabric_sql_endpoint
+                    ),
+                },
+                "required": ["AZURE_TENANT_ID", "FABRIC_SQL_LAKEHOUSES_OR_LEGACY"],
+            },
+            "databricks_genie": {
+                # Reusa credenciais Databricks + pelo menos um space configurado
+                "fields": {
+                    "DATABRICKS_HOST": self.databricks_host,
+                    "DATABRICKS_TOKEN": self.databricks_token,
+                    "DATABRICKS_GENIE_SPACES_OR_DEFAULT": (
+                        self.databricks_genie_spaces
+                        if self.databricks_genie_spaces not in ("{}", "")
+                        else self.databricks_genie_default_space
+                    ),
+                },
+                "required": [
+                    "DATABRICKS_HOST",
+                    "DATABRICKS_TOKEN",
+                    "DATABRICKS_GENIE_SPACES_OR_DEFAULT",
+                ],
+            },
             "fabric_rti": {
                 "fields": {
                     "KUSTO_SERVICE_URI": self.kusto_service_uri,
@@ -200,7 +266,7 @@ class Settings(BaseSettings):
             )
 
         # Plataformas de dados — pelo menos uma deve estar configurada
-        data_platforms = ["databricks", "fabric", "fabric_rti"]
+        data_platforms = ["databricks", "databricks_genie", "fabric", "fabric_sql", "fabric_rti"]
         any_ready = any(status[p]["ready"] for p in data_platforms)
 
         if not any_ready:

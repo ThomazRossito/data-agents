@@ -8,7 +8,7 @@
     <strong>Sistema Multi-Agentes para Engenharia de Dados, Qualidade, Governanca e Analise Corporativa</strong>
   </p>
   <p align="center">
-    <img src="https://img.shields.io/badge/Version-3.1.0-brightgreen.svg" alt="Version 3.1.0">
+    <img src="https://img.shields.io/badge/Version-3.2.0-brightgreen.svg" alt="Version 3.2.0">
     <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python Version">
     <img src="https://img.shields.io/badge/Databricks-MCP-FF3621.svg" alt="Databricks MCP">
     <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4.svg" alt="Fabric MCP">
@@ -100,12 +100,14 @@ python main.py
 
 ### Credenciais no `.env`
 
-| Variavel                                            | Obrigatoria | Plataforma |
-| --------------------------------------------------- | ----------- | ---------- |
-| `ANTHROPIC_API_KEY`                               | Sim         | Claude API |
-| `DATABRICKS_HOST`, `DATABRICKS_TOKEN`           | Nao         | Databricks |
-| `AZURE_TENANT_ID`, `FABRIC_WORKSPACE_ID`        | Nao         | Fabric     |
-| `KUSTO_SERVICE_URI`, `KUSTO_SERVICE_DEFAULT_DB` | Nao         | Fabric RTI |
+| Variavel                                               | Obrigatoria | Plataforma           |
+| ------------------------------------------------------ | ----------- | -------------------- |
+| `ANTHROPIC_API_KEY`                                  | Sim         | Claude API           |
+| `DATABRICKS_HOST`, `DATABRICKS_TOKEN`              | Nao         | Databricks           |
+| `DATABRICKS_GENIE_SPACES`, `DATABRICKS_GENIE_DEFAULT_SPACE` | Nao | Databricks Genie     |
+| `AZURE_TENANT_ID`, `FABRIC_WORKSPACE_ID`           | Nao         | Fabric               |
+| `FABRIC_SQL_LAKEHOUSES`, `FABRIC_SQL_DEFAULT_LAKEHOUSE` | Nao    | Fabric SQL Analytics |
+| `KUSTO_SERVICE_URI`, `KUSTO_SERVICE_DEFAULT_DB`    | Nao         | Fabric RTI           |
 
 O sistema ativa automaticamente apenas as plataformas com credenciais validas.
 
@@ -149,7 +151,7 @@ O conhecimento e organizado em 3 camadas:
 
 ```bash
 pip install -e ".[monitoring]"
-streamlit run monitoring/app.py
+python -m streamlit run monitoring/app.py
 ```
 
 9 paginas: Overview, Agentes (com metricas de performance), Workflows (delegacoes, Clarity Checkpoint, specs), Execucoes, MCP Servers, Logs, Configuracoes, Custo & Tokens (economia do compressor), Sobre. Inclui filtro global de datas e auto-refresh.

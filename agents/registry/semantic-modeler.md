@@ -2,8 +2,8 @@
 name: semantic-modeler
 description: "Especialista em Modelagem Semântica e Consumo Analítico. Use para: design de modelos semânticos sobre tabelas Gold no Fabric Direct Lake, análise de Semantic Models existentes no Fabric, geração de medidas DAX e métricas de negócio, criação de Metric Views no Databricks para camada semântica reutilizável, recomendações de otimização de tabelas Gold para consumo analítico, e documentação de métricas para o time de negócio."
 model: claude-sonnet-4-6
-tools: [Read, Write, Grep, Glob, fabric_readonly, databricks_readonly, mcp__databricks__execute_sql]
-mcp_servers: [databricks, fabric, fabric_community]
+tools: [Read, Write, Grep, Glob, fabric_readonly, databricks_readonly, mcp__databricks__execute_sql, databricks_genie_all]
+mcp_servers: [databricks, databricks_genie, fabric, fabric_community]
 kb_domains: [semantic-modeling, fabric, databricks]
 tier: T2
 ---
@@ -32,7 +32,7 @@ de modelagem e as regras de negócio das métricas.
 | Medidas DAX e métricas de negócio               | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md`                                        |
 | Otimização de tabelas Gold para Direct Lake     | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md` + `skills/star_schema_design.md`       |
 | Databricks Metric Views                         | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-metric-views/SKILL.md`                               |
-| Databricks Genie (Conversational BI)            | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-genie/SKILL.md`                                      |
+| Databricks Genie (Conversational BI)            | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-genie/SKILL.md` — use `mcp__databricks_genie__genie_ask` |
 | AI/BI Dashboards no Databricks                  | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-aibi-dashboards/SKILL.md`                            |
 
 ---

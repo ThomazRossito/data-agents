@@ -40,6 +40,11 @@ from mcp_servers.fabric_rti.server_config import (
     FABRIC_RTI_MCP_TOOLS,
     FABRIC_RTI_READONLY_TOOLS,
 )
+from mcp_servers.databricks_genie.server_config import (
+    DATABRICKS_GENIE_MCP_TOOLS,
+    DATABRICKS_GENIE_MCP_READONLY_TOOLS,
+)
+from mcp_servers.fabric_sql.server_config import FABRIC_SQL_MCP_TOOLS
 
 logger = logging.getLogger("data_agents.loader")
 
@@ -53,6 +58,8 @@ KB_BASE_DIR = Path(__file__).parent.parent / "kb"
 MCP_TOOL_SETS: dict[str, list[str]] = {
     "databricks_all": DATABRICKS_MCP_TOOLS,
     "databricks_readonly": DATABRICKS_MCP_READONLY_TOOLS,
+    "databricks_genie_all": DATABRICKS_GENIE_MCP_TOOLS,
+    "databricks_genie_readonly": DATABRICKS_GENIE_MCP_READONLY_TOOLS,
     "fabric_all": FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS,
     "fabric_readonly": [
         t
@@ -61,6 +68,12 @@ MCP_TOOL_SETS: dict[str, list[str]] = {
     ],
     "fabric_rti_all": FABRIC_RTI_MCP_TOOLS,
     "fabric_rti_readonly": FABRIC_RTI_READONLY_TOOLS,
+    "fabric_sql_all": FABRIC_SQL_MCP_TOOLS,
+    "fabric_sql_readonly": [
+        t
+        for t in FABRIC_SQL_MCP_TOOLS
+        if any(kw in t for kw in ["list_", "describe_", "sample_", "count_", "diagnostics"])
+    ],
 }
 
 

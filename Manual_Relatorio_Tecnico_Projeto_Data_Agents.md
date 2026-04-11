@@ -1,4 +1,4 @@
-# Manual e Relatorio Tecnico: Projeto Data Agents v3.1
+# Manual e Relatorio Tecnico: Projeto Data Agents v3.2
 
 ---
 
@@ -274,7 +274,9 @@ O projeto segue uma organizacao modular e declarativa. Abaixo esta a estrutura c
 | skills/databricks/                  | 27 modulos operacionais Databricks                                                                             |
 | skills/fabric/                      | 5 modulos operacionais Fabric                                                                                  |
 | mcp_servers/databricks/             | 50+ tools para Unity Catalog, SQL, Jobs, LakeFlow                                                              |
+| mcp_servers/databricks_genie/      | MCP customizado: 9 tools para Genie Conversation API + Space Management                                        |
 | mcp_servers/fabric/                 | 28 tools Community + servidor oficial                                                                          |
+| mcp_servers/fabric_sql/             | MCP customizado: 8 tools para SQL Analytics Endpoint (bronze/silver/gold)                                      |
 | mcp_servers/fabric_rti/             | Tools para KQL, Eventstreams, Activator                                                                        |
 | monitoring/app.py                   | Dashboard Streamlit (9 paginas)                                                                                |
 | tests/                              | 11 modulos de teste (cobertura 80%)                                                                            |
@@ -487,18 +489,74 @@ O Passo 0.9 do protocolo BMAD seleciona automaticamente o template adequado com 
 
 ## 11. Conexoes com a Nuvem (MCP Servers)
 
-O MCP (Model Context Protocol) permite que a IA interaja com o mundo real. O Data Agents possui 4 conexoes:
+O MCP (Model Context Protocol) permite que a IA interaja com o mundo real. O Data Agents possui 6 conexoes:
 
-| **Servidor** | **Plataforma** | **Tools** | **Capacidades**                                                |
-| ------------------ | -------------------- | --------------- | -------------------------------------------------------------------- |
-| Databricks         | Databricks           | 50+             | Unity Catalog, SQL, Pipelines SDP, Jobs, LakeFlow, Clusters, Volumes |
-| Fabric Community   | Microsoft Fabric     | 28              | Lakehouses, Jobs, Linhagem, Compute, Shortcuts                       |
-| Fabric Official    | Microsoft Fabric     | Variavel        | OneLake, operacoes de arquivo (opcional)                             |
-| Fabric RTI         | Eventhouse / Kusto   | 15+             | KQL, Eventstreams, Activator, triggers                               |
+| **Servidor**          | **Plataforma**      | **Tools** | **Capacidades**                                                      |
+| --------------------- | ------------------- | --------- | -------------------------------------------------------------------- |
+| Databricks            | Databricks          | 50+       | Unity Catalog, SQL, Pipelines SDP, Jobs, LakeFlow, Clusters, Volumes |
+| Databricks Genie ⭐   | Databricks          | 9         | Genie Conversation API, Space Management, Export/Import/Migracao     |
+| Fabric Community      | Microsoft Fabric    | 28        | Lakehouses, Jobs, Linhagem, Compute, Shortcuts                       |
+| Fabric SQL ⭐         | Microsoft Fabric    | 8         | SQL Analytics Endpoint via TDS — ve todos os schemas (bronze/silver/gold) |
+| Fabric Official       | Microsoft Fabric    | Variavel  | OneLake, operacoes de arquivo (opcional)                             |
+| Fabric RTI            | Eventhouse / Kusto  | 15+       | KQL, Eventstreams, Activator, triggers                               |
+
+> ⭐ = MCP customizado desenvolvido neste projeto para resolver limitacoes dos servidores oficiais.
 
 O arquivo mcp_servers.py detecta automaticamente quais plataformas tem credenciais validas e desliga as demais. Todas as credenciais sao gerenciadas via .env + pydantic-settings — nenhum export manual no shell e necessario.
 
-O Databricks MCP usa o pacote oficial **databricks-mcp-server** (ai-dev-kit) com ferramentas separadas em readonly e full-access. O Fabric Community usa o pacote **microsoft-fabric-mcp** como servidor primario, com o servidor oficial disponivel como opcao adicional. O Fabric RTI suporta Real-Time Intelligence com KQL e Activator.
+### 11.1 Databricks (oficial)
+
+Usa o pacote **databricks-mcp-server** (ai-dev-kit) com ferramentas separadas em readonly e full-access. Expoe Unity Catalog, SQL Warehouses, Jobs, LakeFlow, Clusters e Volumes.
+
+### 11.2 Databricks Genie (customizado)
+
+O servidor **databricks-genie-mcp** resolve o gap do databricks-mcp-server oficial que nao expoe as tools da Genie API (`ask_genie`, `get_genie`, `create_or_update_genie`, `migrate_genie`, `delete_genie`).
+
+**Problema resolvido:** O Genie Space e uma interface de linguagem natural para SQL no Databricks. Sem este MCP, o agente tentava usar `execute_sql` (que falha com warehouse parado) e nunca chegava ao Genie mesmo com o Space configurado.
+
+**Como funciona:**
+
+```
+Usuario: /databricks retorne o total de vendas por produto
+    ↓
+Agente: genie_ask("total de vendas por produto", space="retail-sales")
+    ↓
+databricks-genie-mcp → Databricks REST API → Genie Space
+    ↓
+Genie gera SQL automaticamente → executa no warehouse → retorna dados
+    ↓
+Agente apresenta resultado (mesmo SQL que o Genie Space mostraria no UI)
+```
+
+**Tools disponiveis:**
+
+| Tool | Descricao |
+| ---- | --------- |
+| `genie_diagnostics` | Verifica conectividade e lista spaces no registry |
+| `genie_list_spaces` | Lista todos os Genie Spaces do workspace |
+| `genie_ask` | Faz uma pergunta em linguagem natural (inicia nova conversa) |
+| `genie_followup` | Envia follow-up com contexto da conversa anterior |
+| `genie_get` | Retorna detalhes de um Space especifico |
+| `genie_create_or_update` | Cria ou atualiza um Genie Space |
+| `genie_delete` | Exclui um Genie Space |
+| `genie_export` | Exporta configuracao completa para backup/migracao |
+| `genie_import` | Importa/clona um Space exportado |
+
+**Sem dependencias extras:** usa apenas `urllib` da stdlib Python + `DATABRICKS_HOST` e `DATABRICKS_TOKEN` que ja existem no .env.
+
+### 11.3 Fabric Community (oficial)
+
+Usa o pacote **microsoft-fabric-mcp** como servidor primario, com o servidor oficial disponivel como opcao adicional.
+
+### 11.4 Fabric SQL Analytics Endpoint (customizado)
+
+O servidor **fabric-sql-mcp** resolve a limitacao da REST API do Fabric que so enxerga o schema `dbo`. Conecta diretamente ao SQL Analytics Endpoint via TDS (porta 1433) usando pyodbc + Azure AD Bearer Token, permitindo que o agente acesse os schemas `bronze`, `silver` e `gold` da arquitetura Medallion.
+
+Requer ODBC Driver 18 for SQL Server instalado no sistema (instrucoes na secao 13).
+
+### 11.5 Fabric RTI (oficial)
+
+Suporta Real-Time Intelligence com KQL, Eventstreams e Activator.
 
 ## 12. Comandos Disponiveis (Slash Commands)
 
@@ -535,9 +593,53 @@ Crie um arquivo .env na raiz do projeto (use .env.example como base). **Nunca en
 
 ### 13.2 Databricks (opcional)
 
-- **DATABRICKS_HOST:** URL do Databricks (ex: https://adb-123456.azuredatabricks.net)
-- **DATABRICKS_TOKEN:** Personal Access Token
-- **DATABRICKS_SQL_WAREHOUSE_ID:** ID do SQL Warehouse
+- **DATABRICKS_HOST:** URL do Databricks (ex: `https://adb-123456.azuredatabricks.net`)
+- **DATABRICKS_TOKEN:** Personal Access Token (gerado em User Settings → Access Tokens)
+- **DATABRICKS_SQL_WAREHOUSE_ID:** ID do SQL Warehouse (em SQL Warehouses → clique no warehouse → copie o ID)
+
+### 13.2.1 Databricks Genie — MCP Customizado (opcional)
+
+Habilita o agente a conversar diretamente com Genie Spaces via linguagem natural. Reutiliza as credenciais Databricks acima — sem configuracao extra de autenticacao.
+
+**Como encontrar o Space ID:**
+1. Acesse o Databricks workspace
+2. Vá em AI/BI → Genie
+3. Abra o Space desejado
+4. Copie o ID alfanumérico da URL (ex: `01f117197b5319fb972e10a45735b28c`)
+
+**Configuracao recomendada (registry com nomes amigaveis):**
+
+```bash
+# Mapeie nomes amigaveis para space_ids reais
+DATABRICKS_GENIE_SPACES={"retail-sales": "01f117197b5319fb972e10a45735b28c", "hr-analytics": "01abc123def456789abcdef012345678"}
+DATABRICKS_GENIE_DEFAULT_SPACE=retail-sales
+```
+
+Com isso o agente pode usar:
+- `genie_ask("qual o total de vendas?")` → usa retail-sales (default)
+- `genie_ask("headcount por departamento", space="hr-analytics")` → usa hr-analytics
+- `genie_ask("...", space="01f117197b...")` → space_id direto (sem registry)
+
+**Instalacao (uma vez):**
+
+```bash
+# Nenhuma dependencia adicional — o servidor usa apenas urllib (stdlib Python)
+# Apos configurar o .env, instale o entry point:
+pip install -e .
+
+# Teste o servidor:
+databricks-genie-mcp --help
+
+# Ou via diagnostico integrado:
+# No data-agents: genie_diagnostics()
+```
+
+**Configuracao alternativa (space_id direto, sem registry):**
+
+```bash
+# Use se tiver apenas um Genie Space
+DATABRICKS_GENIE_DEFAULT_SPACE=01f117197b5319fb972e10a45735b28c
+```
 
 ### 13.3 Microsoft Fabric (opcional)
 
@@ -725,7 +827,7 @@ Voce vera o banner do Data Agents e o prompt. Digite /help para ver os comandos 
 - **continuar:** Retoma sessao anterior (se houver checkpoint).
 - **limpar:** Reseta a sessao (salva checkpoint antes).
 
-## 20. Historico de Melhorias (v3.0 e v3.1)
+## 20. Historico de Melhorias (v3.0, v3.1 e v3.2)
 
 ### 20.1 Melhorias da v3.0
 
@@ -757,9 +859,22 @@ Voce vera o banner do Data Agents e o prompt. Digite /help para ver os comandos 
 | SQL Expert com Write      | Agora pode gravar arquivos .sql diretamente                              |
 | Fabric auto-routing       | Comando /fabric redireciona inteligentemente para semantic-modeler       |
 
+### 20.3 Melhorias da v3.2
+
+| **Melhoria**                  | **Descricao**                                                                                         |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------- |
+| MCP Databricks Genie          | Novo servidor customizado com 9 tools: Conversation API, Space Management, Export/Import/Migracao     |
+| MCP Fabric SQL                | Novo servidor customizado com 8 tools: acesso ao SQL Analytics Endpoint via TDS (bronze/silver/gold)  |
+| Registry de Genie Spaces      | JSON registry com nomes amigaveis para space_ids (DATABRICKS_GENIE_SPACES)                            |
+| Registry de Fabric Lakehouses | JSON registry multi-lakehouse (FABRIC_SQL_LAKEHOUSES) — sem hardcode                                 |
+| Isolamento de plataforma      | Regra critica nos agentes: nunca retornar dados Databricks quando solicitado Fabric e vice-versa       |
+| fabric_sql_all / readonly     | Novos aliases no MCP_TOOL_SETS para expansao em frontmatter dos agentes                               |
+| databricks_genie_all / readonly | Novos aliases no MCP_TOOL_SETS para agentes com diferentes niveis de acesso ao Genie               |
+| Agentes atualizados           | sql-expert, semantic-modeler e pipeline-architect agora declaram mcp__databricks_genie__* e mcp__fabric_sql__* |
+
 ## 21. Metricas do Projeto
 
-Um resumo numerico do ecossistema Data Agents v3.1:
+Um resumo numerico do ecossistema Data Agents v3.2:
 
 | **Metrica**                | **Valor**                                                       |
 | -------------------------------- | --------------------------------------------------------------------- |
@@ -769,7 +884,7 @@ Um resumo numerico do ecossistema Data Agents v3.1:
 | Hooks de seguranca               | 7 (audit, cost, security, compression, workflow, session, checkpoint) |
 | Tipos de log                     | 5 (audit, app, sessions, workflows, compression)                      |
 | Dominios de Knowledge Base       | 8 principais + subdominios                                            |
-| Tools MCP total                  | 50+ Databricks + 28 Fabric + 15+ Fabric RTI                           |
+| Tools MCP total                  | 50+ Databricks + 9 Databricks Genie + 28 Fabric + 8 Fabric SQL + 15+ Fabric RTI |
 | Modulos de Skills                | 27 Databricks + 5 Fabric = 32 total                                   |
 | Modulos de teste                 | 11 (cobertura 80%)                                                    |
 | Workflows pre-definidos          | 4 (WF-01 a WF-04)                                                     |
@@ -782,8 +897,8 @@ Um resumo numerico do ecossistema Data Agents v3.1:
 
 ## 22. Conclusao
 
-O projeto **Data Agents v3.1** e uma plataforma de automacao corporativa completa para equipes de dados. Com a Constituicao como fonte de verdade, Clarity Checkpoint para validacao de requisicoes, Workflows Colaborativos para cadeias de agentes e Checkpoint de Sessao para resiliencia, o sistema cobre todo o ciclo de vida de dados — da ingestao na Bronze ate o modelo semantico para Power BI.
+O projeto **Data Agents v3.2** e uma plataforma de automacao corporativa completa para equipes de dados. Com a Constituicao como fonte de verdade, Clarity Checkpoint para validacao de requisicoes, Workflows Colaborativos para cadeias de agentes e Checkpoint de Sessao para resiliencia, o sistema cobre todo o ciclo de vida de dados — da ingestao na Bronze ate o modelo semantico para Power BI.
 
-O ecossistema conta com 6 agentes especialistas, 7 hooks de protecao, 4 servidores MCP, 8 dominios de Knowledge Base, 32 modulos de Skills, 4 workflows pre-definidos, integracao com MLflow para deploy em producao e um dashboard de monitoramento com 9 paginas. Tudo isso definido declarativamente em Markdown e YAML, sem necessidade de programacao Python para estender.
+O ecossistema conta com 6 agentes especialistas, 7 hooks de protecao, 6 servidores MCP (incluindo 2 customizados), 8 dominios de Knowledge Base, 32 modulos de Skills, 4 workflows pre-definidos, integracao com MLflow para deploy em producao e um dashboard de monitoramento com 9 paginas. Tudo isso definido declarativamente em Markdown e YAML, sem necessidade de programacao Python para estender.
 
 A arquitetura foi projetada para ser extensivel: se a sua empresa precisar de um novo especialista amanha, basta criar um arquivo .md na pasta registry/. Se precisar de um novo workflow, adicione-o ao kb/collaboration-workflows.md. Se precisar de novas regras, estenda a Constituicao. A fundacao ja esta construida.

@@ -19,15 +19,26 @@ Para adicionar uma nova plataforma:
 import logging
 
 from mcp_servers.databricks.server_config import get_databricks_mcp_config
+from mcp_servers.databricks_genie.server_config import get_databricks_genie_mcp_config
 from mcp_servers.fabric.server_config import get_fabric_mcp_config
 from mcp_servers.fabric_rti.server_config import get_fabric_rti_mcp_config
+from mcp_servers.fabric_sql.server_config import get_fabric_sql_mcp_config
 
 logger = logging.getLogger("data_agents.mcp")
 
 # Registry completo de plataformas disponíveis
 ALL_MCP_CONFIGS: dict = {
     "databricks": get_databricks_mcp_config,
+    # databricks_genie: MCP customizado que expõe a Genie Conversation + Space Management API.
+    # Resolve o gap do databricks-mcp-server oficial que não inclui as tools de Genie.
+    # Requer: DATABRICKS_HOST + DATABRICKS_TOKEN (já usados pelo databricks-mcp-server)
+    #         + DATABRICKS_GENIE_SPACES (JSON registry com nomes amigáveis para space_ids)
+    "databricks_genie": get_databricks_genie_mcp_config,
     "fabric": get_fabric_mcp_config,
+    # fabric_sql: MCP customizado que conecta ao SQL Analytics Endpoint via TDS (pyodbc + AAD)
+    # Resolve limitação da REST API que só enxerga o schema dbo.
+    # Requer: FABRIC_SQL_ENDPOINT + FABRIC_LAKEHOUSE_NAME no .env
+    "fabric_sql": get_fabric_sql_mcp_config,
     "fabric_rti": get_fabric_rti_mcp_config,
     # Adicione novas plataformas aqui:
     # "snowflake": get_snowflake_mcp_config,
