@@ -4,7 +4,10 @@ Memory Lint — Health checks para o sistema de memória.
 Executa 7 verificações sem custo (nenhuma chamada LLM):
   1. Orphan references: memórias que referenciam IDs inexistentes
   2. Broken supersedes: cadeias de supersede que apontam para memórias deletadas
-  3. Stale memories: memórias de PROGRESS com confidence muito baixa
+  3. Stale memories: memórias com confidence decaída abaixo do limiar (Ch. 11)
+     - PROGRESS  → warning a <0.30  (decay rápido: 7 dias)
+     - FEEDBACK  → info    a <0.20  (decay lento: 90 dias)
+     - USER / ARCHITECTURE: nunca decaem — ignoradas
   4. Empty content: memórias sem conteúdo significativo
   5. Duplicate summaries: memórias com resumos idênticos ou quase
   6. Missing index: index.md desatualizado ou ausente
@@ -22,6 +25,20 @@ from memory.types import Memory, MemoryType
 from memory.decay import compute_decayed_confidence
 
 logger = logging.getLogger("data_agents.memory.lint")
+
+# ─── Staleness thresholds (Ch. 11) ───────────────────────────────────────────
+# Limiar de confidence decaída abaixo do qual uma memória é considerada stale.
+# Apenas tipos com decay são verificados (USER e ARCHITECTURE nunca decaem).
+_STALE_THRESHOLDS: dict[MemoryType, float] = {
+    MemoryType.PROGRESS: 0.30,  # warning cedo — decay rápido (7 dias)
+    MemoryType.FEEDBACK: 0.20,  # info depois  — decay lento (90 dias)
+}
+
+# Severidade associada a cada tipo stale
+_STALE_SEVERITY: dict[MemoryType, str] = {
+    MemoryType.PROGRESS: "warning",
+    MemoryType.FEEDBACK: "info",
+}
 
 
 @dataclass
@@ -166,24 +183,48 @@ def _check_broken_supersedes(memories: list[Memory], all_ids: set[str], report: 
 
 
 def _check_stale_memories(memories: list[Memory], report: LintReport) -> None:
-    """Verifica memórias de PROGRESS com confidence muito baixa."""
+    """
+    Verifica memórias com confidence decaída abaixo do limiar de alerta (Ch. 11).
+
+    Cobre todos os tipos que têm decay:
+      - PROGRESS  → warning a <0.30 (~3-4 dias de idade)
+      - FEEDBACK  → info    a <0.20 (~70+ dias de idade)
+      - USER / ARCHITECTURE: ignorados — confidence fixa, nunca decaem.
+    """
     now = datetime.now(timezone.utc)
     for mem in memories:
-        if mem.type == MemoryType.PROGRESS and mem.superseded_by is None:
-            current_conf = compute_decayed_confidence(mem, now)
-            if current_conf < 0.05 and current_conf > 0.0:
-                days_old = (now - mem.created_at).days
-                report.issues.append(
-                    LintIssue(
-                        severity="info",
-                        check="stale_progress",
-                        memory_id=mem.id,
-                        message=(
-                            f"Memória PROGRESS com confidence {current_conf:.3f} "
-                            f"({days_old} dias). Considere remover."
-                        ),
-                    )
+        threshold = _STALE_THRESHOLDS.get(mem.type)
+        if threshold is None:
+            # Tipo sem decay (USER, ARCHITECTURE) — nunca fica stale
+            continue
+
+        if mem.superseded_by is not None:
+            # Já superseded — não é stale, é histórico
+            continue
+
+        current_conf = compute_decayed_confidence(mem, now)
+
+        # Confiança exatamente 0 = memória já completamente expirada
+        # (provavelmente listada como inativa; não duplicar o aviso)
+        if current_conf == 0.0:
+            continue
+
+        if current_conf < threshold:
+            days_old = (now - mem.created_at).days
+            severity = _STALE_SEVERITY.get(mem.type, "info")
+            check_name = f"stale_{mem.type.value}"
+            report.issues.append(
+                LintIssue(
+                    severity=severity,
+                    check=check_name,
+                    memory_id=mem.id,
+                    message=(
+                        f"Memória {mem.type.value.upper()} com confidence decaída "
+                        f"{current_conf:.3f} (limiar: {threshold:.2f}, {days_old} dias). "
+                        f"Considere remover ou renovar."
+                    ),
                 )
+            )
 
 
 def _check_empty_content(memories: list[Memory], report: LintReport) -> None:

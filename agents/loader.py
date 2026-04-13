@@ -23,6 +23,7 @@ Campos opcionais: mcp_servers, kb_domains, tier
 
 import logging
 import re
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -92,6 +93,82 @@ MCP_TOOL_SETS: dict[str, list[str]] = {
         if any(kw in t for kw in ["list_", "describe_", "sample_", "count_", "diagnostics"])
     ],
 }
+
+
+@dataclass
+class AgentMeta:
+    """
+    Metadata-only snapshot de um agente (Ch. 12 — Two-Phase Loading).
+
+    Fase rápida: lê apenas o frontmatter YAML, sem carregar o corpo do prompt.
+    Útil para descoberta, roteamento e verificações de capacidade sem pagar
+    o custo completo de I/O do carregamento do prompt.
+
+    Para carregamento completo, use load_agent(path=meta.path, ...).
+    """
+
+    name: str
+    description: str
+    model: str
+    tier: str
+    tools: list[str] = field(default_factory=list)
+    mcp_servers: list[str] = field(default_factory=list)
+    kb_domains: list[str] = field(default_factory=list)
+    max_turns: int | None = None
+    effort: str | None = None
+    path: Path = field(default_factory=Path)
+
+
+def preload_registry(
+    registry_dir: Path | None = None,
+) -> dict[str, AgentMeta]:
+    """
+    Fase rápida: escaneia o registry lendo apenas o frontmatter de cada agente (Ch. 12).
+
+    Retorna um dicionário de nome → AgentMeta sem carregar os corpos dos prompts.
+    Útil para listagem de agentes, roteamento e verificações antes de iniciar a sessão.
+
+    Args:
+        registry_dir: Diretório do registry. Default: agents/registry/.
+
+    Returns:
+        Dict de nome_do_agente → AgentMeta.
+    """
+    registry_dir = registry_dir or AGENTS_REGISTRY_DIR
+    agents_meta: dict[str, AgentMeta] = {}
+
+    for path in sorted(registry_dir.glob("*.md")):
+        if path.name.startswith("_"):
+            continue
+        try:
+            content = path.read_text(encoding="utf-8")
+            metadata, _ = _parse_frontmatter(content)
+
+            name = metadata.get("name", "")
+            if not name:
+                logger.warning(f"Agente sem 'name' em {path.name} — ignorado no preload")
+                continue
+
+            max_turns_raw = metadata.get("max_turns")
+            effort_raw = metadata.get("effort")
+
+            agents_meta[name] = AgentMeta(
+                name=name,
+                description=metadata.get("description", ""),
+                model=metadata.get("model", ""),
+                tier=metadata.get("tier", ""),
+                tools=metadata.get("tools", []),
+                mcp_servers=metadata.get("mcp_servers", []),
+                kb_domains=metadata.get("kb_domains", []),
+                max_turns=int(max_turns_raw) if max_turns_raw is not None else None,
+                effort=str(effort_raw) if effort_raw is not None else None,
+                path=path,
+            )
+        except Exception as e:
+            logger.warning(f"Erro no preload de {path.name}: {e}")
+
+    logger.info(f"Registry preloaded: {len(agents_meta)} agentes (frontmatter apenas)")
+    return agents_meta
 
 
 def _parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:

@@ -171,6 +171,83 @@ class MemoryStore:
 
         return results
 
+    def get_stale_memories(
+        self,
+        threshold: float = 0.1,
+        memory_type: MemoryType | None = None,
+    ) -> list[Memory]:
+        """
+        Retorna memórias cuja confidence decaída está abaixo do threshold (Ch. 11).
+
+        Inclui apenas tipos com decay (PROGRESS, FEEDBACK).
+        USER e ARCHITECTURE são ignorados pois nunca decaem.
+
+        Args:
+            threshold: Threshold de confidence. Padrão 0.1 (nível de expiração).
+            memory_type: Filtra por tipo específico. None = todos os tipos com decay.
+
+        Returns:
+            Lista de memórias stale (não supersedidas, confidence decaída < threshold).
+        """
+        from memory.decay import compute_decayed_confidence
+        from memory.types import DECAY_CONFIG
+
+        now = datetime.now(timezone.utc)
+        all_memories = self.list_all(
+            memory_type=memory_type,
+            active_only=False,
+            min_confidence=0.0,
+        )
+
+        stale: list[Memory] = []
+        for mem in all_memories:
+            if mem.superseded_by is not None:
+                continue
+            # Ignora tipos sem decay
+            if DECAY_CONFIG.get(mem.type) is None:
+                continue
+
+            current_conf = compute_decayed_confidence(mem, now)
+            if current_conf < threshold:
+                stale.append(mem)
+
+        return stale
+
+    def prune_stale_memories(
+        self,
+        threshold: float = 0.1,
+        dry_run: bool = False,
+    ) -> list[Memory]:
+        """
+        Remove memórias cuja confidence decaída está abaixo do threshold (Ch. 11).
+
+        Args:
+            threshold: Threshold de confidence para considerar memória stale.
+            dry_run: Se True, apenas identifica as memórias sem remover.
+
+        Returns:
+            Lista de memórias que foram (ou seriam no dry_run) removidas.
+        """
+        stale = self.get_stale_memories(threshold=threshold)
+
+        if not dry_run:
+            for mem in stale:
+                self.delete(mem.id, mem.type)
+                logger.info(
+                    f"Memória stale removida: {mem.id} ({mem.type.value}) conf={mem.confidence:.3f}"
+                )
+            if stale:
+                logger.info(
+                    f"Poda concluída: {len(stale)} memórias removidas (threshold={threshold})"
+                )
+        else:
+            logger.info(
+                f"Dry run: {len(stale)} memórias stale encontradas "
+                f"(threshold={threshold}) — nenhuma removida."
+            )
+
+        return stale
+
     def get_stats(self) -> dict[str, Any]:
         """Retorna estatísticas do store."""
         stats: dict[str, Any] = {"total": 0, "by_type": {}, "active": 0, "superseded": 0}
