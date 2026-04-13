@@ -169,8 +169,11 @@ def _get_agent_session() -> dict:
                 await client.query(prompt)
                 async for msg in client.receive_response(): ...
     """
+    import uuid
+
     from agents.supervisor import build_supervisor_options
     from claude_agent_sdk import ClaudeSDKClient
+    from hooks.session_lifecycle import on_session_start
 
     # ── 1. Event loop em background thread (run_forever) ──────────────────────
     loop = asyncio.new_event_loop()
@@ -195,16 +198,30 @@ def _get_agent_session() -> dict:
     except Exception as exc:
         raise RuntimeError(f"Falha ao conectar ClaudeSDKClient: {exc}") from exc
 
-    return {"client": client, "options": options, "loop": loop}
+    # Ch.12 — Session Lifecycle: reseta contadores e prepara buffer de memória
+    session_id = f"ui-{uuid.uuid4().hex[:8]}"
+    on_session_start(session_id)
+
+    return {"client": client, "options": options, "loop": loop, "session_id": session_id}
 
 
 def _reset_agent_session() -> None:
     """
     Desconecta e reconecta o cliente — limpa histórico de conversa.
     Equivalente ao comando 'limpar' do CLI (client.disconnect + client.connect).
+
+    Ch.12: dispara on_session_end (flush de memória) antes de reconectar,
+    e on_session_start (reset de contadores) após reconectar.
     """
+    import uuid
+
+    from hooks.session_lifecycle import on_session_end, on_session_start
+
     try:
         session = _get_agent_session()
+
+        # Ch.12 — encerra sessão atual: flush de memória + log de contexto
+        on_session_end(session.get("session_id", "ui-unknown"))
 
         async def _do_reset() -> None:
             await session["client"].disconnect()
@@ -212,6 +229,12 @@ def _reset_agent_session() -> None:
 
         future = asyncio.run_coroutine_threadsafe(_do_reset(), session["loop"])
         future.result(timeout=20)
+
+        # Ch.12 — inicia nova sessão: reseta contadores
+        new_session_id = f"ui-{uuid.uuid4().hex[:8]}"
+        session["session_id"] = new_session_id
+        on_session_start(new_session_id)
+
     except Exception:
         pass  # Falha no reset não deve travar a UI — próxima query cria contexto novo
 
@@ -318,32 +341,17 @@ def _run_agent(prompt: str, enable_thinking: bool = False, session_type: str = "
     return result
 
 
-# ── Execução direta via Haiku (sem Supervisor) ───────────────────────────────
-# Bypass do Supervisor para /geral: chama claude-haiku diretamente via SDK Anthropic.
-# Evita o overhead do agente orquestrador, reduzindo custo de ~$0.15 para ~$0.002.
-_GERAL_MODEL = "claude-sonnet-4-6"
-_GERAL_SYSTEM = (
-    "Você é um assistente técnico especializado em Engenharia de Dados: "
-    "Databricks, Microsoft Fabric, Apache Spark, Delta Lake, SQL, arquitetura Medallion e boas práticas. "
-    "Responda em português brasileiro, de forma direta e objetiva. "
-    "Use exemplos e code blocks quando enriquecer a resposta. "
-    "Não peça aprovação, não crie documentos, não acesse arquivos externos."
-)
-
-
+# ── Execução direta via SDK (sem Supervisor) ─────────────────────────────────
+# /geral: delega para commands/geral.py — módulo compartilhado com main.py.
+# Lógica única → sem duplicação, sem risco de divergência entre CLI e UI.
 def _run_geral(user_message: str) -> dict:
     """
-    Chama claude-haiku diretamente via Anthropic REST API (urllib stdlib).
-    Sem dependência do pacote 'anthropic' — sem passar pelo Supervisor.
+    Wrapper Streamlit para run_geral_query() de commands/geral.py.
 
-    Mantém histórico de conversa em st.session_state["geral_history"] para
-    suportar perguntas de follow-up dentro da mesma sessão do App.
-
-    Custo típico: ~$0.001–0.005 por pergunta (vs ~$0.15 com Supervisor).
+    Gerencia histórico em st.session_state["geral_history"] e submete a
+    coroutine ao loop de background da sessão — mesmo padrão de _run_agent().
     """
-    import json
-    import time
-    import urllib.request
+    from commands.geral import run_geral_query
 
     result: dict = {
         "text": "",
@@ -354,72 +362,50 @@ def _run_geral(user_message: str) -> dict:
         "error": None,
     }
 
-    # Histórico de conversa para follow-ups
+    # Histórico de conversa para follow-ups (persistido na sessão Streamlit)
     if "geral_history" not in st.session_state:
         st.session_state["geral_history"] = []
 
     st.session_state["geral_history"].append({"role": "user", "content": user_message})
+    history = st.session_state["geral_history"]
 
-    # Mantém no máximo 20 mensagens (10 turnos) para limitar tokens de contexto
-    history = st.session_state["geral_history"][-20:]
+    # Reutiliza o loop de background da sessão do Supervisor
+    session = _get_agent_session()
+    loop = session["loop"]
 
-    payload = json.dumps(
-        {
-            "model": _GERAL_MODEL,
-            "max_tokens": 2048,
-            "system": _GERAL_SYSTEM,
-            "messages": history,
-        }
-    ).encode("utf-8")
+    async def _async() -> None:
+        try:
+            text, metrics = await run_geral_query(user_message, history)
+            result["text"] = text
+            result["cost"] = metrics["cost"]
+            result["turns"] = int(metrics["turns"])
+            result["duration"] = metrics["duration"]
+        except Exception as exc:
+            result["error"] = str(exc)
 
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=payload,
-        headers={
-            "x-api-key": settings.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-            "User-Agent": "data-agents/1.0 (python-urllib/3)",
-        },
-        method="POST",
-    )
+    # Submete ao loop de background e aguarda — mesmo padrão de _run_agent()
+    exc_holder: list[Exception] = []
 
-    t0 = time.time()
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
-            data = json.loads(resp.read().decode("utf-8"))
-        elapsed = time.time() - t0
+    def _submit() -> None:
+        future = asyncio.run_coroutine_threadsafe(_async(), loop)
+        try:
+            future.result()
+        except Exception as e:
+            exc_holder.append(e)
 
-        text = data["content"][0]["text"] if data.get("content") else ""
-        input_tok = data.get("usage", {}).get("input_tokens", 0)
-        output_tok = data.get("usage", {}).get("output_tokens", 0)
+    t = threading.Thread(target=_submit, daemon=True)
+    t.start()
+    t.join()
 
-        # Preços claude-sonnet-4-6: $3.00/1M input, $15.00/1M output
-        cost = (input_tok * 3.00 + output_tok * 15.00) / 1_000_000
+    if exc_holder:
+        result["error"] = str(exc_holder[0])
 
-        result["text"] = text
-        result["cost"] = cost
-        result["duration"] = elapsed
-
-        # Adiciona resposta ao histórico
-        st.session_state["geral_history"].append({"role": "assistant", "content": text})
-
-        # Grava no sessions.jsonl para o monitoramento
-        from hooks.session_logger import log_session_result
-
-        class _FakeResult:
-            total_cost_usd = cost
-            num_turns = 1
-            duration_ms = int(elapsed * 1000)
-
-        log_session_result(_FakeResult(), prompt_preview=user_message[:100], session_type="geral")
-
-    except Exception as exc:
-        result["error"] = str(exc)
-        result["duration"] = time.time() - t0
-        # Remove a mensagem do histórico em caso de erro
+    if result["error"]:
+        # Desfaz push do histórico em caso de erro
         if st.session_state["geral_history"]:
             st.session_state["geral_history"].pop()
+    elif result["text"]:
+        st.session_state["geral_history"].append({"role": "assistant", "content": result["text"]})
 
     return result
 

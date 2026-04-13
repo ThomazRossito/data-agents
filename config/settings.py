@@ -25,6 +25,8 @@ class _PlatformConfig(TypedDict):
 class Settings(BaseSettings):
     # --- Claude / Anthropic ---
     anthropic_api_key: str = ""
+    # URL base do proxy (ex: Flow LiteLLM). Vazio = usa api.anthropic.com padrão.
+    anthropic_base_url: str = ""
 
     # --- Databricks ---
     databricks_host: str = ""

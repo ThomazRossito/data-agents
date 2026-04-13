@@ -43,6 +43,7 @@ from config.logging_config import setup_logging
 from config.settings import settings
 from hooks.session_logger import log_session_result
 from hooks.cost_guard_hook import reset_session_counters
+from hooks.session_lifecycle import on_session_end, on_session_start
 from hooks.checkpoint import (
     save_checkpoint,
     load_checkpoint,
@@ -53,6 +54,7 @@ from hooks.memory_hook import flush_session_memories
 from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
 from agents.loader import inject_memory_context
+from commands.geral import run_geral_query
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
@@ -361,103 +363,57 @@ async def _handle_memory_command(user_input: str) -> None:
         console.print("[yellow]Subcomandos: status, flush, compile, lint, search <query>[/yellow]")
 
 
-_GERAL_MODEL = "claude-sonnet-4-6"
-_GERAL_SYSTEM = (
-    "Você é um assistente técnico especializado em Engenharia de Dados: "
-    "Databricks, Microsoft Fabric, Apache Spark, Delta Lake, SQL, arquitetura Medallion e boas práticas. "
-    "Responda em português brasileiro, de forma direta e objetiva. "
-    "Use exemplos e code blocks quando enriquecer a resposta. "
-    "Não peça aprovação, não crie documentos, não acesse arquivos externos."
-)
+# Histórico de conversa do /geral — mantido na sessão CLI.
+# A lógica central está em commands/geral.py (compartilhada com ui/chat.py).
 _geral_history: list[dict] = []
 
 
 async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[str, float]:
     """
-    Chama claude-haiku diretamente via Anthropic REST API (urllib stdlib).
-    Sem dependência do pacote 'anthropic' — sem passar pelo Supervisor.
+    Wrapper CLI para run_geral_query() — adiciona feedback visual (spinner, Rich).
 
-    Mantém histórico de conversa em _geral_history para follow-ups na mesma sessão.
-    Custo típico: ~$0.001–0.005 (vs ~$0.15 com o Supervisor).
+    A lógica de query está em commands/geral.py (importada também pela UI).
+    Esta função lida apenas com apresentação específica do terminal.
     """
-    import json
-    import time
-    import urllib.request
-
     _geral_history.append({"role": "user", "content": user_message})
-    history = _geral_history[-20:]  # máximo 10 turnos de contexto
 
-    payload = json.dumps(
-        {
-            "model": _GERAL_MODEL,
-            "max_tokens": 2048,
-            "system": _GERAL_SYSTEM,
-            "messages": history,
-        }
-    ).encode("utf-8")
-
-    req = urllib.request.Request(
-        "https://api.anthropic.com/v1/messages",
-        data=payload,
-        headers={
-            "x-api-key": settings.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-            "User-Agent": "data-agents/1.0 (python-urllib/3)",
-        },
-        method="POST",
-    )
-
-    spinner = Spinner("dots", text=Text("💬 Haiku pensando...", style="dim"))
+    spinner = Spinner("dots", text=Text("💬 Geral pensando...", style="dim"))
     live = Live(spinner, console=console, refresh_per_second=10, transient=True)
     live.start()
 
-    t0 = time.time()
     metrics: dict[str, float] = {"cost": 0.0}
 
     try:
-        # Add the nosec comment to bypass the Bandit check for this line
-        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
-            data = json.loads(resp.read().decode("utf-8"))
-        elapsed = time.time() - t0
-        live.stop()
-
-        text = data["content"][0]["text"] if data.get("content") else ""
-        input_tok = data.get("usage", {}).get("input_tokens", 0)
-        output_tok = data.get("usage", {}).get("output_tokens", 0)
-        # Preços claude-sonnet-4-6: $3.00/1M input, $15.00/1M output
-        cost = (input_tok * 3.00 + output_tok * 15.00) / 1_000_000
-
-        console.print("[bold cyan]💬 Geral (Haiku):[/bold cyan]")
-        console.print(Markdown(text))
-        console.print()
-        console.print(
-            f"[dim]💰 Custo: ${cost:.5f} | "
-            f"🔢 tokens: {input_tok} in / {output_tok} out | "
-            f"⏱ {elapsed:.1f}s[/dim]\n"
+        response_text, raw_metrics = await run_geral_query(
+            user_message, _geral_history, session_type=session_type
         )
-
-        _geral_history.append({"role": "assistant", "content": text})
-        metrics["cost"] = cost
-
-        log_session_result(
-            type(
-                "R",
-                (),
-                {"total_cost_usd": cost, "num_turns": 1, "duration_ms": int(elapsed * 1000)},
-            )(),
-            prompt_preview=user_message[:100],
-            session_type=session_type,
-        )
-
     except Exception as e:
         if live.is_started:
             live.stop()
         console.print(f"\n[bold red]Erro no /geral:[/bold red] {e}\n")
-        logger.error(f"Geral direct call error: {e}", exc_info=True)
+        logger.error("Geral SDK call error: %s", e, exc_info=True)
         if _geral_history and _geral_history[-1]["role"] == "user":
             _geral_history.pop()
+        return metrics
 
+    if live.is_started:
+        live.stop()
+
+    if response_text:
+        console.print("[bold cyan]💬 Geral:[/bold cyan]")
+        console.print(Markdown(response_text))
+        console.print()
+        _geral_history.append({"role": "assistant", "content": response_text})
+
+    cost = raw_metrics["cost"]
+    parts = [f"💰 Custo: ${cost:.5f}"]
+    if raw_metrics["turns"]:
+        parts.append(f"🔢 turns: {int(raw_metrics['turns'])}")
+    if raw_metrics["duration"]:
+        parts.append(f"⏱ {raw_metrics['duration']:.1f}s")
+    console.print(f"[dim]{' | '.join(parts)}[/dim]\n")
+
+    metrics["cost"] = cost
     return metrics
 
 
@@ -505,8 +461,14 @@ async def run_interactive() -> None:
         return
 
     # ── 4. ClaudeSDKClient emite "Using bundled Claude Code CLI..." aqui ─────
+    import uuid
+
+    _session_id = f"cli-{uuid.uuid4().hex[:8]}"
     try:
         async with ClaudeSDKClient(options=options) as client:
+            # Ch.12 — Session Lifecycle: reseta contadores e prepara buffer de memória
+            on_session_start(_session_id)
+
             # ── 4.1 Verificar checkpoint de sessão anterior ────────────────
             checkpoint = load_checkpoint()
             if checkpoint:
@@ -767,6 +729,9 @@ async def run_interactive() -> None:
         # Captura erros durante o encerramento do SDK (ex: hooks de teardown)
         # Erros de teardown não devem ser exibidos ao usuário — apenas logados em debug
         logger.debug(f"Erro no encerramento do SDK (ignorado): {e}")
+    finally:
+        # Ch.12 — Session Lifecycle: flush de memória e log de estatísticas de uso
+        on_session_end(_session_id)
 
 
 async def run_single_query(prompt: str) -> None:
