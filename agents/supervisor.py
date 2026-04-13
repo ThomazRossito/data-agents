@@ -112,27 +112,27 @@ def build_supervisor_options(
         # Behavior is correct at runtime — suppress the list-item mismatch below.
         hooks={
             "PostToolUse": [
-                HookMatcher(hooks=[audit_tool_usage]),
-                HookMatcher(hooks=[log_cost_generating_operations]),
+                HookMatcher(hooks=[audit_tool_usage]),  # type: ignore[list-item]
+                HookMatcher(hooks=[log_cost_generating_operations]),  # type: ignore[list-item]
                 # Rastreia delegações de agentes, workflows e Clarity Checkpoint.
-                HookMatcher(hooks=[track_workflow_events]),
+                HookMatcher(hooks=[track_workflow_events]),  # type: ignore[list-item]
                 # Captura contexto da sessão para o sistema de memória persistente.
                 # Acumula sem chamar LLM — flush ocorre no final da sessão.
-                HookMatcher(hooks=[capture_session_context]),
+                HookMatcher(hooks=[capture_session_context]),  # type: ignore[list-item]
                 # RTK-style: comprime output verboso das tools antes de enviar ao modelo.
                 # Executado por último para que audit/cost_guard observem o output original.
-                HookMatcher(hooks=[compress_tool_output]),
+                HookMatcher(hooks=[compress_tool_output]),  # type: ignore[list-item]
             ],
             "PreToolUse": [
                 HookMatcher(
                     matcher="Bash",
-                    hooks=[block_destructive_commands],
+                    hooks=[block_destructive_commands],  # type: ignore[list-item]
                 ),
                 # check_sql_cost: detecta SELECT * sem WHERE/LIMIT em QUALQUER tool
                 # (Bash com spark-sql, execute_sql via MCP, etc.)
                 # Sem matcher → intercepta todas as tools.
                 HookMatcher(
-                    hooks=[check_sql_cost],
+                    hooks=[check_sql_cost],  # type: ignore[list-item]
                 ),
             ],
         },
