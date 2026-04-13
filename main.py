@@ -376,46 +376,30 @@ _geral_history: list[dict] = []
 
 async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[str, float]:
     """
-    Chama claude-haiku diretamente via Anthropic REST API (urllib stdlib).
-    Sem dependência do pacote 'anthropic' — sem passar pelo Supervisor.
+    Chama o modelo diretamente via Anthropic SDK — sem passar pelo Supervisor.
+
+    Usa AsyncAnthropic que respeita ANTHROPIC_API_KEY e ANTHROPIC_BASE_URL
+    automaticamente, garantindo compatibilidade com o proxy Flow.
 
     Mantém histórico de conversa em _geral_history para follow-ups na mesma sessão.
-    Custo típico: ~$0.001–0.005 (vs ~$0.15 com o Supervisor).
+    Custo típico: ~$0.002–0.01 (vs ~$0.30–0.40 com o Supervisor).
     """
-    import json
     import time
-    import urllib.request
+
+    import anthropic as _anthropic_lib
 
     _geral_history.append({"role": "user", "content": user_message})
     history = _geral_history[-20:]  # máximo 10 turnos de contexto
 
-    payload = json.dumps(
-        {
-            "model": _GERAL_MODEL,
-            "max_tokens": 2048,
-            "system": _GERAL_SYSTEM,
-            "messages": history,
-        }
-    ).encode("utf-8")
+    # Cria cliente respeitando ANTHROPIC_BASE_URL (proxy Flow) quando configurado.
+    # O SDK lida corretamente com todos os headers de auth — sem reimplementar.
+    _client_kwargs: dict = {"api_key": settings.anthropic_api_key}
+    if settings.anthropic_base_url:
+        _client_kwargs["base_url"] = settings.anthropic_base_url
 
-    # Usa o proxy Flow se ANTHROPIC_BASE_URL estiver configurado,
-    # caso contrário cai no endpoint padrão da Anthropic.
-    _base = (settings.anthropic_base_url or "https://api.anthropic.com").rstrip("/")
-    _endpoint = f"{_base}/v1/messages"
+    client = _anthropic_lib.AsyncAnthropic(**_client_kwargs)
 
-    req = urllib.request.Request(
-        _endpoint,
-        data=payload,
-        headers={
-            "x-api-key": settings.anthropic_api_key,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
-            "User-Agent": "data-agents/1.0 (python-urllib/3)",
-        },
-        method="POST",
-    )
-
-    spinner = Spinner("dots", text=Text("💬 Haiku pensando...", style="dim"))
+    spinner = Spinner("dots", text=Text("💬 Geral pensando...", style="dim"))
     live = Live(spinner, console=console, refresh_per_second=10, transient=True)
     live.start()
 
@@ -423,19 +407,22 @@ async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[
     metrics: dict[str, float] = {"cost": 0.0}
 
     try:
-        # Add the nosec comment to bypass the Bandit check for this line
-        with urllib.request.urlopen(req, timeout=60) as resp:  # nosec B310
-            data = json.loads(resp.read().decode("utf-8"))
+        message = await client.messages.create(
+            model=_GERAL_MODEL,
+            max_tokens=2048,
+            system=_GERAL_SYSTEM,
+            messages=history,  # type: ignore[arg-type]
+        )
         elapsed = time.time() - t0
         live.stop()
 
-        text = data["content"][0]["text"] if data.get("content") else ""
-        input_tok = data.get("usage", {}).get("input_tokens", 0)
-        output_tok = data.get("usage", {}).get("output_tokens", 0)
-        # Preços claude-sonnet-4-6: $3.00/1M input, $15.00/1M output
+        text = message.content[0].text if message.content else ""
+        input_tok = message.usage.input_tokens if message.usage else 0
+        output_tok = message.usage.output_tokens if message.usage else 0
+        # Preços claude-sonnet: $3.00/1M input, $15.00/1M output
         cost = (input_tok * 3.00 + output_tok * 15.00) / 1_000_000
 
-        console.print("[bold cyan]💬 Geral (Haiku):[/bold cyan]")
+        console.print("[bold cyan]💬 Geral:[/bold cyan]")
         console.print(Markdown(text))
         console.print()
         console.print(
