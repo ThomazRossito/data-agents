@@ -392,10 +392,14 @@ async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[
     history = _geral_history[-20:]  # máximo 10 turnos de contexto
 
     # Cria cliente respeitando ANTHROPIC_BASE_URL (proxy Flow) quando configurado.
-    # O SDK lida corretamente com todos os headers de auth — sem reimplementar.
+    # O Flow LiteLLM Proxy exige "Authorization: Bearer <JWT>" em vez do header
+    # padrão "x-api-key" que o Anthropic SDK envia. Sobrescrevemos via default_headers.
     _client_kwargs: dict = {"api_key": settings.anthropic_api_key}
     if settings.anthropic_base_url:
         _client_kwargs["base_url"] = settings.anthropic_base_url
+        _client_kwargs["default_headers"] = {
+            "Authorization": f"Bearer {settings.anthropic_api_key}",
+        }
 
     client = _anthropic_lib.AsyncAnthropic(**_client_kwargs)
 
