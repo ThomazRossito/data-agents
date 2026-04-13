@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="img/readme/banner.png" alt="Data Agents Banner" width="100%">
+  <img src="img/readme/banner.svg" alt="Data Agents Banner" width="100%">
 </p>
 
 <p align="center">
@@ -48,7 +48,7 @@ A versao 5.0 adiciona **Memory System com staleness detection** (Ch.11), **Sessi
 ## Arquitetura
 
 <p align="center">
-  <img src="img/readme/architecture_v5.svg" alt="Arquitetura Multi-Agent System v5.0" width="100%">
+  <img src="img/readme/architecture_v6.svg" alt="Arquitetura Multi-Agent System v5.0" width="100%">
 </p>
 
 O sistema opera com dois pontos de entrada — **Web UI** (`ui/chat.py`) e **CLI** (`main.py`) — que compartilham a mesma logica via modulos centralizados. Para perguntas simples, o comando `/geral` aciona `commands/geral.py` diretamente (zero agentes, zero MCP, ~95% mais barato). Para tarefas de engenharia, o **Supervisor** (Sonnet via Flow Proxy) orquestra **8 agentes especialistas** definidos declarativamente em Markdown com frontmatter YAML. Cada agente declara seus dominios de conhecimento (`kb_domains`), ferramentas, tier e modelo. O Supervisor segue o **Protocolo KB-First + BMAD** com validacao constitucional.

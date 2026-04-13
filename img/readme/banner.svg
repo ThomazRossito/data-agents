@@ -1,0 +1,213 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 300" font-family="'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif">
+<defs>
+  <!-- Background -->
+  <linearGradient id="bgMain" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#060C18"/>
+    <stop offset="50%" stop-color="#0A1020"/>
+    <stop offset="100%" stop-color="#0D0B22"/>
+  </linearGradient>
+  <radialGradient id="bgGlow1" cx="28%" cy="50%" r="45%">
+    <stop offset="0%" stop-color="#0F2040" stop-opacity="0.8"/>
+    <stop offset="100%" stop-color="#060C18" stop-opacity="0"/>
+  </radialGradient>
+  <radialGradient id="bgGlow2" cx="78%" cy="50%" r="38%">
+    <stop offset="0%" stop-color="#1A0F38" stop-opacity="0.7"/>
+    <stop offset="100%" stop-color="#060C18" stop-opacity="0"/>
+  </radialGradient>
+
+  <!-- Title gradient -->
+  <linearGradient id="titleGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#60A5FA"/>
+    <stop offset="45%" stop-color="#A78BFA"/>
+    <stop offset="100%" stop-color="#F472B6"/>
+  </linearGradient>
+
+  <!-- Bottom accent line -->
+  <linearGradient id="accentLine" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#3B82F6" stop-opacity="0"/>
+    <stop offset="15%" stop-color="#3B82F6"/>
+    <stop offset="50%" stop-color="#8B5CF6"/>
+    <stop offset="85%" stop-color="#06B6D4"/>
+    <stop offset="100%" stop-color="#06B6D4" stop-opacity="0"/>
+  </linearGradient>
+
+  <!-- Network glow -->
+  <radialGradient id="netGlow" cx="75%" cy="50%" r="30%">
+    <stop offset="0%" stop-color="#1E1040" stop-opacity="0.9"/>
+    <stop offset="100%" stop-color="#060C18" stop-opacity="0"/>
+  </radialGradient>
+
+  <!-- Node gradients -->
+  <radialGradient id="supNodeGrad" cx="40%" cy="35%" r="65%">
+    <stop offset="0%" stop-color="#3B82F6"/>
+    <stop offset="100%" stop-color="#1D4ED8"/>
+  </radialGradient>
+  <radialGradient id="agentNodeGrad" cx="40%" cy="35%" r="65%">
+    <stop offset="0%" stop-color="#6366F1"/>
+    <stop offset="100%" stop-color="#4338CA"/>
+  </radialGradient>
+
+  <!-- Dot grid -->
+  <pattern id="dots" x="0" y="0" width="22" height="22" patternUnits="userSpaceOnUse">
+    <circle cx="11" cy="11" r="0.65" fill="#1A2540"/>
+  </pattern>
+
+  <!-- Glow filter for nodes -->
+  <filter id="nodeGlow" x="-60%" y="-60%" width="220%" height="220%">
+    <feGaussianBlur stdDeviation="6" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="lineGlow" x="-10%" y="-10%" width="120%" height="120%">
+    <feGaussianBlur stdDeviation="2" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+  <filter id="textGlow">
+    <feGaussianBlur stdDeviation="8" result="blur"/>
+    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+  </filter>
+</defs>
+
+<!-- ─── BACKGROUND ─────────────────────────────────────────── -->
+<rect width="1400" height="300" fill="url(#bgMain)"/>
+<rect width="1400" height="300" fill="url(#dots)"/>
+<rect width="1400" height="300" fill="url(#bgGlow1)"/>
+<rect width="1400" height="300" fill="url(#bgGlow2)"/>
+<rect width="1400" height="300" fill="url(#netGlow)"/>
+
+<!-- ─── LEFT SIDE TECH ICON BADGES ─────────────────────────── -->
+<!-- Databricks (red delta triangle) -->
+<rect x="34" y="42" width="48" height="48" rx="12" fill="#FF3621" fill-opacity="0.12" stroke="#FF3621" stroke-width="1.5" stroke-opacity="0.7"/>
+<polygon points="58,54 46,74 70,74" fill="#FF3621" fill-opacity="0.85"/>
+<text x="58" y="71" text-anchor="middle" font-size="7" font-weight="700" fill="#FF6B5B" dy="0">DB</text>
+
+<!-- Apache Spark (lightning) -->
+<rect x="34" y="102" width="48" height="48" rx="12" fill="#E25A1C" fill-opacity="0.12" stroke="#E25A1C" stroke-width="1.5" stroke-opacity="0.7"/>
+<text x="58" y="132" text-anchor="middle" font-size="24" fill="#F97316" fill-opacity="0.9">⚡</text>
+
+<!-- Microsoft Fabric (grid/diamond) -->
+<rect x="34" y="162" width="48" height="48" rx="12" fill="#0078D4" fill-opacity="0.12" stroke="#0078D4" stroke-width="1.5" stroke-opacity="0.7"/>
+<text x="58" y="192" text-anchor="middle" font-size="22" fill="#38BDF8" fill-opacity="0.9">◈</text>
+
+<!-- Claude/Anthropic -->
+<rect x="34" y="222" width="48" height="48" rx="12" fill="#8B5CF6" fill-opacity="0.12" stroke="#8B5CF6" stroke-width="1.5" stroke-opacity="0.7"/>
+<text x="58" y="252" text-anchor="middle" font-size="20" fill="#C4B5FD" fill-opacity="0.9">◉</text>
+
+<!-- Vertical divider -->
+<line x1="100" y1="28" x2="100" y2="272" stroke="#1E2D45" stroke-width="1.5"/>
+
+<!-- ─── TITLE SECTION ─────────────────────────────────────── -->
+<!-- Eyebrow label -->
+<text x="124" y="65" font-size="11" letter-spacing="3.5" fill="#3B5268" font-weight="600">MULTI-AGENT SYSTEM</text>
+
+<!-- Main title with glow effect (shadow layer first) -->
+<text x="120" y="150" font-size="74" font-weight="900" letter-spacing="-2" fill="#A78BFA" fill-opacity="0.15" filter="url(#textGlow)">DATA AGENTS</text>
+<!-- Main title -->
+<text x="120" y="150" font-size="74" font-weight="900" letter-spacing="-2" fill="url(#titleGrad)">DATA AGENTS</text>
+
+<!-- Subtitle -->
+<text x="122" y="178" font-size="15.5" fill="#4B6280" letter-spacing="0.2">Data Engineering · Databricks × Microsoft Fabric · Claude Sonnet 4.6</text>
+
+<!-- ─── BADGE ROW ──────────────────────────────────────────── -->
+<!-- v5.0 -->
+<rect x="122" y="196" width="62" height="24" rx="12" fill="#1E3A5F" fill-opacity="0.9" stroke="#3B82F6" stroke-width="1"/>
+<text x="153" y="212" text-anchor="middle" font-size="11.5" font-weight="700" fill="#60A5FA">v5.0.0</text>
+
+<!-- Python -->
+<rect x="192" y="196" width="80" height="24" rx="12" fill="#14290A" fill-opacity="0.9" stroke="#22C55E" stroke-width="1"/>
+<text x="232" y="212" text-anchor="middle" font-size="10.5" font-weight="600" fill="#4ADE80">Python 3.11</text>
+
+<!-- MCP -->
+<rect x="280" y="196" width="74" height="24" rx="12" fill="#2D1B5E" fill-opacity="0.9" stroke="#8B5CF6" stroke-width="1"/>
+<text x="317" y="212" text-anchor="middle" font-size="10.5" font-weight="600" fill="#A78BFA">MCP Tools</text>
+
+<!-- Streamlit -->
+<rect x="362" y="196" width="78" height="24" rx="12" fill="#1F1030" fill-opacity="0.9" stroke="#E879F9" stroke-width="1"/>
+<text x="401" y="212" text-anchor="middle" font-size="10.5" font-weight="600" fill="#E879F9">Streamlit</text>
+
+<!-- Flow Proxy -->
+<rect x="448" y="196" width="88" height="24" rx="12" fill="#1E1A0A" fill-opacity="0.9" stroke="#EAB308" stroke-width="1"/>
+<text x="492" y="212" text-anchor="middle" font-size="10.5" font-weight="600" fill="#FDE047">Flow LiteLLM</text>
+
+<!-- Hooks badge -->
+<rect x="544" y="196" width="88" height="24" rx="12" fill="#1A0808" fill-opacity="0.9" stroke="#EF4444" stroke-width="1"/>
+<text x="588" y="212" text-anchor="middle" font-size="10.5" font-weight="600" fill="#FCA5A5">9 Hooks</text>
+
+<!-- ─── RIGHT: AGENT NETWORK DIAGRAM ──────────────────────── -->
+
+<!-- Background ellipse glow for network -->
+<ellipse cx="1040" cy="152" rx="310" ry="135" fill="#130A28" fill-opacity="0.5"/>
+
+<!-- NETWORK LINES (drawn first, behind nodes) -->
+<!-- Supervisor connections (faint blue lines with glow) -->
+<line x1="1040" y1="152" x2="870" y2="72"  stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.5" filter="url(#lineGlow)"/>
+<line x1="1040" y1="152" x2="855" y2="195" stroke="#6366F1" stroke-width="1.5" stroke-opacity="0.45" filter="url(#lineGlow)"/>
+<line x1="1040" y1="152" x2="942" y2="258" stroke="#8B5CF6" stroke-width="1.5" stroke-opacity="0.45" filter="url(#lineGlow)"/>
+<line x1="1040" y1="152" x2="1100" y2="272" stroke="#A78BFA" stroke-width="1.5" stroke-opacity="0.4" filter="url(#lineGlow)"/>
+<line x1="1040" y1="152" x2="1248" y2="210" stroke="#6366F1" stroke-width="1.5" stroke-opacity="0.45" filter="url(#lineGlow)"/>
+<line x1="1040" y1="152" x2="1295" y2="94" stroke="#3B82F6" stroke-width="1.5" stroke-opacity="0.5" filter="url(#lineGlow)"/>
+<line x1="1040" y1="152" x2="1190" y2="40" stroke="#60A5FA" stroke-width="1.5" stroke-opacity="0.5" filter="url(#lineGlow)"/>
+
+<!-- Cross connections (very faint) -->
+<line x1="870" y1="72"  x2="1190" y2="40"  stroke="#4B5563" stroke-width="0.8" stroke-opacity="0.25"/>
+<line x1="1295" y1="94" x2="1248" y2="210" stroke="#4B5563" stroke-width="0.8" stroke-opacity="0.25"/>
+<line x1="942"  y1="258" x2="1100" y2="272" stroke="#4B5563" stroke-width="0.8" stroke-opacity="0.25"/>
+<line x1="855"  y1="195" x2="942"  y2="258" stroke="#4B5563" stroke-width="0.8" stroke-opacity="0.25"/>
+
+<!-- SUPERVISOR NODE (center, large) -->
+<circle cx="1040" cy="152" r="42" fill="url(#supNodeGrad)" fill-opacity="0.25" stroke="#3B82F6" stroke-width="2" filter="url(#nodeGlow)"/>
+<circle cx="1040" cy="152" r="30" fill="url(#supNodeGrad)" fill-opacity="0.6" stroke="#60A5FA" stroke-width="1.5"/>
+<text x="1040" y="148" text-anchor="middle" font-size="9" font-weight="700" fill="#FFFFFF">SUPER-</text>
+<text x="1040" y="160" text-anchor="middle" font-size="9" font-weight="700" fill="#FFFFFF">VISOR</text>
+
+<!-- AGENT NODES (7 agents) -->
+<!-- BA (business-analyst) -->
+<circle cx="870" cy="72"  r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#F59E0B" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="870" y="69"  text-anchor="middle" font-size="7" font-weight="700" fill="#FCD34D">business</text>
+<text x="870" y="79"  text-anchor="middle" font-size="7" fill="#FCD34D">analyst</text>
+
+<!-- SQL Expert -->
+<circle cx="855" cy="195" r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#60A5FA" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="855" y="192" text-anchor="middle" font-size="7" font-weight="700" fill="#93C5FD">sql</text>
+<text x="855" y="202" text-anchor="middle" font-size="7" fill="#93C5FD">expert</text>
+
+<!-- Spark Expert -->
+<circle cx="942" cy="258" r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#60A5FA" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="942" y="255" text-anchor="middle" font-size="7" font-weight="700" fill="#93C5FD">spark</text>
+<text x="942" y="265" text-anchor="middle" font-size="7" fill="#93C5FD">expert</text>
+
+<!-- Pipeline Architect -->
+<circle cx="1100" cy="272" r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#60A5FA" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="1100" y="269" text-anchor="middle" font-size="7" font-weight="700" fill="#93C5FD">pipeline</text>
+<text x="1100" y="279" text-anchor="middle" font-size="7" fill="#93C5FD">architect</text>
+
+<!-- Quality Steward -->
+<circle cx="1248" cy="210" r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#60A5FA" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="1248" y="207" text-anchor="middle" font-size="7" font-weight="700" fill="#93C5FD">quality</text>
+<text x="1248" y="217" text-anchor="middle" font-size="7" fill="#93C5FD">steward</text>
+
+<!-- Governance Auditor -->
+<circle cx="1295" cy="94"  r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#60A5FA" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="1295" y="91"  text-anchor="middle" font-size="7" font-weight="700" fill="#93C5FD">governance</text>
+<text x="1295" y="101" text-anchor="middle" font-size="7" fill="#93C5FD">auditor</text>
+
+<!-- Semantic Modeler -->
+<circle cx="1190" cy="40"  r="22" fill="url(#agentNodeGrad)" fill-opacity="0.5" stroke="#60A5FA" stroke-width="1.5" filter="url(#nodeGlow)"/>
+<text x="1190" y="37"  text-anchor="middle" font-size="7" font-weight="700" fill="#93C5FD">semantic</text>
+<text x="1190" y="47"  text-anchor="middle" font-size="7" fill="#93C5FD">modeler</text>
+
+<!-- Small floating dots (decorative background depth) -->
+<circle cx="750"  cy="55"  r="2.5" fill="#3B82F6" fill-opacity="0.3"/>
+<circle cx="780"  cy="240" r="2"   fill="#8B5CF6" fill-opacity="0.3"/>
+<circle cx="1360" cy="160" r="3"   fill="#06B6D4" fill-opacity="0.25"/>
+<circle cx="1340" cy="42"  r="2"   fill="#3B82F6" fill-opacity="0.25"/>
+<circle cx="720"  cy="145" r="1.5" fill="#A78BFA" fill-opacity="0.35"/>
+<circle cx="760"  cy="190" r="2"   fill="#60A5FA" fill-opacity="0.3"/>
+<circle cx="1380" cy="240" r="2"   fill="#10B981" fill-opacity="0.3"/>
+
+<!-- Right border line (subtle) -->
+<line x1="720" y1="20" x2="720" y2="280" stroke="#1E2D45" stroke-width="1"/>
+
+<!-- ─── BOTTOM ACCENT LINE ─────────────────────────────────── -->
+<rect x="0" y="294" width="1400" height="4" rx="2" fill="url(#accentLine)"/>
+
+</svg>

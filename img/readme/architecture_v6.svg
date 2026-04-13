@@ -1,0 +1,357 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 910" font-family="'Segoe UI',system-ui,-apple-system,Helvetica,Arial,sans-serif">
+<defs>
+  <!-- Arrow markers -->
+  <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#4B5563"/>
+  </marker>
+  <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#EF4444"/>
+  </marker>
+  <marker id="arr-blue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#3B82F6"/>
+  </marker>
+  <marker id="arr-teal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#10B981"/>
+  </marker>
+  <marker id="arr-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#F59E0B"/>
+  </marker>
+  <marker id="arr-purple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#8B5CF6"/>
+  </marker>
+
+  <!-- Background gradient -->
+  <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#080C16"/>
+    <stop offset="100%" stop-color="#0D1117"/>
+  </linearGradient>
+
+  <!-- Supervisor gradient -->
+  <linearGradient id="supGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#1E3A8A"/>
+    <stop offset="50%" stop-color="#2563EB"/>
+    <stop offset="100%" stop-color="#1D4ED8"/>
+  </linearGradient>
+
+  <!-- Cloud platform gradients -->
+  <linearGradient id="dbGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#1A0A0A"/>
+    <stop offset="100%" stop-color="#1C1010"/>
+  </linearGradient>
+  <linearGradient id="fabGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+    <stop offset="0%" stop-color="#0A1520"/>
+    <stop offset="100%" stop-color="#0A1818"/>
+  </linearGradient>
+
+  <!-- Drop shadow -->
+  <filter id="sh">
+    <feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="#000000" flood-opacity="0.6"/>
+  </filter>
+
+  <!-- Dot grid pattern -->
+  <pattern id="dotgrid" x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+    <circle cx="12" cy="12" r="0.7" fill="#1C2333"/>
+  </pattern>
+</defs>
+
+<!-- Background -->
+<rect width="1400" height="910" fill="url(#bgGrad)"/>
+<rect width="1400" height="910" fill="url(#dotgrid)"/>
+
+<!-- ═══ TITLE ═══════════════════════════════════════════════════════════════ -->
+<text x="700" y="27" text-anchor="middle" font-size="18" font-weight="700" fill="#E2E8F0" letter-spacing="0.5">Data Agents v5.0 — Arquitetura Multi-Agent</text>
+<line x1="150" y1="34" x2="1250" y2="34" stroke="#21262D" stroke-width="1"/>
+
+<!-- ═══ VOCÊ ══════════════════════════════════════════════════════════════════ -->
+<rect x="610" y="42" width="180" height="40" rx="10" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5" filter="url(#sh)"/>
+<text x="700" y="59" text-anchor="middle" font-size="12" font-weight="700" fill="#60A5FA">🧑 Você</text>
+<text x="700" y="74" text-anchor="middle" font-size="9" fill="#8B949E">Linguagem Natural</text>
+
+<line x1="665" y1="82" x2="543" y2="106" stroke="#4B5563" stroke-width="1.3" marker-end="url(#arr)"/>
+<line x1="735" y1="82" x2="857" y2="106" stroke="#4B5563" stroke-width="1.3" marker-end="url(#arr)"/>
+
+<!-- ═══ ENTRY POINTS ═══════════════════════════════════════════════════════ -->
+<rect x="433" y="108" width="220" height="40" rx="10" fill="#0A1F1A" stroke="#10B981" stroke-width="1.5" filter="url(#sh)"/>
+<text x="543" y="125" text-anchor="middle" font-size="11" font-weight="700" fill="#34D399">🌐 ui/chat.py</text>
+<text x="543" y="139" text-anchor="middle" font-size="9" fill="#8B949E">Streamlit Web UI · :8502</text>
+
+<rect x="747" y="108" width="220" height="40" rx="10" fill="#161B22" stroke="#30363D" stroke-width="1.5" filter="url(#sh)"/>
+<text x="857" y="125" text-anchor="middle" font-size="11" font-weight="700" fill="#E2E8F0">⌨️ main.py</text>
+<text x="857" y="139" text-anchor="middle" font-size="9" fill="#8B949E">Interface CLI · Terminal</text>
+
+<!-- ═══ /GERAL BYPASS ════════════════════════════════════════════════════ -->
+<rect x="20" y="108" width="200" height="90" rx="10" fill="#1C1600" stroke="#F59E0B" stroke-width="1.5" filter="url(#sh)"/>
+<rect x="20" y="108" width="200" height="26" rx="10" fill="#2A2000" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="20" y="122" width="200" height="12" fill="#2A2000"/>
+<text x="120" y="124" text-anchor="middle" font-size="10" font-weight="700" fill="#FCD34D">💬 /geral bypass</text>
+<text x="120" y="138" text-anchor="middle" font-size="9" fill="#D29922">commands/geral.py</text>
+<rect x="29" y="145" width="182" height="44" rx="6" fill="#0F0D00" stroke="#F59E0B" stroke-width="1" stroke-opacity="0.4"/>
+<text x="120" y="160" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">SDK query() direto</text>
+<text x="120" y="173" text-anchor="middle" font-size="7" fill="#8B949E">zero agentes · zero MCP · max_turns=1</text>
+<text x="120" y="184" text-anchor="middle" font-size="7" fill="#8B949E">Bearer · Flow Proxy · settings.default_model</text>
+
+<path d="M 433 128 L 220 143" stroke="#F59E0B" stroke-width="1.3" stroke-dasharray="5,3" fill="none" marker-end="url(#arr-orange)"/>
+<rect x="278" y="123" width="67" height="14" rx="4" fill="#0D1117" opacity="0.95"/>
+<text x="311" y="133" text-anchor="middle" font-size="8" fill="#D29922">/geral cmd</text>
+<path d="M 747 128 L 220 153" stroke="#F59E0B" stroke-width="1.0" stroke-dasharray="4,3" fill="none" marker-end="url(#arr-orange)"/>
+
+<!-- ═══ SUPERVISOR ════════════════════════════════════════════════════════ -->
+<rect x="175" y="216" width="1050" height="64" rx="12" fill="url(#supGrad)" stroke="#3B82F6" stroke-width="2" filter="url(#sh)"/>
+<text x="700" y="237" text-anchor="middle" font-size="14" font-weight="700" fill="#FFFFFF">🔴 Data Orchestrator — Supervisor</text>
+<text x="700" y="253" text-anchor="middle" font-size="10" fill="#BFDBFE">claude-sonnet-4-6 · Flow LiteLLM Proxy · TIER_MODEL_MAP · Bearer auth</text>
+<text x="700" y="268" text-anchor="middle" font-size="9" fill="#93C5FD">0: KB-First → 0.5: Clarity Checkpoint → 0.9: Spec-First → 1: PRD → 2: Aprovação → 3: Delegação → 4: Validação</text>
+
+<line x1="543" y1="148" x2="543" y2="216" stroke="#4B5563" stroke-width="1.3" marker-end="url(#arr)"/>
+<line x1="857" y1="148" x2="857" y2="216" stroke="#4B5563" stroke-width="1.3" marker-end="url(#arr)"/>
+
+<!-- ═══ AGENTS REGISTRY ═══════════════════════════════════════════════════ -->
+<rect x="140" y="296" width="1080" height="86" rx="10" fill="#161200" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="140" y="296" width="1080" height="22" rx="10" fill="#1E1800" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="140" y="306" width="1080" height="12" fill="#1E1800"/>
+<text x="150" y="311" text-anchor="start" font-size="9.5" font-weight="700" fill="#FCD34D">📋 Registry — agents/registry/ · Ch.9: inject_cache_prefix · Ch.5: TIER_MODEL_MAP · Ch.12: AgentMeta + preload_registry()</text>
+
+<!-- business-analyst -->
+<rect x="155" y="318" width="145" height="54" rx="7" fill="#1C1600" stroke="#F59E0B" stroke-width="1.5"/>
+<text x="227" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">business-analyst</text>
+<text x="227" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-sonnet-4-6</text>
+<text x="227" y="360" text-anchor="middle" font-size="7" fill="#FCD34D">T3 · /brief</text>
+
+<!-- sql-expert -->
+<rect x="307" y="318" width="145" height="54" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="379" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">sql-expert</text>
+<text x="379" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-sonnet-4-6</text>
+<text x="379" y="360" text-anchor="middle" font-size="7" fill="#60A5FA">T1 · /sql</text>
+
+<!-- spark-expert -->
+<rect x="459" y="318" width="145" height="54" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="531" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">spark-expert</text>
+<text x="531" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-sonnet-4-6</text>
+<text x="531" y="360" text-anchor="middle" font-size="7" fill="#60A5FA">T1 · /spark</text>
+
+<!-- pipeline-architect -->
+<rect x="611" y="318" width="145" height="54" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="683" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">pipeline-architect</text>
+<text x="683" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-opus-4-6</text>
+<text x="683" y="360" text-anchor="middle" font-size="7" fill="#60A5FA">T1 · /pipeline</text>
+
+<!-- quality-steward -->
+<rect x="763" y="318" width="145" height="54" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="835" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">quality-steward</text>
+<text x="835" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-sonnet-4-6</text>
+<text x="835" y="360" text-anchor="middle" font-size="7" fill="#60A5FA">T2 · /quality</text>
+
+<!-- governance-auditor -->
+<rect x="915" y="318" width="145" height="54" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="987" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">governance-auditor</text>
+<text x="987" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-sonnet-4-6</text>
+<text x="987" y="360" text-anchor="middle" font-size="7" fill="#60A5FA">T2 · /governance</text>
+
+<!-- semantic-modeler -->
+<rect x="1067" y="318" width="148" height="54" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="1141" y="334" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">semantic-modeler</text>
+<text x="1141" y="347" text-anchor="middle" font-size="7" fill="#8B949E">claude-sonnet-4-6</text>
+<text x="1141" y="360" text-anchor="middle" font-size="7" fill="#60A5FA">T2 · /semantic</text>
+
+<!-- Supervisor → Agents arrows -->
+<line x1="379" y1="280" x2="379" y2="318" stroke="#3B82F6" stroke-width="1" marker-end="url(#arr-blue)"/>
+<rect x="362" y="287" width="34" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="379" y="296" text-anchor="middle" font-size="7" fill="#60A5FA">/sql</text>
+<line x1="531" y1="280" x2="531" y2="318" stroke="#3B82F6" stroke-width="1" marker-end="url(#arr-blue)"/>
+<rect x="510" y="287" width="42" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="531" y="296" text-anchor="middle" font-size="7" fill="#60A5FA">/spark</text>
+<line x1="683" y1="280" x2="683" y2="318" stroke="#3B82F6" stroke-width="1" marker-end="url(#arr-blue)"/>
+<rect x="655" y="287" width="56" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="683" y="296" text-anchor="middle" font-size="7" fill="#60A5FA">/pipeline</text>
+<line x1="835" y1="280" x2="835" y2="318" stroke="#3B82F6" stroke-width="1" marker-end="url(#arr-blue)"/>
+<rect x="812" y="287" width="46" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="835" y="296" text-anchor="middle" font-size="7" fill="#60A5FA">/quality</text>
+<line x1="987" y1="280" x2="987" y2="318" stroke="#3B82F6" stroke-width="1" marker-end="url(#arr-blue)"/>
+<rect x="957" y="287" width="60" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="987" y="296" text-anchor="middle" font-size="7" fill="#60A5FA">/governance</text>
+<line x1="1141" y1="280" x2="1141" y2="318" stroke="#3B82F6" stroke-width="1" marker-end="url(#arr-blue)"/>
+<rect x="1115" y="287" width="52" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="1141" y="296" text-anchor="middle" font-size="7" fill="#60A5FA">/semantic</text>
+<line x1="227" y1="280" x2="227" y2="318" stroke="#F59E0B" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arr-orange)"/>
+<rect x="207" y="287" width="40" height="12" rx="3" fill="#0D1117" opacity="0.9"/>
+<text x="227" y="296" text-anchor="middle" font-size="7" fill="#D29922">/brief</text>
+
+<!-- ═══ HOOKS ════════════════════════════════════════════════════════════ -->
+<rect x="140" y="390" width="1080" height="80" rx="10" fill="#1A0808" stroke="#EF4444" stroke-width="1.5"/>
+<rect x="140" y="390" width="1080" height="22" rx="10" fill="#220A0A" stroke="#EF4444" stroke-width="1.5"/>
+<rect x="140" y="400" width="1080" height="12" fill="#220A0A"/>
+<text x="150" y="405" text-anchor="start" font-size="9.5" font-weight="700" fill="#FCA5A5">🛡️ Hooks de Proteção (9) — PreToolUse + PostToolUse · interceptam toda execução</text>
+
+<rect x="143" y="412" width="114" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="200" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">security_hook</text>
+<text x="200" y="441" text-anchor="middle" font-size="7" fill="#8B949E">17 padrões</text>
+<text x="200" y="452" text-anchor="middle" font-size="7" fill="#8B949E">+ sql_cost</text>
+
+<rect x="262" y="412" width="114" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="319" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">audit_hook</text>
+<text x="319" y="441" text-anchor="middle" font-size="7" fill="#8B949E">JSONL</text>
+<text x="319" y="452" text-anchor="middle" font-size="7" fill="#8B949E">6 cat. erro</text>
+
+<rect x="381" y="412" width="114" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="438" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">cost_guard</text>
+<text x="438" y="441" text-anchor="middle" font-size="7" fill="#8B949E">Budget $</text>
+<text x="438" y="452" text-anchor="middle" font-size="7" fill="#8B949E">HIGH/MED/LOW</text>
+
+<rect x="500" y="412" width="114" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="557" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">output_compressor</text>
+<text x="557" y="441" text-anchor="middle" font-size="7" fill="#8B949E">SQL 50r</text>
+<text x="557" y="452" text-anchor="middle" font-size="7" fill="#8B949E">max 8K tokens</text>
+
+<rect x="619" y="412" width="114" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="676" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">workflow_tracker</text>
+<text x="676" y="441" text-anchor="middle" font-size="7" fill="#8B949E">WF-01..04</text>
+<text x="676" y="452" text-anchor="middle" font-size="7" fill="#8B949E">Clarity Check</text>
+
+<rect x="738" y="412" width="114" height="48" rx="6" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="795" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">context_budget</text>
+<text x="795" y="441" text-anchor="middle" font-size="7" fill="#60A5FA">Ch.5 · 80%</text>
+<text x="795" y="452" text-anchor="middle" font-size="7" fill="#60A5FA">/ 95% alerta</text>
+
+<rect x="857" y="412" width="114" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="914" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">memory_hook</text>
+<text x="914" y="441" text-anchor="middle" font-size="7" fill="#8B949E">capture context</text>
+<text x="914" y="452" text-anchor="middle" font-size="7" fill="#8B949E">acumula buffer</text>
+
+<rect x="976" y="412" width="114" height="48" rx="6" fill="#0C1E3A" stroke="#3B82F6" stroke-width="2"/>
+<text x="1033" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">session_lifecycle</text>
+<text x="1033" y="441" text-anchor="middle" font-size="7" fill="#60A5FA">Ch.12 · start/end</text>
+<text x="1033" y="452" text-anchor="middle" font-size="7" fill="#60A5FA">flush memória</text>
+
+<rect x="1095" y="412" width="120" height="48" rx="6" fill="#1A0808" stroke="#EF4444" stroke-width="1"/>
+<text x="1155" y="428" text-anchor="middle" font-size="8" font-weight="700" fill="#E2E8F0">checkpoint</text>
+<text x="1155" y="441" text-anchor="middle" font-size="7" fill="#8B949E">save /</text>
+<text x="1155" y="452" text-anchor="middle" font-size="7" fill="#8B949E">resume</text>
+
+<line x1="700" y1="390" x2="700" y2="372" stroke="#EF4444" stroke-width="1.2" stroke-dasharray="5,3" marker-end="url(#arr-red)"/>
+<rect x="638" y="374" width="124" height="13" rx="4" fill="#0D1117" opacity="0.9"/>
+<text x="700" y="383" text-anchor="middle" font-size="7" fill="#F87171">intercepta execução</text>
+
+<!-- ═══ MCP SERVERS ═══════════════════════════════════════════════════════ -->
+<rect x="330" y="482" width="760" height="68" rx="10" fill="#1A1400" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="330" y="482" width="760" height="20" rx="10" fill="#201800" stroke="#F59E0B" stroke-width="1.5"/>
+<rect x="330" y="491" width="760" height="11" fill="#201800"/>
+<text x="340" y="496" text-anchor="start" font-size="10" font-weight="700" fill="#FCD34D">🔧 MCP Servers</text>
+
+<rect x="340" y="502" width="174" height="40" rx="7" fill="#161000" stroke="#F59E0B" stroke-width="1"/>
+<text x="427" y="519" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">databricks</text>
+<text x="427" y="532" text-anchor="middle" font-size="7" fill="#8B949E">50+ tools · Unity Catalog</text>
+
+<rect x="523" y="502" width="174" height="40" rx="7" fill="#161000" stroke="#F59E0B" stroke-width="1"/>
+<text x="610" y="519" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">fabric</text>
+<text x="610" y="532" text-anchor="middle" font-size="7" fill="#8B949E">OneLake · Semantic</text>
+
+<rect x="706" y="502" width="174" height="40" rx="7" fill="#161000" stroke="#F59E0B" stroke-width="1"/>
+<text x="793" y="519" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">fabric_community</text>
+<text x="793" y="532" text-anchor="middle" font-size="7" fill="#8B949E">28 tools · Power BI</text>
+
+<rect x="889" y="502" width="174" height="40" rx="7" fill="#161000" stroke="#F59E0B" stroke-width="1"/>
+<text x="976" y="519" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">fabric_rti</text>
+<text x="976" y="532" text-anchor="middle" font-size="7" fill="#8B949E">KQL · Activator</text>
+
+<!-- ═══ MEMORY SYSTEM ═════════════════════════════════════════════════════ -->
+<rect x="140" y="568" width="1080" height="74" rx="10" fill="#130A24" stroke="#8B5CF6" stroke-width="1.5"/>
+<rect x="140" y="568" width="1080" height="22" rx="10" fill="#1A0F2E" stroke="#8B5CF6" stroke-width="1.5"/>
+<rect x="140" y="578" width="1080" height="12" fill="#1A0F2E"/>
+<text x="150" y="583" text-anchor="start" font-size="10" font-weight="700" fill="#C4B5FD">🧠 Memory System — memory/ · Ch.11: Staleness · Ch.12: Session Lifecycle + Config Snapshot</text>
+
+<rect x="150" y="592" width="253" height="40" rx="7" fill="#0E0818" stroke="#8B5CF6" stroke-width="1"/>
+<text x="276" y="608" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">store.py</text>
+<text x="276" y="622" text-anchor="middle" font-size="7" fill="#8B949E">get/set/decay · confidence scoring · prune_stale</text>
+
+<rect x="413" y="592" width="253" height="40" rx="7" fill="#0E0818" stroke="#8B5CF6" stroke-width="1"/>
+<text x="539" y="608" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">compiler.py</text>
+<text x="539" y="622" text-anchor="middle" font-size="7" fill="#8B949E">compile_daily_logs · supersedes older memories</text>
+
+<rect x="676" y="592" width="253" height="40" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="802" y="608" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">lint.py — Ch.11 Staleness</text>
+<text x="802" y="622" text-anchor="middle" font-size="7" fill="#60A5FA">PROGRESS &lt;0.30 warn · FEEDBACK &lt;0.20 info</text>
+
+<rect x="939" y="592" width="278" height="40" rx="7" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<text x="1078" y="608" text-anchor="middle" font-size="9" font-weight="700" fill="#E2E8F0">config/snapshot.py — Ch.12</text>
+<text x="1078" y="622" text-anchor="middle" font-size="7" fill="#60A5FA">freeze() · detect_drift() · ConfigSnapshot</text>
+
+<path d="M 1033 460 L 1033 568" stroke="#3B82F6" stroke-width="1.1" stroke-dasharray="4,2" fill="none" marker-end="url(#arr-blue)"/>
+<rect x="1038" y="505" width="82" height="13" rx="4" fill="#0D1117" opacity="0.9"/>
+<text x="1079" y="514" text-anchor="middle" font-size="7" fill="#60A5FA">flush on_session_end</text>
+
+<!-- ═══ KNOWLEDGE BASES ════════════════════════════════════════════════ -->
+<rect x="140" y="658" width="1080" height="99" rx="10" fill="#0A1A14" stroke="#10B981" stroke-width="1.5"/>
+<rect x="140" y="658" width="1080" height="22" rx="10" fill="#0D2018" stroke="#10B981" stroke-width="1.5"/>
+<rect x="140" y="668" width="1080" height="12" fill="#0D2018"/>
+<text x="150" y="673" text-anchor="start" font-size="10" font-weight="700" fill="#6EE7B7">📚 Knowledge Bases — kb/ · Passo 0: KB-First</text>
+
+<rect x="150" y="680" width="268" height="24" rx="6" fill="#1C0A0A" stroke="#EF4444" stroke-width="1.2"/>
+<text x="284" y="696" text-anchor="middle" font-size="8" font-weight="700" fill="#FCA5A5">constitution.md — ~50 regras invioláveis</text>
+
+<rect x="434" y="680" width="268" height="24" rx="6" fill="#1C0A0A" stroke="#EF4444" stroke-width="1.2"/>
+<text x="568" y="696" text-anchor="middle" font-size="8" font-weight="700" fill="#FCA5A5">collaboration-workflows.md — WF-01..04</text>
+
+<rect x="150" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="207" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">sql-patterns</text>
+<rect x="274" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="331" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">spark-patterns</text>
+<rect x="398" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="455" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">pipeline-design</text>
+<rect x="522" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="579" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">data-quality</text>
+<rect x="646" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="703" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">governance</text>
+<rect x="770" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="827" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">semantic-modeling</text>
+<rect x="894" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="951" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">fabric</text>
+<rect x="1018" y="714" width="115" height="22" rx="5" fill="#0A1A14" stroke="#10B981" stroke-width="1"/>
+<text x="1075" y="729" text-anchor="middle" font-size="7" fill="#6EE7B7">databricks</text>
+
+<path d="M 200 280 L 200 658" stroke="#10B981" stroke-width="1.3" fill="none" marker-end="url(#arr-teal)"/>
+<rect x="107" y="450" width="84" height="14" rx="4" fill="#0D1117" opacity="0.9"/>
+<text x="149" y="460" text-anchor="middle" font-size="8" fill="#10B981">Passo 0: KB-First</text>
+
+<!-- ═══ TEMPLATES + CONFIG ════════════════════════════════════════════════ -->
+<rect x="140" y="773" width="570" height="58" rx="10" fill="#0C1E3A" stroke="#3B82F6" stroke-width="1.5"/>
+<rect x="140" y="773" width="570" height="20" rx="10" fill="#0F2244" stroke="#3B82F6" stroke-width="1.5"/>
+<rect x="140" y="783" width="570" height="10" fill="#0F2244"/>
+<text x="150" y="787" text-anchor="start" font-size="10" font-weight="700" fill="#60A5FA">📝 Templates Spec-First — templates/</text>
+<rect x="150" y="795" width="167" height="26" rx="6" fill="#0D1B30" stroke="#3B82F6" stroke-width="1"/>
+<text x="233" y="812" text-anchor="middle" font-size="8" fill="#93C5FD">pipeline-spec.md</text>
+<rect x="327" y="795" width="167" height="26" rx="6" fill="#0D1B30" stroke="#3B82F6" stroke-width="1"/>
+<text x="410" y="812" text-anchor="middle" font-size="8" fill="#93C5FD">star-schema-spec.md</text>
+<rect x="504" y="795" width="187" height="26" rx="6" fill="#0D1B30" stroke="#3B82F6" stroke-width="1"/>
+<text x="597" y="812" text-anchor="middle" font-size="8" fill="#93C5FD">cross-platform-spec.md</text>
+
+<path d="M 1175 280 L 1350 280 L 1350 801 L 710 801" stroke="#3B82F6" stroke-width="1.3" fill="none" marker-end="url(#arr-blue)"/>
+<rect x="1260" y="450" width="108" height="14" rx="4" fill="#0D1117" opacity="0.9"/>
+<text x="1314" y="460" text-anchor="middle" font-size="8" fill="#60A5FA">0.9: Spec-First</text>
+
+<rect x="730" y="773" width="490" height="58" rx="10" fill="#1A0808" stroke="#EF4444" stroke-width="1.5"/>
+<rect x="730" y="773" width="490" height="20" rx="10" fill="#220A0A" stroke="#EF4444" stroke-width="1.5"/>
+<rect x="730" y="783" width="490" height="10" fill="#220A0A"/>
+<text x="740" y="787" text-anchor="start" font-size="10" font-weight="700" fill="#FCA5A5">⚙️ Configuração Avançada</text>
+<rect x="740" y="795" width="142" height="26" rx="6" fill="#160606" stroke="#EF4444" stroke-width="1"/>
+<text x="811" y="812" text-anchor="middle" font-size="8" fill="#FCA5A5">TIER_MODEL_MAP</text>
+<rect x="892" y="795" width="142" height="26" rx="6" fill="#160606" stroke="#EF4444" stroke-width="1"/>
+<text x="963" y="812" text-anchor="middle" font-size="8" fill="#FCA5A5">ANTHROPIC_BASE_URL</text>
+<rect x="1044" y="795" width="170" height="26" rx="6" fill="#160606" stroke="#EF4444" stroke-width="1"/>
+<text x="1129" y="812" text-anchor="middle" font-size="8" fill="#FCA5A5">MAX_BUDGET · MAX_TURNS</text>
+
+<!-- ═══ CLOUD PLATFORMS ════════════════════════════════════════════════ -->
+<rect x="330" y="847" width="760" height="54" rx="10" fill="#0A1020" stroke="#10B981" stroke-width="1.5"/>
+<rect x="330" y="847" width="760" height="20" rx="10" fill="#0D1A28" stroke="#10B981" stroke-width="1.5"/>
+<rect x="330" y="857" width="760" height="10" fill="#0D1A28"/>
+<text x="340" y="861" text-anchor="start" font-size="10" font-weight="700" fill="#6EE7B7">☁️ Plataformas de Nuvem</text>
+<rect x="345" y="869" width="345" height="28" rx="7" fill="url(#dbGrad)" stroke="#EF4444" stroke-width="1.2"/>
+<text x="517" y="880" text-anchor="middle" font-size="10" font-weight="700" fill="#FCA5A5">Databricks</text>
+<text x="517" y="892" text-anchor="middle" font-size="7" fill="#8B949E">Unity Catalog · LakeFlow · Spark · MLflow · Genie · AI/BI</text>
+<rect x="710" y="869" width="365" height="28" rx="7" fill="url(#fabGrad)" stroke="#3B82F6" stroke-width="1.2"/>
+<text x="892" y="880" text-anchor="middle" font-size="10" font-weight="700" fill="#93C5FD">Microsoft Fabric</text>
+<text x="892" y="892" text-anchor="middle" font-size="7" fill="#8B949E">OneLake · Power BI · Eventhouse · Activator · Direct Lake</text>
+
+<line x1="427" y1="542" x2="480" y2="847" stroke="#10B981" stroke-width="1" marker-end="url(#arr-teal)"/>
+<line x1="793" y1="542" x2="860" y2="847" stroke="#10B981" stroke-width="1" marker-end="url(#arr-teal)"/>
+<line x1="976" y1="542" x2="920" y2="847" stroke="#10B981" stroke-width="1" marker-end="url(#arr-teal)"/>
+
+</svg>
