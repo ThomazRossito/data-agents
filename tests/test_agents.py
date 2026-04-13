@@ -417,3 +417,161 @@ class TestKBInjection:
 
         result = _load_kb_indexes([])
         assert result == ""
+
+
+# ─── Testes de Cache Prefix (Ch. 9 — Fork Agents & Prompt Cache) ─────────────
+
+
+class TestCachePrefix:
+    """
+    Testes para o prefixo de cache compartilhado.
+
+    Invariante crítico: o prefixo deve ser byte-idêntico em TODOS os agentes.
+    Qualquer diferença de um único byte invalida o cache para aquele agente.
+    """
+
+    def test_load_cache_prefix_returns_string(self):
+        """_load_cache_prefix deve retornar uma string não-vazia."""
+        from agents.loader import _load_cache_prefix
+
+        prefix = _load_cache_prefix()
+        assert isinstance(prefix, str)
+        assert len(prefix) > 0
+
+    def test_load_cache_prefix_missing_file_returns_empty(self, tmp_path):
+        """Se o arquivo não existe, retorna string vazia sem lançar exceção."""
+        from agents.loader import _load_cache_prefix
+
+        nonexistent = tmp_path / "nao_existe.md"
+        result = _load_cache_prefix(nonexistent)
+        assert result == ""
+
+    def test_load_cache_prefix_content_is_stable(self):
+        """Duas chamadas seguidas devem retornar bytes idênticos."""
+        from agents.loader import _load_cache_prefix
+
+        first = _load_cache_prefix()
+        second = _load_cache_prefix()
+        assert first == second, "Cache prefix não é determinístico — contém conteúdo dinâmico?"
+
+    def test_all_agents_share_identical_prefix(self):
+        """
+        INVARIANTE CENTRAL: todos os agentes devem ter o MESMO prefixo no início do prompt.
+
+        Se qualquer agente tiver um prefixo diferente, o cache de prompt da API
+        do Claude não será ativado para aquele agente.
+        """
+        from agents.loader import _load_cache_prefix
+
+        agents = load_all_agents(inject_cache_prefix=True)
+        prefix = _load_cache_prefix()
+
+        assert prefix, "Cache prefix está vazio — cache sharing não vai funcionar"
+
+        for name, agent in agents.items():
+            assert agent.prompt.startswith(prefix), (
+                f"Agente '{name}' não começa com o cache prefix esperado.\n"
+                f"Esperado início: {prefix[:80]!r}...\n"
+                f"Prompt atual início: {agent.prompt[:80]!r}..."
+            )
+
+    def test_prefix_separator_present_between_prefix_and_body(self):
+        """O separador '---' deve estar presente entre o prefixo e o corpo do agente."""
+        from agents.loader import _load_cache_prefix, _CACHE_PREFIX_SEPARATOR
+
+        agents = load_all_agents(inject_cache_prefix=True)
+        prefix = _load_cache_prefix()
+
+        for name, agent in agents.items():
+            # O separador deve aparecer logo após o prefixo
+            expected_start = prefix + _CACHE_PREFIX_SEPARATOR
+            assert agent.prompt.startswith(expected_start), (
+                f"Agente '{name}': separador ausente entre prefixo e corpo."
+            )
+
+    def test_inject_cache_prefix_false_omits_prefix(self, tmp_path):
+        """Com inject_cache_prefix=False, o prompt não deve conter o prefixo."""
+        from agents.loader import _load_cache_prefix
+
+        prefix = _load_cache_prefix()
+        agents_without = load_all_agents(inject_cache_prefix=False)
+
+        for name, agent in agents_without.items():
+            assert not agent.prompt.startswith(prefix), (
+                f"Agente '{name}' tem prefixo mesmo com inject_cache_prefix=False."
+            )
+
+    def test_inject_cache_prefix_default_is_true(self):
+        """O padrão de inject_cache_prefix deve ser True (cache ativado por padrão)."""
+        from agents.loader import _load_cache_prefix
+
+        prefix = _load_cache_prefix()
+        # load_all_agents() sem argumentos deve incluir o prefixo
+        agents_default = load_all_agents()
+
+        for name, agent in agents_default.items():
+            assert agent.prompt.startswith(prefix), (
+                f"Agente '{name}': inject_cache_prefix=True deveria ser o padrão."
+            )
+
+    def test_prefix_length_is_cache_worthy(self):
+        """
+        O prefixo deve ter comprimento suficiente para justificar o cache.
+
+        O Claude API cria cache a partir de ~1024 tokens (~800 chars).
+        Um prefixo muito curto não seria cacheado de forma eficiente.
+        """
+        from agents.loader import _load_cache_prefix
+
+        prefix = _load_cache_prefix()
+        assert len(prefix) >= 500, (
+            f"Cache prefix muito curto ({len(prefix)} chars). "
+            "Prefixos abaixo de ~800 chars podem não ser cacheados pela API."
+        )
+
+    def test_prefix_contains_no_dynamic_content(self):
+        """
+        O prefixo NÃO deve conter marcadores que mudam entre execuções.
+
+        Timestamps, IDs de sessão ou qualquer conteúdo variável invalida o cache.
+        """
+        from agents.loader import _load_cache_prefix
+        import re
+
+        prefix = _load_cache_prefix()
+
+        # Padrões suspeitos de conteúdo dinâmico
+        dynamic_patterns = [
+            r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}",  # ISO timestamp
+            r"session[_-]id\s*[:=]",  # session ID
+            r"request[_-]id\s*[:=]",  # request ID
+        ]
+        for pattern in dynamic_patterns:
+            assert not re.search(pattern, prefix, re.IGNORECASE), (
+                f"Cache prefix contém possível conteúdo dinâmico (padrão: {pattern!r}). "
+                "Isso invalidaria o cache da API do Claude."
+            )
+
+    def test_custom_prefix_path_is_used(self, tmp_path):
+        """Deve ser possível fornecer um arquivo de prefixo alternativo."""
+        custom_prefix_file = tmp_path / "custom_prefix.md"
+        custom_prefix_file.write_text("# Prefixo Custom\n\nConteúdo alternativo.", encoding="utf-8")
+
+        # Cria um agente de teste simples
+        agent_file = tmp_path / "test-agent.md"
+        agent_file.write_text(
+            '---\nname: test-agent\ndescription: "Agente de teste."\n'
+            "model: claude-sonnet-4-6\ntools: [Read]\n---\n# Body\nConteúdo.",
+            encoding="utf-8",
+        )
+
+        from agents.loader import load_agent
+
+        _, agent = load_agent(
+            agent_file,
+            inject_cache_prefix=True,
+            cache_prefix_path=custom_prefix_file,
+        )
+        assert agent.prompt.startswith("# Prefixo Custom"), (
+            "Prefixo alternativo não foi usado corretamente."
+        )

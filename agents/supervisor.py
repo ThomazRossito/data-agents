@@ -70,13 +70,19 @@ def build_supervisor_options(
     # Servidores MCP (plataformas com credenciais disponíveis)
     mcp_registry = build_mcp_registry(platforms)
 
-    # Carregamento dinâmico de agentes via Markdown/YAML
+    # Carregamento dinâmico de agentes via Markdown/YAML.
     # Filtra mcp_servers dos agentes para conter apenas servidores disponíveis no registry.
     # Isso evita referências a servidores sem credenciais (ex: fabric_rti sem KUSTO_SERVICE_URI).
+    #
+    # inject_cache_prefix=True (padrão): prepend agents/cache_prefix.md ao topo de cada agente.
+    # Os primeiros ~500 tokens de todos os agentes são byte-idênticos → o Claude API cacheia
+    # esse bloco uma única vez e o reutiliza em todas as chamadas, reduzindo ~40-60% o custo
+    # de tokens de input. Inspirado em Ch. 9 — Fork Agents & Prompt Cache (claude-code-from-source).
     agents = load_all_agents(
         available_mcp_servers=set(mcp_registry.keys()),
         tier_model_map=settings.tier_model_map if settings.tier_model_map else None,
         inject_kb_index=settings.inject_kb_index,
+        inject_cache_prefix=True,
     )
 
     return ClaudeAgentOptions(

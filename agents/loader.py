@@ -61,6 +61,12 @@ AGENTS_REGISTRY_DIR = Path(__file__).parent / "registry"
 # Diretório base das Knowledge Bases
 KB_BASE_DIR = Path(__file__).parent.parent / "kb"
 
+# Arquivo de prefixo de cache compartilhado (Ch. 9 — Fork Agents & Prompt Cache)
+CACHE_PREFIX_PATH = Path(__file__).parent / "cache_prefix.md"
+
+# Separador entre prefixo compartilhado e corpo específico do agente
+_CACHE_PREFIX_SEPARATOR = "\n\n---\n\n"
+
 # Mapeamento de aliases de tool sets para listas concretas de tools MCP
 MCP_TOOL_SETS: dict[str, list[str]] = {
     "databricks_all": DATABRICKS_MCP_TOOLS,
@@ -204,11 +210,47 @@ def _load_kb_indexes(
     return header + "\n\n---\n\n".join(sections)
 
 
+def _load_cache_prefix(prefix_path: Path | None = None) -> str:
+    """
+    Carrega o prefixo de cache compartilhado (Ch. 9 — Fork Agents & Prompt Cache).
+
+    O prefixo é um bloco de texto idêntico byte-a-byte que é injetado no
+    INÍCIO do system prompt de TODOS os agentes. Isso ativa o prompt caching
+    da API do Claude: o prefixo é processado e cacheado uma única vez,
+    reduzindo ~40-60% nos custos de tokens de input nas chamadas subsequentes.
+
+    Regra crítica: o conteúdo deste arquivo NUNCA deve conter conteúdo dinâmico
+    (timestamps, IDs de sessão, estados variáveis). Qualquer byte diferente
+    invalida o cache para aquele agente.
+
+    Args:
+        prefix_path: Caminho para o arquivo cache_prefix.md.
+            Padrão: agents/cache_prefix.md
+
+    Returns:
+        Conteúdo do prefixo como string, ou string vazia se arquivo não existir.
+    """
+    path = prefix_path or CACHE_PREFIX_PATH
+    if not path.exists():
+        logger.warning(f"Cache prefix não encontrado: {path} — agentes sem prefixo compartilhado")
+        return ""
+
+    try:
+        content = path.read_text(encoding="utf-8").strip()
+        logger.debug(f"Cache prefix carregado: {len(content)} chars ({path.name})")
+        return content
+    except Exception as e:
+        logger.warning(f"Erro ao ler cache prefix '{path}': {e} — continuando sem prefixo")
+        return ""
+
+
 def load_agent(
     path: Path,
     tier_model_map: dict[str, str] | None = None,
     inject_kb_index: bool = False,
     kb_base_dir: Path | None = None,
+    inject_cache_prefix: bool = True,
+    cache_prefix_path: Path | None = None,
 ) -> tuple[str, AgentDefinition]:
     """
     Carrega um único arquivo .md e retorna (name, AgentDefinition).
@@ -220,6 +262,12 @@ def load_agent(
         inject_kb_index: Se True, injeta o conteúdo dos index.md das KBs
             declaradas em kb_domains no prompt do agente.
         kb_base_dir: Diretório base das KBs. Padrão: kb/ na raiz do projeto.
+        inject_cache_prefix: Se True (padrão), prepend o prefixo de cache
+            compartilhado (agents/cache_prefix.md) ao system prompt.
+            O prefixo deve ser byte-idêntico em TODOS os agentes para que
+            o prompt caching da API do Claude funcione corretamente.
+        cache_prefix_path: Caminho alternativo para o arquivo de prefixo.
+            Padrão: agents/cache_prefix.md
 
     Returns:
         Tupla (agent_name, AgentDefinition)
@@ -252,6 +300,13 @@ def load_agent(
         )
         model = routed_model
 
+    # Cache prefix injection (Ch. 9 — Fork Agents & Prompt Cache):
+    # Prepend um bloco idêntico byte-a-byte ao topo de todos os agentes.
+    # O Claude API detecta o prefixo comum e o cacheia, evitando reprocessamento.
+    prefix = ""
+    if inject_cache_prefix:
+        prefix = _load_cache_prefix(cache_prefix_path)
+
     # KB injection: carrega e injeta index.md das KBs relevantes no prompt
     kb_domains: list[str] = metadata.get("kb_domains", [])
     kb_content = ""
@@ -263,9 +318,17 @@ def load_agent(
     # Resolve aliases de tool sets para tools MCP concretas
     tools = _resolve_tools(tools_raw)
 
+    # Monta o prompt final: [prefixo compartilhado] + [corpo específico] + [KB]
+    # O separador --- garante que o prefixo é visualmente distinto do corpo,
+    # mas NÃO altera o prefixo em si (só o que vem depois).
+    if prefix:
+        full_prompt = prefix + _CACHE_PREFIX_SEPARATOR + body + kb_content
+    else:
+        full_prompt = body + kb_content
+
     agent = AgentDefinition(
         description=description,
-        prompt=body + kb_content,
+        prompt=full_prompt,
         tools=tools,
         model=model,
         mcpServers=mcp_servers if mcp_servers else None,
@@ -274,7 +337,8 @@ def load_agent(
     logger.info(
         f"Agente carregado: '{name}' | tier={tier} | model={model} | "
         f"tools={len(tools)} | mcp_servers={mcp_servers} | "
-        f"kb_injected={len(kb_domains) if kb_content else 0}"
+        f"kb_injected={len(kb_domains) if kb_content else 0} | "
+        f"cache_prefix={bool(prefix)}"
     )
     return name, agent
 
@@ -285,6 +349,8 @@ def load_all_agents(
     tier_model_map: dict[str, str] | None = None,
     inject_kb_index: bool = False,
     kb_base_dir: Path | None = None,
+    inject_cache_prefix: bool = True,
+    cache_prefix_path: Path | None = None,
 ) -> dict[str, AgentDefinition]:
     """
     Carrega todos os agentes do diretório de registry.
@@ -305,6 +371,9 @@ def load_all_agents(
             Se None ou vazio, usa o model do frontmatter (comportamento padrão).
         inject_kb_index: Se True, injeta index.md das KBs no prompt dos agentes.
         kb_base_dir: Diretório base das KBs. Padrão: kb/ na raiz do projeto.
+        inject_cache_prefix: Se True (padrão), prepend o prefixo de cache
+            compartilhado a todos os agentes. Ver `load_agent` para detalhes.
+        cache_prefix_path: Caminho alternativo para o arquivo de prefixo.
 
     Returns:
         Dicionário {agent_name: AgentDefinition}
@@ -332,6 +401,8 @@ def load_all_agents(
                 tier_model_map=tier_model_map,
                 inject_kb_index=inject_kb_index,
                 kb_base_dir=kb_base_dir,
+                inject_cache_prefix=inject_cache_prefix,
+                cache_prefix_path=cache_prefix_path,
             )
 
             # Filtra mcp_servers indisponíveis para evitar erros silenciosos no SDK
