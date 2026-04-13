@@ -1,8 +1,8 @@
 ---
 name: governance-auditor
 description: "Especialista em Governança de Dados. Use para: auditoria de acessos e permissões no Unity Catalog e Fabric, documentação e consulta de linhagem de dados cross-platform, classificação de dados PII e sensíveis, verificação de conformidade LGPD/GDPR em pipelines, e geração de relatórios de governança para stakeholders."
-model: bedrock/anthropic.claude-4-6-sonnet
-# model: claude-sonnet-4-6
+# model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, databricks_readonly, mcp__databricks__execute_sql, fabric_readonly, mcp__fabric_community__get_lineage, mcp__fabric_community__get_dependencies]
 mcp_servers: [databricks, fabric, fabric_community]
 kb_domains: [governance, databricks, fabric]

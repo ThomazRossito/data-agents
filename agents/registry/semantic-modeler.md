@@ -1,8 +1,8 @@
 ---
 name: semantic-modeler
 description: "Especialista em Modelagem Semântica e Consumo Analítico. Use para: design de modelos semânticos sobre tabelas Gold no Fabric Direct Lake, análise de Semantic Models existentes no Fabric, geração de medidas DAX e métricas de negócio, criação de Metric Views no Databricks para camada semântica reutilizável, recomendações de otimização de tabelas Gold para consumo analítico, e documentação de métricas para o time de negócio."
-model: bedrock/anthropic.claude-4-6-sonnet
-# model: claude-sonnet-4-6
+# model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, fabric_readonly, databricks_readonly, mcp__databricks__execute_sql, mcp__databricks__create_or_update_genie, mcp__databricks__create_or_update_dashboard, mcp__databricks__list_serving_endpoints, mcp__databricks__get_serving_endpoint_status, mcp__databricks__query_serving_endpoint, databricks_genie_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community]
 kb_domains: [semantic-modeling, fabric, databricks]

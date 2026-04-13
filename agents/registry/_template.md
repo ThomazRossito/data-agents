@@ -1,8 +1,8 @@
 ---
 name: agent-name
 description: "Descrição do agente. Use para: [casos de uso]. Invoque quando: [condições de trigger]."
-model: bedrock/anthropic.claude-4-6-sonnet
-# model: claude-sonnet-4-6
+# model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Grep, Glob, Write]
 mcp_servers: []
 kb_domains: []
