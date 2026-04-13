@@ -23,6 +23,7 @@ from rich.spinner import Spinner
 from rich.text import Text
 
 from claude_agent_sdk import (
+    ClaudeAgentOptions,
     ClaudeSDKClient,
     query,
     AssistantMessage,
@@ -361,9 +362,8 @@ async def _handle_memory_command(user_input: str) -> None:
         console.print("[yellow]Subcomandos: status, flush, compile, lint, search <query>[/yellow]")
 
 
-# Modelo para /geral: usa o DEFAULT_MODEL do settings (proxy-aware)
-# Fallback para claude-sonnet-4-6 quando não configurado
-_GERAL_MODEL = settings.default_model or "claude-sonnet-4-6"
+# System prompt do /geral — assistente técnico leve, sem delegação a sub-agentes.
+# Modelo usado: settings.default_model (idêntico ao Supervisor, inclui prefixo bedrock/).
 _GERAL_SYSTEM = (
     "Você é um assistente técnico especializado em Engenharia de Dados: "
     "Databricks, Microsoft Fabric, Apache Spark, Delta Lake, SQL, arquitetura Medallion e boas práticas. "
@@ -376,85 +376,91 @@ _geral_history: list[dict] = []
 
 async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[str, float]:
     """
-    Chama o modelo diretamente via Anthropic SDK — sem passar pelo Supervisor.
+    Chama o modelo via claude_agent_sdk — sem Supervisor, sem sub-agentes, sem MCP.
 
-    Usa AsyncAnthropic que respeita ANTHROPIC_API_KEY e ANTHROPIC_BASE_URL
-    automaticamente, garantindo compatibilidade com o proxy Flow.
+    Usa o mesmo fluxo de autenticação do Supervisor (Authorization: Bearer via SDK),
+    garantindo compatibilidade com o proxy Flow sem nenhuma configuração extra.
 
     Mantém histórico de conversa em _geral_history para follow-ups na mesma sessão.
     Custo típico: ~$0.002–0.01 (vs ~$0.30–0.40 com o Supervisor).
     """
-    import time
-
-    import anthropic as _anthropic_lib
-
     _geral_history.append({"role": "user", "content": user_message})
-    history = _geral_history[-20:]  # máximo 10 turnos de contexto
 
-    # Cria cliente respeitando ANTHROPIC_BASE_URL (proxy Flow) quando configurado.
-    # O Flow LiteLLM Proxy exige "Authorization: Bearer <JWT>" em vez do header
-    # padrão "x-api-key" que o Anthropic SDK envia. Sobrescrevemos via default_headers.
-    _client_kwargs: dict = {"api_key": settings.anthropic_api_key}
-    if settings.anthropic_base_url:
-        _client_kwargs["base_url"] = settings.anthropic_base_url
-        _client_kwargs["default_headers"] = {
-            "Authorization": f"Bearer {settings.anthropic_api_key}",
-        }
+    # Embute histórico recente no prompt para suporte a follow-ups.
+    # O sdk query() recebe um único prompt — não há API de multi-turn.
+    history_prefix = ""
+    if len(_geral_history) > 1:
+        lines: list[str] = []
+        for msg in _geral_history[-21:-1]:  # até 10 turnos anteriores
+            role = "Usuário" if msg["role"] == "user" else "Assistente"
+            lines.append(f"{role}: {msg['content']}")
+        if lines:
+            history_prefix = "Histórico:\n" + "\n".join(lines) + "\n\n"
 
-    client = _anthropic_lib.AsyncAnthropic(**_client_kwargs)
+    prompt = history_prefix + user_message
+
+    # ClaudeAgentOptions mínimo — zero sub-agentes, zero MCP, zero hooks.
+    # O SDK gerencia auth internamente → mesmo mecanismo Bearer do Supervisor.
+    options = ClaudeAgentOptions(
+        model=settings.default_model,
+        system_prompt=_GERAL_SYSTEM,
+        allowed_tools=[],
+        agents=[],
+        mcp_servers={},
+        max_turns=1,
+        permission_mode="bypassPermissions",
+    )
 
     spinner = Spinner("dots", text=Text("💬 Geral pensando...", style="dim"))
     live = Live(spinner, console=console, refresh_per_second=10, transient=True)
     live.start()
 
-    t0 = time.time()
     metrics: dict[str, float] = {"cost": 0.0}
+    response_text = ""
 
     try:
-        message = await client.messages.create(
-            model=_GERAL_MODEL,
-            max_tokens=2048,
-            system=_GERAL_SYSTEM,
-            messages=history,  # type: ignore[arg-type]
-        )
-        elapsed = time.time() - t0
-        live.stop()
+        async for message in query(prompt=prompt, options=options):
+            if isinstance(message, AssistantMessage):
+                if live.is_started:
+                    live.stop()
+                for block in message.content:
+                    if isinstance(block, TextBlock) and block.text.strip():
+                        if not response_text:
+                            console.print("[bold cyan]💬 Geral:[/bold cyan]")
+                        console.print(Markdown(block.text))
+                        console.print()
+                        response_text += block.text
 
-        text = message.content[0].text if message.content else ""
-        input_tok = message.usage.input_tokens if message.usage else 0
-        output_tok = message.usage.output_tokens if message.usage else 0
-        # Preços claude-sonnet: $3.00/1M input, $15.00/1M output
-        cost = (input_tok * 3.00 + output_tok * 15.00) / 1_000_000
-
-        console.print("[bold cyan]💬 Geral:[/bold cyan]")
-        console.print(Markdown(text))
-        console.print()
-        console.print(
-            f"[dim]💰 Custo: ${cost:.5f} | "
-            f"🔢 tokens: {input_tok} in / {output_tok} out | "
-            f"⏱ {elapsed:.1f}s[/dim]\n"
-        )
-
-        _geral_history.append({"role": "assistant", "content": text})
-        metrics["cost"] = cost
-
-        log_session_result(
-            type(
-                "R",
-                (),
-                {"total_cost_usd": cost, "num_turns": 1, "duration_ms": int(elapsed * 1000)},
-            )(),
-            prompt_preview=user_message[:100],
-            session_type=session_type,
-        )
+            elif isinstance(message, ResultMessage):
+                if live.is_started:
+                    live.stop()
+                cost = float(message.total_cost_usd or 0)
+                parts = [f"💰 Custo: ${cost:.5f}"]
+                if message.num_turns:
+                    parts.append(f"🔢 turns: {message.num_turns}")
+                if message.duration_ms:
+                    parts.append(f"⏱ {message.duration_ms / 1000:.1f}s")
+                console.print(f"[dim]{' | '.join(parts)}[/dim]\n")
+                log_session_result(
+                    message, prompt_preview=user_message[:100], session_type=session_type
+                )
+                metrics["cost"] = cost
 
     except Exception as e:
         if live.is_started:
             live.stop()
         console.print(f"\n[bold red]Erro no /geral:[/bold red] {e}\n")
-        logger.error(f"Geral direct call error: {e}", exc_info=True)
+        logger.error("Geral SDK call error: %s", e, exc_info=True)
+        # Desfaz push do histórico em caso de erro
         if _geral_history and _geral_history[-1]["role"] == "user":
             _geral_history.pop()
+        return metrics
+
+    if live.is_started:
+        live.stop()
+
+    if response_text:
+        _geral_history.append({"role": "assistant", "content": response_text})
 
     return metrics
 
