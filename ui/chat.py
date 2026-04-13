@@ -169,8 +169,11 @@ def _get_agent_session() -> dict:
                 await client.query(prompt)
                 async for msg in client.receive_response(): ...
     """
+    import uuid
+
     from agents.supervisor import build_supervisor_options
     from claude_agent_sdk import ClaudeSDKClient
+    from hooks.session_lifecycle import on_session_start
 
     # ── 1. Event loop em background thread (run_forever) ──────────────────────
     loop = asyncio.new_event_loop()
@@ -195,16 +198,30 @@ def _get_agent_session() -> dict:
     except Exception as exc:
         raise RuntimeError(f"Falha ao conectar ClaudeSDKClient: {exc}") from exc
 
-    return {"client": client, "options": options, "loop": loop}
+    # Ch.12 — Session Lifecycle: reseta contadores e prepara buffer de memória
+    session_id = f"ui-{uuid.uuid4().hex[:8]}"
+    on_session_start(session_id)
+
+    return {"client": client, "options": options, "loop": loop, "session_id": session_id}
 
 
 def _reset_agent_session() -> None:
     """
     Desconecta e reconecta o cliente — limpa histórico de conversa.
     Equivalente ao comando 'limpar' do CLI (client.disconnect + client.connect).
+
+    Ch.12: dispara on_session_end (flush de memória) antes de reconectar,
+    e on_session_start (reset de contadores) após reconectar.
     """
+    import uuid
+
+    from hooks.session_lifecycle import on_session_end, on_session_start
+
     try:
         session = _get_agent_session()
+
+        # Ch.12 — encerra sessão atual: flush de memória + log de contexto
+        on_session_end(session.get("session_id", "ui-unknown"))
 
         async def _do_reset() -> None:
             await session["client"].disconnect()
@@ -212,6 +229,12 @@ def _reset_agent_session() -> None:
 
         future = asyncio.run_coroutine_threadsafe(_do_reset(), session["loop"])
         future.result(timeout=20)
+
+        # Ch.12 — inicia nova sessão: reseta contadores
+        new_session_id = f"ui-{uuid.uuid4().hex[:8]}"
+        session["session_id"] = new_session_id
+        on_session_start(new_session_id)
+
     except Exception:
         pass  # Falha no reset não deve travar a UI — próxima query cria contexto novo
 
@@ -319,37 +342,16 @@ def _run_agent(prompt: str, enable_thinking: bool = False, session_type: str = "
 
 
 # ── Execução direta via SDK (sem Supervisor) ─────────────────────────────────
-# /geral: usa claude_agent_sdk query() com ClaudeAgentOptions mínimo.
-# Mesmo mecanismo de auth (Authorization: Bearer) do Supervisor → sem 401 no Flow.
-# Zero sub-agentes, zero MCP, zero hooks — resposta direta e barata.
-_GERAL_SYSTEM = (
-    "Você é um assistente técnico especializado em Engenharia de Dados: "
-    "Databricks, Microsoft Fabric, Apache Spark, Delta Lake, SQL, arquitetura Medallion e boas práticas. "
-    "Responda em português brasileiro, de forma direta e objetiva. "
-    "Use exemplos e code blocks quando enriquecer a resposta. "
-    "Não peça aprovação, não crie documentos, não acesse arquivos externos."
-)
-
-
+# /geral: delega para commands/geral.py — módulo compartilhado com main.py.
+# Lógica única → sem duplicação, sem risco de divergência entre CLI e UI.
 def _run_geral(user_message: str) -> dict:
     """
-    Chama o modelo via claude_agent_sdk — sem Supervisor, sem sub-agentes, sem MCP.
+    Wrapper Streamlit para run_geral_query() de commands/geral.py.
 
-    Usa o mesmo loop asyncio e fluxo de auth Bearer do Supervisor, garantindo
-    compatibilidade com o proxy Flow sem nenhuma configuração extra.
-
-    Mantém histórico de conversa em st.session_state["geral_history"] para
-    suportar perguntas de follow-up dentro da mesma sessão do App.
-
-    Custo típico: ~$0.002–0.01 por pergunta (vs ~$0.30–0.40 com Supervisor).
+    Gerencia histórico em st.session_state["geral_history"] e submete a
+    coroutine ao loop de background da sessão — mesmo padrão de _run_agent().
     """
-    from claude_agent_sdk import (
-        ClaudeAgentOptions,
-        AssistantMessage,
-        ResultMessage,
-        TextBlock,
-        query as sdk_query,
-    )
+    from commands.geral import run_geral_query
 
     result: dict = {
         "text": "",
@@ -360,36 +362,12 @@ def _run_geral(user_message: str) -> dict:
         "error": None,
     }
 
-    # Histórico de conversa para follow-ups
+    # Histórico de conversa para follow-ups (persistido na sessão Streamlit)
     if "geral_history" not in st.session_state:
         st.session_state["geral_history"] = []
 
     st.session_state["geral_history"].append({"role": "user", "content": user_message})
-
-    # Embute histórico recente no prompt — sdk_query() é stateless (sem multi-turn API)
-    history_prefix = ""
     history = st.session_state["geral_history"]
-    if len(history) > 1:
-        lines: list[str] = []
-        for msg in history[-21:-1]:  # até 10 turnos anteriores
-            role = "Usuário" if msg["role"] == "user" else "Assistente"
-            lines.append(f"{role}: {msg['content']}")
-        if lines:
-            history_prefix = "Histórico:\n" + "\n".join(lines) + "\n\n"
-
-    prompt = history_prefix + user_message
-
-    # ClaudeAgentOptions mínimo — zero sub-agentes, zero MCP, zero hooks.
-    # O SDK gerencia auth internamente → mesmo mecanismo Bearer do Supervisor.
-    options = ClaudeAgentOptions(
-        model=settings.default_model,
-        system_prompt=_GERAL_SYSTEM,
-        allowed_tools=[],
-        agents=[],
-        mcp_servers={},
-        max_turns=1,
-        permission_mode="bypassPermissions",
-    )
 
     # Reutiliza o loop de background da sessão do Supervisor
     session = _get_agent_session()
@@ -397,20 +375,11 @@ def _run_geral(user_message: str) -> dict:
 
     async def _async() -> None:
         try:
-            async for message in sdk_query(prompt=prompt, options=options):
-                if isinstance(message, AssistantMessage):
-                    for blk in message.content:
-                        if isinstance(blk, TextBlock) and blk.text.strip():
-                            result["text"] += blk.text
-                elif isinstance(message, ResultMessage):
-                    result["cost"] = float(message.total_cost_usd or 0)
-                    result["turns"] = int(message.num_turns or 1)
-                    result["duration"] = float(message.duration_ms or 0) / 1000
-                    from hooks.session_logger import log_session_result
-
-                    log_session_result(
-                        message, prompt_preview=user_message[:100], session_type="geral"
-                    )
+            text, metrics = await run_geral_query(user_message, history)
+            result["text"] = text
+            result["cost"] = metrics["cost"]
+            result["turns"] = int(metrics["turns"])
+            result["duration"] = metrics["duration"]
         except Exception as exc:
             result["error"] = str(exc)
 

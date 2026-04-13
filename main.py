@@ -23,7 +23,6 @@ from rich.spinner import Spinner
 from rich.text import Text
 
 from claude_agent_sdk import (
-    ClaudeAgentOptions,
     ClaudeSDKClient,
     query,
     AssistantMessage,
@@ -44,6 +43,7 @@ from config.logging_config import setup_logging
 from config.settings import settings
 from hooks.session_logger import log_session_result
 from hooks.cost_guard_hook import reset_session_counters
+from hooks.session_lifecycle import on_session_end, on_session_start
 from hooks.checkpoint import (
     save_checkpoint,
     load_checkpoint,
@@ -54,6 +54,7 @@ from hooks.memory_hook import flush_session_memories
 from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
 from agents.loader import inject_memory_context
+from commands.geral import run_geral_query
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
@@ -362,96 +363,35 @@ async def _handle_memory_command(user_input: str) -> None:
         console.print("[yellow]Subcomandos: status, flush, compile, lint, search <query>[/yellow]")
 
 
-# System prompt do /geral — assistente técnico leve, sem delegação a sub-agentes.
-# Modelo usado: settings.default_model (idêntico ao Supervisor, inclui prefixo bedrock/).
-_GERAL_SYSTEM = (
-    "Você é um assistente técnico especializado em Engenharia de Dados: "
-    "Databricks, Microsoft Fabric, Apache Spark, Delta Lake, SQL, arquitetura Medallion e boas práticas. "
-    "Responda em português brasileiro, de forma direta e objetiva. "
-    "Use exemplos e code blocks quando enriquecer a resposta. "
-    "Não peça aprovação, não crie documentos, não acesse arquivos externos."
-)
+# Histórico de conversa do /geral — mantido na sessão CLI.
+# A lógica central está em commands/geral.py (compartilhada com ui/chat.py).
 _geral_history: list[dict] = []
 
 
 async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[str, float]:
     """
-    Chama o modelo via claude_agent_sdk — sem Supervisor, sem sub-agentes, sem MCP.
+    Wrapper CLI para run_geral_query() — adiciona feedback visual (spinner, Rich).
 
-    Usa o mesmo fluxo de autenticação do Supervisor (Authorization: Bearer via SDK),
-    garantindo compatibilidade com o proxy Flow sem nenhuma configuração extra.
-
-    Mantém histórico de conversa em _geral_history para follow-ups na mesma sessão.
-    Custo típico: ~$0.002–0.01 (vs ~$0.30–0.40 com o Supervisor).
+    A lógica de query está em commands/geral.py (importada também pela UI).
+    Esta função lida apenas com apresentação específica do terminal.
     """
     _geral_history.append({"role": "user", "content": user_message})
-
-    # Embute histórico recente no prompt para suporte a follow-ups.
-    # O sdk query() recebe um único prompt — não há API de multi-turn.
-    history_prefix = ""
-    if len(_geral_history) > 1:
-        lines: list[str] = []
-        for msg in _geral_history[-21:-1]:  # até 10 turnos anteriores
-            role = "Usuário" if msg["role"] == "user" else "Assistente"
-            lines.append(f"{role}: {msg['content']}")
-        if lines:
-            history_prefix = "Histórico:\n" + "\n".join(lines) + "\n\n"
-
-    prompt = history_prefix + user_message
-
-    # ClaudeAgentOptions mínimo — zero sub-agentes, zero MCP, zero hooks.
-    # O SDK gerencia auth internamente → mesmo mecanismo Bearer do Supervisor.
-    options = ClaudeAgentOptions(
-        model=settings.default_model,
-        system_prompt=_GERAL_SYSTEM,
-        allowed_tools=[],
-        agents=[],
-        mcp_servers={},
-        max_turns=1,
-        permission_mode="bypassPermissions",
-    )
 
     spinner = Spinner("dots", text=Text("💬 Geral pensando...", style="dim"))
     live = Live(spinner, console=console, refresh_per_second=10, transient=True)
     live.start()
 
     metrics: dict[str, float] = {"cost": 0.0}
-    response_text = ""
 
     try:
-        async for message in query(prompt=prompt, options=options):
-            if isinstance(message, AssistantMessage):
-                if live.is_started:
-                    live.stop()
-                for block in message.content:
-                    if isinstance(block, TextBlock) and block.text.strip():
-                        if not response_text:
-                            console.print("[bold cyan]💬 Geral:[/bold cyan]")
-                        console.print(Markdown(block.text))
-                        console.print()
-                        response_text += block.text
-
-            elif isinstance(message, ResultMessage):
-                if live.is_started:
-                    live.stop()
-                cost = float(message.total_cost_usd or 0)
-                parts = [f"💰 Custo: ${cost:.5f}"]
-                if message.num_turns:
-                    parts.append(f"🔢 turns: {message.num_turns}")
-                if message.duration_ms:
-                    parts.append(f"⏱ {message.duration_ms / 1000:.1f}s")
-                console.print(f"[dim]{' | '.join(parts)}[/dim]\n")
-                log_session_result(
-                    message, prompt_preview=user_message[:100], session_type=session_type
-                )
-                metrics["cost"] = cost
-
+        response_text, raw_metrics = await run_geral_query(
+            user_message, _geral_history, session_type=session_type
+        )
     except Exception as e:
         if live.is_started:
             live.stop()
         console.print(f"\n[bold red]Erro no /geral:[/bold red] {e}\n")
         logger.error("Geral SDK call error: %s", e, exc_info=True)
-        # Desfaz push do histórico em caso de erro
         if _geral_history and _geral_history[-1]["role"] == "user":
             _geral_history.pop()
         return metrics
@@ -460,8 +400,20 @@ async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[
         live.stop()
 
     if response_text:
+        console.print("[bold cyan]💬 Geral:[/bold cyan]")
+        console.print(Markdown(response_text))
+        console.print()
         _geral_history.append({"role": "assistant", "content": response_text})
 
+    cost = raw_metrics["cost"]
+    parts = [f"💰 Custo: ${cost:.5f}"]
+    if raw_metrics["turns"]:
+        parts.append(f"🔢 turns: {int(raw_metrics['turns'])}")
+    if raw_metrics["duration"]:
+        parts.append(f"⏱ {raw_metrics['duration']:.1f}s")
+    console.print(f"[dim]{' | '.join(parts)}[/dim]\n")
+
+    metrics["cost"] = cost
     return metrics
 
 
@@ -509,8 +461,14 @@ async def run_interactive() -> None:
         return
 
     # ── 4. ClaudeSDKClient emite "Using bundled Claude Code CLI..." aqui ─────
+    import uuid
+
+    _session_id = f"cli-{uuid.uuid4().hex[:8]}"
     try:
         async with ClaudeSDKClient(options=options) as client:
+            # Ch.12 — Session Lifecycle: reseta contadores e prepara buffer de memória
+            on_session_start(_session_id)
+
             # ── 4.1 Verificar checkpoint de sessão anterior ────────────────
             checkpoint = load_checkpoint()
             if checkpoint:
@@ -771,6 +729,9 @@ async def run_interactive() -> None:
         # Captura erros durante o encerramento do SDK (ex: hooks de teardown)
         # Erros de teardown não devem ser exibidos ao usuário — apenas logados em debug
         logger.debug(f"Erro no encerramento do SDK (ignorado): {e}")
+    finally:
+        # Ch.12 — Session Lifecycle: flush de memória e log de estatísticas de uso
+        on_session_end(_session_id)
 
 
 async def run_single_query(prompt: str) -> None:
