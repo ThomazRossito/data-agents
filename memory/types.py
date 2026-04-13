@@ -102,19 +102,19 @@ class Memory:
         """Serializa para frontmatter YAML (para salvar em arquivo .md)."""
         lines = [
             "---",
-            f"id: {self.id}",
+            f'id: "{self.id}"',
             f"type: {self.type.value}",
             f'summary: "{self.summary}"',
             f"tags: [{', '.join(self.tags)}]",
             f"confidence: {self.confidence:.3f}",
             f"created_at: {self.created_at.isoformat()}",
             f"updated_at: {self.updated_at.isoformat()}",
-            f"source_session: {self.source_session}",
+            f'source_session: "{self.source_session}"',
         ]
         if self.related_ids:
             lines.append(f"related_ids: [{', '.join(self.related_ids)}]")
         if self.superseded_by:
-            lines.append(f"superseded_by: {self.superseded_by}")
+            lines.append(f'superseded_by: "{self.superseded_by}"')
         lines.append("---")
         return "\n".join(lines)
 

@@ -136,7 +136,7 @@ class TestMemoryToFrontmatter:
     def test_contains_id(self):
         mem = Memory()
         fm = mem.to_frontmatter()
-        assert f"id: {mem.id}" in fm
+        assert f'id: "{mem.id}"' in fm
 
     def test_contains_type(self):
         mem = Memory(type=MemoryType.ARCHITECTURE)
@@ -168,7 +168,7 @@ class TestMemoryToFrontmatter:
     def test_contains_superseded_by_when_set(self):
         mem = Memory(superseded_by="newer_id")
         fm = mem.to_frontmatter()
-        assert "superseded_by: newer_id" in fm
+        assert 'superseded_by: "newer_id"' in fm
 
     def test_no_superseded_by_when_none(self):
         mem = Memory(superseded_by=None)

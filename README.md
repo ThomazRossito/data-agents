@@ -8,7 +8,7 @@
     <strong>Sistema Multi-Agentes para Engenharia de Dados, Qualidade, Governanca e Analise Corporativa</strong>
   </p>
   <p align="center">
-    <img src="https://img.shields.io/badge/Version-4.0.0-brightgreen.svg" alt="Version 4.0.0">
+    <img src="https://img.shields.io/badge/Version-5.0.0-brightgreen.svg" alt="Version 5.0.0">
     <img src="https://img.shields.io/badge/Python-3.11+-blue.svg" alt="Python Version">
     <img src="https://img.shields.io/badge/Databricks-MCP-FF3621.svg" alt="Databricks MCP">
     <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4.svg" alt="Fabric MCP">
@@ -19,7 +19,7 @@
 
 Sistema multi-agente construido sobre o **Claude Agent SDK** da Anthropic com integracao nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Transforma um assistente de IA em uma equipe autonoma de dados que opera diretamente nas suas plataformas de nuvem, seguindo regras corporativas declarativas.
 
-A versao 4.0 adiciona uma **Interface Web local** (Streamlit Chat UI), um novo **Agente Business Analyst** para intake de transcripts e briefings, e **16 novas tools Databricks** cobrindo AI/BI Dashboards, Genie Spaces, Model Serving e execucao serverless.
+A versao 5.0 adiciona **Memory System com staleness detection** (Ch.11), **Session Lifecycle hooks** com flush automatico (Ch.12), **Config Snapshot com drift detection** (Ch.12), **Two-Phase Agent Loading** com `AgentMeta` + `preload_registry()` (Ch.12), **comando `/geral`** para respostas diretas sem Supervisor, e **refatoracao do modulo compartilhado** `commands/geral.py` eliminando duplicacao entre CLI e UI.
 
 ---
 
@@ -48,10 +48,10 @@ A versao 4.0 adiciona uma **Interface Web local** (Streamlit Chat UI), um novo *
 ## Arquitetura
 
 <p align="center">
-  <img src="img/readme/architecture_v3.svg" alt="Arquitetura Multi-Agent System" width="100%">
+  <img src="img/readme/architecture_v5.svg" alt="Arquitetura Multi-Agent System v5.0" width="100%">
 </p>
 
-O sistema opera com um **Supervisor** (Opus) que orquestra **7 agentes especialistas** definidos declarativamente em Markdown. Cada agente declara seus dominios de conhecimento (`kb_domains`), ferramentas e tier no frontmatter YAML. O Supervisor segue o **Protocolo KB-First + BMAD** com validacao constitucional.
+O sistema opera com dois pontos de entrada — **Web UI** (`ui/chat.py`) e **CLI** (`main.py`) — que compartilham a mesma logica via modulos centralizados. Para perguntas simples, o comando `/geral` aciona `commands/geral.py` diretamente (zero agentes, zero MCP, ~95% mais barato). Para tarefas de engenharia, o **Supervisor** (Sonnet via Flow Proxy) orquestra **8 agentes especialistas** definidos declarativamente em Markdown com frontmatter YAML. Cada agente declara seus dominios de conhecimento (`kb_domains`), ferramentas, tier e modelo. O Supervisor segue o **Protocolo KB-First + BMAD** com validacao constitucional.
 
 ### Fluxo Completo do Supervisor
 
@@ -65,6 +65,8 @@ O sistema opera com um **Supervisor** (Opus) que orquestra **7 agentes especiali
   Passo 2   - Aprovacao: aguarda confirmacao e cria SPEC em output/specs/
   Passo 3   - Delegacao: aciona agentes (Workflows Colaborativos WF-01 a WF-04)
   Passo 4   - Validacao Constitucional: verifica aderencia a kb/constitution.md
+
+[Pergunta simples] → /geral → commands/geral.py → SDK query() direto → resposta
 ```
 
 ---
@@ -110,7 +112,8 @@ python main.py
 
 | Variavel                                               | Obrigatoria | Plataforma           |
 | ------------------------------------------------------ | ----------- | -------------------- |
-| `ANTHROPIC_API_KEY`                                  | Sim         | Claude API           |
+| `ANTHROPIC_API_KEY`                                  | Sim         | Claude API / Flow    |
+| `ANTHROPIC_BASE_URL`                                 | Nao         | Flow LiteLLM Proxy   |
 | `DATABRICKS_HOST`, `DATABRICKS_TOKEN`              | Nao         | Databricks           |
 | `DATABRICKS_GENIE_SPACES`, `DATABRICKS_GENIE_DEFAULT_SPACE` | Nao | Databricks Genie     |
 | `AZURE_TENANT_ID`, `FABRIC_WORKSPACE_ID`           | Nao         | Fabric               |
@@ -123,15 +126,34 @@ O sistema ativa automaticamente apenas as plataformas com credenciais validas.
 
 ## Camada de Protecao (Hooks)
 
-| Hook                  | Tipo         | Protecao                                            |
-| --------------------- | ------------ | --------------------------------------------------- |
-| `security_hook`     | PreToolUse   | 17 padroes destrutivos + 11 padroes de evasao       |
-| `check_sql_cost`    | PreToolUse   | Bloqueia `SELECT *` sem `WHERE`/`LIMIT`       |
-| `audit_hook`        | PostToolUse  | Log JSONL com categorizacao de erros (6 categorias) |
-| `workflow_tracker`  | PostToolUse  | Rastreia delegacoes, workflows e Clarity Checkpoint |
-| `cost_guard_hook`   | PostToolUse  | Classificacao HIGH/MEDIUM/LOW com alertas           |
-| `output_compressor` | PostToolUse  | Trunca outputs (SQL 50 rows, listas 30, max 8K)     |
-| `checkpoint`        | Budget/Reset | Salva estado da sessao para recuperacao automatica  |
+| Hook                      | Tipo              | Protecao                                                    |
+| ------------------------- | ----------------- | ----------------------------------------------------------- |
+| `security_hook`         | PreToolUse        | 17 padroes destrutivos + 11 padroes de evasao               |
+| `check_sql_cost`        | PreToolUse        | Bloqueia `SELECT *` sem `WHERE`/`LIMIT`               |
+| `audit_hook`            | PostToolUse       | Log JSONL com categorizacao de erros (6 categorias)         |
+| `workflow_tracker`      | PostToolUse       | Rastreia delegacoes, workflows e Clarity Checkpoint         |
+| `cost_guard_hook`       | PostToolUse       | Classificacao HIGH/MEDIUM/LOW com alertas                   |
+| `output_compressor`     | PostToolUse       | Trunca outputs (SQL 50 rows, listas 30, max 8K)             |
+| `context_budget_hook`   | PostToolUse       | Ch.5: alerta a 80% e 95% do context window por tier         |
+| `memory_hook`           | PostToolUse       | Captura contexto da sessao para memoria persistente         |
+| `session_lifecycle`     | Start/End         | Ch.12: on_session_start (reset) + on_session_end (flush)    |
+| `checkpoint`            | Budget/Reset      | Salva estado da sessao para recuperacao automatica          |
+
+---
+
+## Memory System (Ch.11 + Ch.12)
+
+Sistema de memoria persistente que captura contexto entre sessoes e detecta informacoes desatualizadas.
+
+`memory/store.py` — armazena memorias com `confidence` decrescente ao longo do tempo. Tipos: `USER`, `FEEDBACK`, `PROGRESS`, `ARCHITECTURE`. Metodos `get_stale_memories()` e `prune_stale_memories()` identificam e removem memorias com confianca abaixo dos limiares configurados.
+
+`memory/lint.py` — **Ch.11 Staleness Warning**: emite avisos automaticos quando `PROGRESS < 0.30` (warning) ou `FEEDBACK < 0.20` (info). Tipos `USER` e `ARCHITECTURE` sao imunes ao decay.
+
+`memory/compiler.py` — compila logs diarios de captura em memorias consolidadas, aplicando supersessao automatica de versoes antigas.
+
+`hooks/session_lifecycle.py` — **Ch.12**: `on_session_start()` reseta contadores de contexto; `on_session_end()` dispara flush automatico de memoria. Conectado em `main.py` (CLI) e `ui/chat.py` (Web UI).
+
+`config/snapshot.py` — **Ch.12**: `ConfigSnapshot` imutavel (frozen dataclass), `freeze()` captura estado atual, `detect_drift()` detecta alteracoes de configuracao em runtime (protecao contra injection attacks).
 
 ---
 
@@ -164,7 +186,18 @@ O conhecimento e organizado em 3 camadas:
 ./start.sh --chat-only # apenas o Chat
 ```
 
-Interface de chat Streamlit com historico de conversa persistente (usa `ClaudeSDKClient` com sessao de longa duracao), suporte a todos os slash commands, exibicao de artefatos gerados (PRDs, SPECs, Backlogs) e botao "Nova conversa" para reset de sessao.
+Interface de chat Streamlit com historico de conversa persistente (usa `ClaudeSDKClient` com sessao de longa duracao), suporte a todos os slash commands, exibicao de artefatos gerados (PRDs, SPECs, Backlogs) e botao "Nova conversa" para reset de sessao com flush automatico de memoria.
+
+### Comando `/geral` (bypass do Supervisor)
+
+Para perguntas tecnicas simples que nao exigem delegacao a agentes especialistas, use `/geral`:
+
+```
+/geral o que e Delta Lake?
+/geral explica Medallion Architecture
+```
+
+Chama `commands/geral.py` → `SDK query()` direto com modelo padrao, zero agentes, zero MCP, `max_turns=1`. Custo tipico: ~$0.002–0.01 por pergunta (vs ~$0.30–0.40 com o Supervisor completo). Funciona tanto no CLI quanto na Web UI via modulo compartilhado.
 
 ### Dashboard de Monitoramento
 
@@ -173,7 +206,7 @@ Interface de chat Streamlit com historico de conversa persistente (usa `ClaudeSD
 python -m streamlit run monitoring/app.py   # manual
 ```
 
-9 paginas: Overview, Agentes (com metricas de performance, 7 agentes), Workflows (delegacoes, Clarity Checkpoint, specs), Execucoes, MCP Servers, Logs, Configuracoes, Custo & Tokens (economia do compressor), Sobre. Inclui filtro global de datas e auto-refresh.
+9 paginas: Overview, Agentes (com metricas de performance, 8 agentes), Workflows (delegacoes, Clarity Checkpoint, specs), Execucoes, MCP Servers, Logs, Configuracoes, Custo & Tokens (economia do compressor), Sobre. Inclui filtro global de datas e auto-refresh.
 
 ---
 
@@ -195,14 +228,16 @@ make ui-monitor   # apenas Dashboard (porta 8501)
 
 ## Configuracoes Avancadas
 
-| Variavel                 | Default | Descricao                                                    |
-| ------------------------ | ------- | ------------------------------------------------------------ |
-| `MAX_BUDGET_USD`       | 5.0     | Limite de custo por sessao                                   |
-| `MAX_TURNS`            | 50      | Limite de turns por sessao                                   |
-| `CONSOLE_LOG_LEVEL`    | WARNING | Nivel de log no terminal (WARNING esconde logs operacionais) |
-| `TIER_MODEL_MAP`       | {}      | Override de modelo por tier:`'{"T1": "claude-opus-4-6"}'`  |
-| `INJECT_KB_INDEX`      | true    | Injecao automatica de KBs nos agentes                        |
-| `IDLE_TIMEOUT_MINUTES` | 30      | Reset automatico por inatividade (0 = desabilitar)           |
+| Variavel                 | Default | Descricao                                                              |
+| ------------------------ | ------- | ---------------------------------------------------------------------- |
+| `MAX_BUDGET_USD`       | 5.0     | Limite de custo por sessao                                             |
+| `MAX_TURNS`            | 50      | Limite de turns por sessao                                             |
+| `CONSOLE_LOG_LEVEL`    | WARNING | Nivel de log no terminal (WARNING esconde logs operacionais)           |
+| `ANTHROPIC_BASE_URL`   | ""      | URL do proxy LiteLLM (ex: Flow). Vazio = api.anthropic.com             |
+| `TIER_MODEL_MAP`       | {}      | Override de modelo por tier: `'{"T1": "bedrock/claude-sonnet-4-6"}'`  |
+| `INJECT_KB_INDEX`      | true    | Injecao automatica de KBs nos agentes                                  |
+| `IDLE_TIMEOUT_MINUTES` | 30      | Reset automatico por inatividade (0 = desabilitar)                     |
+| `MEMORY_ENABLED`       | true    | Habilita sistema de memoria persistente                                |
 
 ---
 
