@@ -1,6 +1,7 @@
 ---
 name: agent-name
 description: "Descrição do agente. Use para: [casos de uso]. Invoque quando: [condições de trigger]."
+# model: bedrock/anthropic.claude-4-6-sonnet
 model: claude-sonnet-4-6
 tools: [Read, Grep, Glob, Write]
 mcp_servers: []
@@ -66,7 +67,7 @@ Antes de qualquer ação, consulte as Knowledge Bases relevantes.
 |---------------|-------------|---------------------------------------------------------------------------|
 | `name`        | Sim         | Identificador único do agente (kebab-case)                                |
 | `description` | Sim         | Descrição para o Supervisor usar no roteamento                            |
-| `model`       | Sim         | Modelo Claude: `claude-sonnet-4-6` ou `claude-opus-4-6`                   |
+| `model`       | Sim         | Modelo Claude: `bedrock/anthropic.claude-4-6-sonnet`                   |
 | `tools`       | Sim         | Lista de tools. Aliases: `databricks_all`, `databricks_readonly`, `fabric_all`, `fabric_readonly`, `fabric_rti_all`, `fabric_rti_readonly` |
 | `mcp_servers` | Não         | Lista de MCP servers: `databricks`, `fabric`, `fabric_community`, `fabric_rti` |
 | `kb_domains`  | Não         | Domínios de KB do agente. Quando `INJECT_KB_INDEX=true` (padrão), o loader injeta o `index.md` de cada domínio no prompt do agente automaticamente |

@@ -50,3 +50,6 @@ to_do/
 
 # Servidor MCP oficial Microsoft (instalação local — não versionar)
 mcp_servers/fabric/Fabric.Mcp.Server/
+
+# Memory
+memory/

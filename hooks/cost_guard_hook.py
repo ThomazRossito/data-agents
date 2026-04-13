@@ -77,7 +77,7 @@ async def log_cost_generating_operations(
             f"(uso #{count} nesta sessão, total HIGH={total_high}) "
             f"tool_use_id={tool_use_id}"
         )
-        if total_high >= 10:
+        if total_high >= 100:
             logger.warning(
                 f"[COST:ALERT] {total_high} operações de custo elevado nesta sessão. "
                 f"Considere revisar se todas são necessárias."

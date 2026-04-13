@@ -283,6 +283,18 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         ),
         display_template="[bold yellow]📊 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
     ),
+    "memory": CommandDefinition(
+        name="memory",
+        agent=None,
+        bmad_mode="internal",
+        description=(
+            "Gerencia o sistema de memória persistente. "
+            "Subcomandos: status, flush, compile, lint, search <query>."
+        ),
+        skills=[],
+        prompt_template=("[MEMORY COMMAND] {task}"),
+        display_template="[bold cyan]🧠 [Memory] Gerenciando memória persistente...[/bold cyan]",
+    ),
     "geral": CommandDefinition(
         name="geral",
         agent="geral",

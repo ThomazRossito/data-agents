@@ -83,7 +83,8 @@ class Settings(BaseSettings):
     kusto_service_default_db: str = ""
 
     # --- Configurações do Sistema ---
-    default_model: str = "claude-opus-4-6"
+    default_model: str = "bedrock/anthropic.claude-4-6-sonnet"
+    # default_model: str = "claude-opus-4-6"
     max_budget_usd: float = 5.0
     max_turns: int = 50
     log_level: str = "INFO"
@@ -108,6 +109,16 @@ class Settings(BaseSettings):
     # Tempo de inatividade (em minutos) antes de oferecer reset automático da sessão.
     # Se 0, desabilita o idle timeout. Padrão: 30 minutos.
     idle_timeout_minutes: int = 30
+
+    # --- Memory System ---
+    # Se True, habilita o sistema de memória persistente (captura + retrieval).
+    # Desabilite para economizar custo do Sonnet lateral (~$0.003-0.01 por query).
+    memory_enabled: bool = True
+    # Se True, injeta memórias relevantes no system prompt antes de cada query.
+    # Requer memory_enabled=True. Cada injeção custa ~$0.003-0.01 (Sonnet lateral).
+    memory_retrieval_enabled: bool = True
+    # Se True, captura automaticamente contexto da sessão via hook PostToolUse.
+    memory_capture_enabled: bool = True
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

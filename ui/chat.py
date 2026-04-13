@@ -79,6 +79,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
     "🏭 Microsoft Fabric": ["/fabric", "/semantic"],
     "🔍 Qualidade & Gov.": ["/quality", "/governance"],
     "🔧 Sistema": ["/health"],
+    "🧠 Memória": ["/memory"],
     "💬 Conversacional": ["/geral"],
 }
 
@@ -121,6 +122,13 @@ st.markdown(
 
     /* Pill de métricas */
     .metric-row { font-size: 0.75em; color: #8899aa; margin-top: 4px; }
+
+    /* Painel de memória */
+    .mem-type-header { font-size: 0.78em; font-weight: 600; color: #ccd; margin: 6px 0 2px 0; }
+    .mem-entry { font-size: 0.73em; color: #aab; line-height: 1.4; margin-bottom: 2px; }
+    .mem-conf-bar { display: inline-block; height: 6px; border-radius: 3px; vertical-align: middle; margin-right: 4px; }
+    .mem-tag { font-size: 0.68em; background: #334; border-radius: 3px; padding: 1px 4px; color: #99b; }
+    .mem-injected { font-size: 0.70em; color: #5a8; background: #1a2e1a; border-radius: 4px; padding: 2px 7px; display: inline-block; margin-top: 3px; }
 </style>
 """,
     unsafe_allow_html=True,
@@ -416,6 +424,104 @@ def _run_geral(user_message: str) -> dict:
     return result
 
 
+# ── Helpers de Memória ────────────────────────────────────────────────────────
+_MEMORY_TYPE_ICONS: dict[str, str] = {
+    "user": "👤",
+    "feedback": "💬",
+    "architecture": "🏗️",
+    "progress": "📈",
+}
+
+_MEMORY_TYPE_LABELS: dict[str, str] = {
+    "user": "Usuário",
+    "feedback": "Feedback",
+    "architecture": "Arquitetura",
+    "progress": "Progresso",
+}
+
+
+def _memory_available() -> bool:
+    """True se o módulo de memória está acessível e habilitado."""
+    try:
+        return settings.memory_enabled  # type: ignore[attr-defined]
+    except AttributeError:
+        return False
+
+
+def _get_memory_store():
+    """Retorna instância do MemoryStore ou None em caso de erro."""
+    try:
+        from memory.store import MemoryStore
+
+        return MemoryStore()
+    except Exception:
+        return None
+
+
+def _run_memory_flush() -> str:
+    """
+    Roda flush_session_memories() no background loop do agente.
+    Retorna mensagem de status.
+    """
+    try:
+        from hooks.memory_hook import flush_session_memories
+
+        session = _get_agent_session()
+        future = asyncio.run_coroutine_threadsafe(flush_session_memories(), session["loop"])
+        future.result(timeout=30)
+        return "✅ Flush concluído"
+    except Exception as exc:
+        return f"❌ {exc}"
+
+
+def _run_memory_compile() -> str:
+    """
+    Roda compile_daily_logs() — processa logs diários e gera memórias.
+    Retorna resumo de métricas.
+    """
+    try:
+        from memory.compiler import compile_daily_logs
+
+        store = _get_memory_store()
+        if store is None:
+            return "❌ Store indisponível"
+        metrics = compile_daily_logs(store, apply_decay_on_compile=True)
+        created = metrics.get("created", 0)
+        updated = metrics.get("updated", 0)
+        skipped = metrics.get("skipped_dupes", 0)
+        superseded = metrics.get("superseded", 0)
+        return f"✅ +{created} criadas, {updated} atualizadas, {skipped} dupes, {superseded} superseded"
+    except Exception as exc:
+        return f"❌ {exc}"
+
+
+def _run_memory_lint() -> str:
+    """
+    Roda lint_memories() e retorna relatório em Markdown.
+    """
+    try:
+        from memory.lint import lint_memories
+
+        store = _get_memory_store()
+        if store is None:
+            return "❌ Store indisponível"
+        report = lint_memories(store)
+        return report.to_markdown()
+    except Exception as exc:
+        return f"❌ {exc}"
+
+
+def _conf_pill(conf: float) -> str:
+    """Retorna emoji colorido de acordo com o nível de confiança."""
+    if conf >= 0.8:
+        return "🟢"
+    if conf >= 0.5:
+        return "🟡"
+    if conf >= 0.2:
+        return "🟠"
+    return "🔴"
+
+
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f"## 🤖 {APP_TITLE}")
@@ -487,12 +593,128 @@ with st.sidebar:
     if not any_files:
         st.caption("_Nenhum arquivo gerado ainda._")
 
+    # ── Painel de Memória ─────────────────────────────────────────
+    if _memory_available():
+        st.divider()
+        st.markdown("#### 🧠 Memória")
+
+        store = _get_memory_store()
+        if store is None:
+            st.caption("_Módulo de memória indisponível._")
+        else:
+            try:
+                stats = store.get_stats()
+                total = stats.get("total", 0)
+                active = stats.get("active", 0)
+
+                # Pill de status
+                if total == 0:
+                    st.caption("_Nenhuma memória registrada ainda._")
+                else:
+                    col_t, col_a = st.columns(2)
+                    col_t.metric("Total", total)
+                    col_a.metric("Ativas", active)
+
+                    # Lista por tipo
+                    with st.expander("📋 Ver memórias", expanded=False):
+                        from memory.types import MemoryType
+
+                        any_mems = False
+                        for mt in MemoryType:
+                            mems = store.list_all(memory_type=mt, active_only=True)
+                            if not mems:
+                                continue
+                            any_mems = True
+                            icon = _MEMORY_TYPE_ICONS.get(mt.value, "•")
+                            label = _MEMORY_TYPE_LABELS.get(mt.value, mt.value)
+                            st.markdown(
+                                f"<div class='mem-type-header'>{icon} {label} ({len(mems)})</div>",
+                                unsafe_allow_html=True,
+                            )
+                            # Mostra até 6 por tipo, ordenado por confiança desc
+                            for mem in sorted(mems, key=lambda m: m.confidence, reverse=True)[:6]:
+                                pill = _conf_pill(mem.confidence)
+                                summary = (
+                                    mem.summary[:55] + "…" if len(mem.summary) > 55 else mem.summary
+                                )
+                                tags_html = "".join(
+                                    f"<span class='mem-tag'>{t}</span> " for t in mem.tags[:3]
+                                )
+                                conf_pct = int(mem.confidence * 100)
+                                st.markdown(
+                                    f"<div class='mem-entry'>"
+                                    f"{pill} {summary}<br>"
+                                    f"<small style='color:#667'>conf {conf_pct}%</small> {tags_html}"
+                                    f"</div>",
+                                    unsafe_allow_html=True,
+                                )
+                        if not any_mems:
+                            st.caption("_Nenhuma memória ativa._")
+
+                # Logs diários pendentes
+                pending_logs = store.list_daily_logs(unprocessed_only=True)
+                if pending_logs:
+                    st.caption(f"📝 `{len(pending_logs)}` log(s) aguardando compilação")
+
+                # Botões de ação
+                st.markdown("")
+                col_f, col_c = st.columns(2)
+                if col_f.button(
+                    "⚡ Flush",
+                    key="mem_flush_btn",
+                    help="Captura memórias do buffer da sessão atual",
+                    use_container_width=True,
+                ):
+                    with st.spinner("Fazendo flush..."):
+                        msg = _run_memory_flush()
+                    st.toast(msg)
+                    st.rerun()
+
+                if col_c.button(
+                    "🔨 Compilar",
+                    key="mem_compile_btn",
+                    help="Processa logs diários e gera memórias",
+                    use_container_width=True,
+                ):
+                    with st.spinner("Compilando..."):
+                        msg = _run_memory_compile()
+                    st.toast(msg)
+                    st.rerun()
+
+                if st.button(
+                    "🔍 Lint",
+                    key="mem_lint_btn",
+                    help="Verifica saúde das memórias (7 checks)",
+                    use_container_width=True,
+                ):
+                    report_md = _run_memory_lint()
+                    st.session_state["_mem_lint_report"] = report_md
+                    st.rerun()
+
+                # Exibe relatório de lint se disponível
+                if st.session_state.get("_mem_lint_report"):
+                    with st.expander("🔍 Relatório de Lint", expanded=True):
+                        st.markdown(st.session_state["_mem_lint_report"])
+                        if st.button("✕ Fechar lint", key="close_lint"):
+                            st.session_state.pop("_mem_lint_report", None)
+                            st.rerun()
+
+            except Exception as _mem_err:
+                st.caption(f"_Erro ao carregar memórias: {_mem_err}_")
+
     st.divider()
 
     # Limpar conversa (desconecta/reconecta cliente para limpar histórico)
     if st.button("🗑️  Nova conversa", use_container_width=True):
+        # Flush das memórias antes de resetar (captura o contexto da sessão)
+        if _memory_available():
+            try:
+                _run_memory_flush()
+            except Exception:
+                pass  # Falha no flush não deve bloquear o reset
         st.session_state.messages = []
         st.session_state.pending_command = None
+        st.session_state.pop("_mem_lint_report", None)
         _reset_agent_session()
         st.rerun()
 
@@ -524,6 +746,8 @@ for msg in st.session_state.messages:
                     parts.append(f"🔄 `{m['turns']} turns`")
                 if m.get("duration"):
                     parts.append(f"⏱️ `{m['duration']:.1f}s`")
+                if m.get("mem_injected"):
+                    parts.append(f"🧠 `{m['mem_injected']} mem`")
                 st.markdown(
                     "<div class='metric-row'>" + " &nbsp;·&nbsp; ".join(parts) + "</div>",
                     unsafe_allow_html=True,
@@ -597,6 +821,23 @@ if command_result:
     agent_label = f"→ `{command_result.agent}`" if command_result.agent else ""
     st.caption(f"{mode_label} {agent_label}")
 
+# Indicador de memórias injetadas (não /geral — que não usa o Supervisor)
+_mem_injected_count = 0
+if _memory_available() and not (command_result and command_result.command == "/geral"):
+    try:
+        from memory.store import MemoryStore
+        from memory.decay import apply_decay
+        from memory.retrieval import retrieve_relevant_memories
+
+        _store_tmp = MemoryStore()
+        _all_tmp = _store_tmp.list_all(active_only=False)
+        if _all_tmp:
+            apply_decay(_all_tmp, save_fn=_store_tmp.save)
+        _rel_tmp = retrieve_relevant_memories(final_input, _store_tmp, max_memories=8)
+        _mem_injected_count = len(_rel_tmp)
+    except Exception:
+        pass  # Sem Sonnet key ou store vazio — silencioso
+
 # Executa o agente
 with st.chat_message("assistant"):
     tools_box = st.empty()
@@ -644,6 +885,8 @@ with st.chat_message("assistant"):
         parts.append(f"🔄 `{result['turns']} turns`")
     if result["duration"]:
         parts.append(f"⏱️ `{result['duration']:.1f}s`")
+    if _mem_injected_count:
+        parts.append(f"🧠 `{_mem_injected_count} mem`")
     if parts:
         metric_box.markdown(
             "<div class='metric-row'>" + " &nbsp;·&nbsp; ".join(parts) + "</div>",
@@ -660,6 +903,7 @@ st.session_state.messages.append(
             "cost": result["cost"],
             "turns": result["turns"],
             "duration": result["duration"],
+            "mem_injected": _mem_injected_count,
         },
     }
 )

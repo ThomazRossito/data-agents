@@ -1,6 +1,7 @@
 ---
 name: geral
 description: "Assistente conversacional para perguntas técnicas gerais de Engenharia de Dados, Databricks, Fabric, SQL, Spark, arquitetura de dados e boas práticas. Use para: dúvidas conceituais, explicações, comparações de tecnologias, orientações gerais, revisões rápidas de código."
+# model: bedrock/anthropic.claude-4-6-sonnet
 model: claude-sonnet-4-6
 tools: []
 mcp_servers: []
