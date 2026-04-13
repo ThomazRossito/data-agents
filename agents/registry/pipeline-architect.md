@@ -1,8 +1,8 @@
 ---
 name: pipeline-architect
 description: "Arquiteto de Pipelines de Dados. Use para: design e execução de pipelines ETL/ELT cross-platform, orquestração de Jobs Databricks e Data Factory Fabric, movimentação de dados entre Databricks e Fabric via OneLake/ABFSS, monitoramento de execuções e tratamento de falhas em pipelines de dados."
-model: bedrock/anthropic.claude-4-6-sonnet
-# model: claude-opus-4-6
+# model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-opus-4-6
 tools: [Read, Write, Grep, Glob, Bash, databricks_all, databricks_compute, databricks_aibi, databricks_genie_all, fabric_all, fabric_sql_all, fabric_rti_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti]
 kb_domains: [pipeline-design, databricks, fabric]

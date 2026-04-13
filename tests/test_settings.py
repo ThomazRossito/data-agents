@@ -9,7 +9,14 @@ class TestSettingsValidation:
 
     def test_default_values(self):
         """Verifica que os valores padrão são razoáveis."""
-        s = Settings()
+        # Instancia com valores explícitos para ignorar .env do ambiente CI
+        s = Settings(
+            anthropic_api_key="test-key",
+            default_model="claude-opus-4-6",
+            max_budget_usd=5.0,
+            max_turns=50,
+            log_level="INFO",
+        )
         assert s.max_budget_usd == 5.0
         assert s.max_turns == 50
         assert s.log_level == "INFO"
