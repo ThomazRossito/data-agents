@@ -100,6 +100,22 @@ class Settings(BaseSettings):
     # Override via .env: TIER_MODEL_MAP='{"T1": "claude-opus-4-6", "T2": "claude-haiku-3-5"}'
     tier_model_map: dict[str, str] = {}
 
+    # --- Token Budgets por Tier (Ch. 5 — Agent Loop) ---
+    # Mapeamento tier -> maxTurns: limita o número máximo de chamadas de tool por sub-agente.
+    # Agentes T1 (pipelines complexos, cross-platform) precisam de mais turns.
+    # Agentes T2 (análise especializada, escopo restrito) precisam de menos.
+    # Agentes T3 (conversacional, sem tools) precisam de muito poucos.
+    # Override via .env: TIER_TURNS_MAP='{"T1": 25, "T2": 15, "T3": 5}'
+    tier_turns_map: dict[str, int] = {"T1": 20, "T2": 12, "T3": 5}
+
+    # --- Effort por Tier (Ch. 5 — Agent Loop) ---
+    # Mapeamento tier -> effort: controla o nível de "esforço" do modelo por agente.
+    # "high": raciocínio mais profundo, maior custo e latência — para tarefas complexas T1.
+    # "medium": balanceado — para tarefas especializadas T2.
+    # "low": rápido e eficiente — para tarefas conversacionais T3.
+    # Override via .env: TIER_EFFORT_MAP='{"T1": "high", "T2": "medium", "T3": "low"}'
+    tier_effort_map: dict[str, str] = {"T1": "high", "T2": "medium", "T3": "low"}
+
     # --- KB Injection ---
     # Se True, injeta o conteúdo dos index.md das KBs relevantes no prompt de cada agente.
     # Baseado no campo kb_domains do frontmatter. Desabilite para economizar tokens no prompt.

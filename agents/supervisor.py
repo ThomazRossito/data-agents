@@ -31,6 +31,7 @@ from agents.prompts.supervisor_prompt import SUPERVISOR_SYSTEM_PROMPT
 from config.mcp_servers import build_mcp_registry
 from config.settings import settings
 from hooks.audit_hook import audit_tool_usage
+from hooks.context_budget_hook import track_context_budget
 from hooks.cost_guard_hook import log_cost_generating_operations
 from hooks.memory_hook import capture_session_context
 from hooks.output_compressor_hook import compress_tool_output
@@ -75,12 +76,18 @@ def build_supervisor_options(
     # Isso evita referências a servidores sem credenciais (ex: fabric_rti sem KUSTO_SERVICE_URI).
     #
     # inject_cache_prefix=True (padrão): prepend agents/cache_prefix.md ao topo de cada agente.
-    # Os primeiros ~500 tokens de todos os agentes são byte-idênticos → o Claude API cacheia
+    # Os primeiros ~800 tokens de todos os agentes são byte-idênticos → o Claude API cacheia
     # esse bloco uma única vez e o reutiliza em todas as chamadas, reduzindo ~40-60% o custo
     # de tokens de input. Inspirado em Ch. 9 — Fork Agents & Prompt Cache (claude-code-from-source).
+    #
+    # tier_turns_map + tier_effort_map (Ch. 5 — Agent Loop):
+    # Controla maxTurns e effort por tier, prevenindo que sub-agentes consumam
+    # mais tokens do que o necessário para seu escopo de trabalho.
     agents = load_all_agents(
         available_mcp_servers=set(mcp_registry.keys()),
         tier_model_map=settings.tier_model_map if settings.tier_model_map else None,
+        tier_turns_map=settings.tier_turns_map if settings.tier_turns_map else None,
+        tier_effort_map=settings.tier_effort_map if settings.tier_effort_map else None,
         inject_kb_index=settings.inject_kb_index,
         inject_cache_prefix=True,
     )
@@ -125,6 +132,9 @@ def build_supervisor_options(
                 # Captura contexto da sessão para o sistema de memória persistente.
                 # Acumula sem chamar LLM — flush ocorre no final da sessão.
                 HookMatcher(hooks=[capture_session_context]),  # type: ignore[list-item]
+                # Monitora tokens acumulados da sessão (Ch. 5 — Agent Loop).
+                # Emite WARNING a 80% e ERROR a 95% do limite do context window.
+                HookMatcher(hooks=[track_context_budget]),  # type: ignore[list-item]
                 # RTK-style: comprime output verboso das tools antes de enviar ao modelo.
                 # Executado por último para que audit/cost_guard observem o output original.
                 HookMatcher(hooks=[compress_tool_output]),  # type: ignore[list-item]

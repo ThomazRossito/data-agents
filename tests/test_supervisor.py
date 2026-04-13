@@ -135,8 +135,8 @@ class TestBuildSupervisorOptions:
                 assert "PostToolUse" in hooks
                 assert "PreToolUse" in hooks
                 assert (
-                    len(hooks["PostToolUse"]) == 5
-                )  # audit + cost guard + workflow tracker + memory capture + output compressor
+                    len(hooks["PostToolUse"]) == 6
+                )  # audit + cost guard + workflow tracker + memory capture + context budget + output compressor
                 assert len(hooks["PreToolUse"]) == 2  # security + sql cost check
 
     def test_build_includes_partial_messages(self):

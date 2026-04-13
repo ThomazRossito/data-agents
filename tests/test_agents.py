@@ -292,6 +292,99 @@ class TestRegistryFiles:
         assert template.exists(), "Arquivo _template.md não encontrado no registry"
 
 
+# ─── Testes de Token Budgets por Tier (Ch. 5 — Agent Loop) ──────────────────
+
+
+class TestTokenBudgetsByTier:
+    """Testes para maxTurns e effort por tier (Ch. 5 — Agent Loop)."""
+
+    def test_tier_turns_map_sets_max_turns_on_agents(self):
+        """tier_turns_map deve definir maxTurns nos agentes conforme o tier."""
+        tier_map = {"T1": 20, "T2": 10, "T3": 3}
+        agents = load_all_agents(tier_turns_map=tier_map, inject_cache_prefix=False)
+
+        for name, agent in agents.items():
+            if name == "sql-expert":  # T1
+                assert agent.maxTurns == 20, "sql-expert (T1) deveria ter maxTurns=20"
+            if name == "data-quality-steward":  # T2
+                assert agent.maxTurns == 10, "data-quality-steward (T2) deveria ter maxTurns=10"
+
+    def test_tier_effort_map_sets_effort_on_agents(self):
+        """tier_effort_map deve definir effort nos agentes conforme o tier."""
+        effort_map = {"T1": "high", "T2": "medium", "T3": "low"}
+        agents = load_all_agents(tier_effort_map=effort_map, inject_cache_prefix=False)
+
+        for name, agent in agents.items():
+            if name == "pipeline-architect":  # T1
+                assert agent.effort == "high"
+            if name == "governance-auditor":  # T2
+                assert agent.effort == "medium"
+
+    def test_no_tier_map_leaves_max_turns_none(self):
+        """Sem tier_turns_map, maxTurns deve ser None (sem limite por tier)."""
+        agents = load_all_agents(tier_turns_map=None, inject_cache_prefix=False)
+        for name, agent in agents.items():
+            assert agent.maxTurns is None, f"Agente '{name}' deveria ter maxTurns=None"
+
+    def test_no_effort_map_leaves_effort_none(self):
+        """Sem tier_effort_map, effort deve ser None."""
+        agents = load_all_agents(tier_effort_map=None, inject_cache_prefix=False)
+        for name, agent in agents.items():
+            assert agent.effort is None, f"Agente '{name}' deveria ter effort=None"
+
+    def test_frontmatter_max_turns_overrides_tier_map(self, tmp_path):
+        """max_turns no frontmatter tem prioridade sobre tier_turns_map."""
+        agent_file = tmp_path / "custom-agent.md"
+        agent_file.write_text(
+            '---\nname: custom-agent\ndescription: "Agente custom."\n'
+            "model: claude-sonnet-4-6\ntools: [Read]\ntier: T1\nmax_turns: 7\n---\n# Body\n"
+            "Conteúdo do agente de teste.",
+            encoding="utf-8",
+        )
+
+        from agents.loader import load_agent
+
+        _, agent = load_agent(
+            agent_file,
+            tier_turns_map={"T1": 20},  # tier diz 20, frontmatter diz 7
+            inject_cache_prefix=False,
+        )
+        assert agent.maxTurns == 7, "Frontmatter max_turns=7 deve prevalecer sobre tier T1=20"
+
+    def test_frontmatter_effort_overrides_tier_map(self, tmp_path):
+        """effort no frontmatter tem prioridade sobre tier_effort_map."""
+        agent_file = tmp_path / "effort-agent.md"
+        agent_file.write_text(
+            '---\nname: effort-agent\ndescription: "Agente effort."\n'
+            "model: claude-sonnet-4-6\ntools: [Read]\ntier: T2\neffort: high\n---\n# Body\n"
+            "Conteúdo.",
+            encoding="utf-8",
+        )
+
+        from agents.loader import load_agent
+
+        _, agent = load_agent(
+            agent_file,
+            tier_effort_map={"T2": "medium"},  # tier diz medium, frontmatter diz high
+            inject_cache_prefix=False,
+        )
+        assert agent.effort == "high", (
+            "Frontmatter effort=high deve prevalecer sobre tier T2=medium"
+        )
+
+    def test_partial_tier_map_only_affects_covered_tiers(self):
+        """tier_turns_map parcial não deve afetar tiers não listados."""
+        partial_map = {"T1": 25}  # só T1, T2 e T3 ficam sem limite
+        agents = load_all_agents(tier_turns_map=partial_map, inject_cache_prefix=False)
+
+        for name, agent in agents.items():
+            # T2 agents não devem ter maxTurns setado pelo mapa
+            if name in ("data-quality-steward", "governance-auditor", "semantic-modeler"):
+                assert agent.maxTurns is None, (
+                    f"Agente T2 '{name}' não deve ter maxTurns com mapa parcial T1-only"
+                )
+
+
 # ─── Testes de Model Routing por Tier ───────────────────────────────────────
 
 
