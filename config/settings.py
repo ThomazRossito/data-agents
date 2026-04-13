@@ -110,6 +110,16 @@ class Settings(BaseSettings):
     # Se 0, desabilita o idle timeout. Padrão: 30 minutos.
     idle_timeout_minutes: int = 30
 
+    # --- Memory System ---
+    # Se True, habilita o sistema de memória persistente (captura + retrieval).
+    # Desabilite para economizar custo do Sonnet lateral (~$0.003-0.01 por query).
+    memory_enabled: bool = True
+    # Se True, injeta memórias relevantes no system prompt antes de cada query.
+    # Requer memory_enabled=True. Cada injeção custa ~$0.003-0.01 (Sonnet lateral).
+    memory_retrieval_enabled: bool = True
+    # Se True, captura automaticamente contexto da sessão via hook PostToolUse.
+    memory_capture_enabled: bool = True
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     # --- Campos internos (não carregados do .env) ---

@@ -49,6 +49,10 @@ from hooks.checkpoint import (
     clear_checkpoint,
     build_resume_prompt,
 )
+from hooks.memory_hook import flush_session_memories
+from memory.compiler import compile_daily_logs
+from memory.store import MemoryStore
+from agents.loader import inject_memory_context
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
@@ -140,7 +144,8 @@ def print_banner() -> None:
         "[bold]/pipeline[/bold] | [bold]/fabric[/bold] | [bold]/semantic[/bold] | "
         "[bold]/quality[/bold] | [bold]/governance[/bold] | "
         "[bold]/health[/bold] | [bold]/status[/bold] | [bold]/review[/bold] | "
-        "[bold cyan]/geral[/bold cyan] [cyan](Claude Haiku · conversacional)[/cyan][/dim]\n"
+        "[bold cyan]/geral[/bold cyan] [cyan](Haiku)[/cyan] | "
+        "[bold cyan]/memory[/bold cyan] [cyan](memória persistente)[/cyan][/dim]\n"
     )
 
 
@@ -277,6 +282,85 @@ async def _stream_response(
     return metrics
 
 
+async def _handle_memory_command(user_input: str) -> None:
+    """
+    Processa o slash command /memory localmente (sem Supervisor).
+
+    Subcomandos:
+      /memory status   — Exibe estatísticas do sistema de memória
+      /memory flush    — Força o flush do buffer de sessão
+      /memory compile  — Compila daily logs em knowledge articles
+      /memory lint     — Executa health checks
+      /memory search <query> — Busca memórias relevantes via Sonnet
+    """
+    from memory.lint import lint_memories
+    from hooks.memory_hook import get_buffer_stats
+
+    parts = user_input.split(maxsplit=2)
+    sub = parts[1].lower() if len(parts) > 1 else "status"
+
+    store = MemoryStore()
+
+    if sub == "status":
+        stats = store.get_stats()
+        buf = get_buffer_stats()
+        console.print(
+            Panel(
+                f"[bold]Memórias:[/bold] {stats['active']} ativas / {stats['total']} total\n"
+                f"[bold]Por tipo:[/bold]\n"
+                + "\n".join(
+                    f"  {t}: {v['active']}/{v['total']}"
+                    for t, v in stats.get("by_type", {}).items()
+                )
+                + f"\n[bold]Superseded:[/bold] {stats.get('superseded', 0)}\n"
+                f"\n[bold]Buffer da sessão:[/bold] {buf['entries']} entradas, "
+                f"{buf['total_chars']} chars, {buf['instant_captures']} capturas instantâneas",
+                title="🧠 Memory Status",
+                border_style="cyan",
+            )
+        )
+
+    elif sub == "flush":
+        console.print("[dim]🧠 Flush: extraindo memórias do buffer da sessão...[/dim]")
+        n = flush_session_memories(session_id="manual_flush")
+        console.print(f"[bold cyan]🧠 Flush: {n} memórias extraídas e salvas.[/bold cyan]\n")
+
+    elif sub == "compile":
+        console.print("[dim]🧠 Compilando daily logs...[/dim]")
+        metrics = compile_daily_logs(store)
+        console.print(
+            f"[bold cyan]🧠 Compilação: {metrics['new_memories']} novas, "
+            f"{metrics['superseded']} substituídas, "
+            f"{metrics['skipped_dupes']} duplicatas ignoradas.[/bold cyan]\n"
+        )
+
+    elif sub == "lint":
+        console.print("[dim]🧠 Executando health checks...[/dim]")
+        report = lint_memories(store)
+        console.print(Markdown(report.to_markdown()))
+        console.print()
+
+    elif sub == "search":
+        query_text = parts[2] if len(parts) > 2 else ""
+        if not query_text:
+            console.print("[yellow]Uso: /memory search <sua query>[/yellow]")
+            return
+
+        console.print(f"[dim]🧠 Buscando memórias para: {query_text}...[/dim]")
+        from memory.retrieval import retrieve_relevant_memories, format_memories_for_injection
+
+        memories = retrieve_relevant_memories(query_text, store)
+        if memories:
+            formatted = format_memories_for_injection(memories)
+            console.print(Markdown(formatted))
+        else:
+            console.print("[dim]Nenhuma memória relevante encontrada.[/dim]")
+        console.print()
+
+    else:
+        console.print("[yellow]Subcomandos: status, flush, compile, lint, search <query>[/yellow]")
+
+
 _GERAL_MODEL = "claude-sonnet-4-6"
 _GERAL_SYSTEM = (
     "Você é um assistente técnico especializado em Engenharia de Dados: "
@@ -398,6 +482,18 @@ async def run_interactive() -> None:
     if hasattr(settings, "startup_diagnostics"):
         settings.startup_diagnostics()
 
+    # ── 2.5 Compilar daily logs de memória pendentes (cost-free, apenas I/O) ──
+    try:
+        store = MemoryStore()
+        compile_metrics = compile_daily_logs(store)
+        if compile_metrics["new_memories"] > 0:
+            console.print(
+                f"[dim]🧠 Memória: {compile_metrics['new_memories']} novas memórias compiladas "
+                f"({compile_metrics['superseded']} atualizadas)[/dim]"
+            )
+    except Exception as e:
+        logger.debug(f"Compilação de memória ignorada: {e}")
+
     # ── 3. build_supervisor_options emite "MCP servers ativos..." aqui ───────
     try:
         options = build_supervisor_options()
@@ -481,10 +577,24 @@ async def run_interactive() -> None:
 
                     # --- Comandos internos do CLI ---
                     if user_input.lower() in ("sair", "exit", "quit", "q", "/exit"):
+                        # Flush de memória antes de encerrar
+                        try:
+                            n_mem = flush_session_memories(session_id="interactive")
+                            if n_mem > 0:
+                                console.print(
+                                    f"[dim]🧠 {n_mem} memórias capturadas desta sessão.[/dim]"
+                                )
+                        except Exception as e:
+                            logger.debug(f"Flush de memória ignorado: {e}")
                         console.print("\n[bold cyan]Encerrando sessão. Até a próxima![/bold cyan]")
                         break
 
                     if user_input.lower() in ("limpar", "clear", "reset"):
+                        # Flush de memória antes de limpar
+                        try:
+                            flush_session_memories(session_id="interactive")
+                        except Exception:
+                            pass
                         # Salvar checkpoint antes de limpar
                         if _session_state["last_prompt"]:
                             save_checkpoint(
@@ -567,6 +677,11 @@ async def run_interactive() -> None:
                         bmad_prompt = user_input
                         _session_type = "interactive"
 
+                    # --- /memory → Gerenciamento local de memória, sem Supervisor ---
+                    if command_result and command_result.command == "/memory":
+                        await _handle_memory_command(user_input)
+                        continue
+
                     # --- /geral → Haiku direto, sem Supervisor ---
                     if command_result and command_result.command == "/geral":
                         result_metrics = await _stream_geral(user_input, session_type="geral")
@@ -579,6 +694,19 @@ async def run_interactive() -> None:
                         options.thinking = {"type": "enabled", "budget_tokens": 8000}
                     else:
                         options.thinking = {"type": "disabled"}
+
+                    # --- Memory Retrieval: injeta memórias relevantes no system prompt ---
+                    if settings.memory_enabled and settings.memory_retrieval_enabled:
+                        try:
+                            enriched_prompt = inject_memory_context(
+                                query=bmad_prompt,
+                                system_prompt=options.system_prompt or "",
+                            )
+                            if enriched_prompt != (options.system_prompt or ""):
+                                options.system_prompt = enriched_prompt
+                                logger.debug("System prompt enriquecido com memórias relevantes.")
+                        except Exception as e:
+                            logger.debug(f"Memory retrieval ignorado: {e}")
 
                     # --- Enviar para o Supervisor e processar com feedback visual ---
                     await client.query(bmad_prompt)
@@ -596,6 +724,11 @@ async def run_interactive() -> None:
                     continue
 
                 except BudgetExceededError as e:
+                    # Flush de memória antes do checkpoint
+                    try:
+                        flush_session_memories(session_id="interactive")
+                    except Exception:
+                        pass
                     # Salvar checkpoint automaticamente ao exceder budget
                     save_checkpoint(
                         last_prompt=_session_state["last_prompt"],

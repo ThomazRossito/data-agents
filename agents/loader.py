@@ -49,6 +49,10 @@ from mcp_servers.databricks_genie.server_config import (
 )
 from mcp_servers.fabric_sql.server_config import FABRIC_SQL_MCP_TOOLS
 
+from memory.store import MemoryStore
+from memory.retrieval import retrieve_relevant_memories, format_memories_for_injection
+from memory.decay import apply_decay
+
 logger = logging.getLogger("data_agents.loader")
 
 # Diretório padrão de definições de agentes
@@ -355,3 +359,46 @@ def load_all_agents(
 
     logger.info(f"Registry carregado: {len(agents)} agentes — {list(agents.keys())}")
     return agents
+
+
+def inject_memory_context(query: str, system_prompt: str) -> str:
+    """
+    Injeta memórias relevantes no system prompt do supervisor.
+
+    Usa o Sonnet lateral para selecionar memórias do store que são
+    relevantes para a query atual. Aplica decay antes do retrieval.
+
+    Args:
+        query: A query/tarefa atual do usuário.
+        system_prompt: System prompt original do supervisor.
+
+    Returns:
+        System prompt enriquecido com memórias relevantes.
+    """
+    try:
+        store = MemoryStore()
+
+        # Aplica decay em todas as memórias antes do retrieval
+        all_memories = store.list_all(active_only=False)
+        if all_memories:
+            apply_decay(all_memories, save_fn=store.save)
+
+        # Busca memórias relevantes via Sonnet lateral
+        relevant = retrieve_relevant_memories(query, store, max_memories=8)
+
+        if not relevant:
+            return system_prompt
+
+        # Formata e injeta
+        memory_context = format_memories_for_injection(relevant)
+        enriched = system_prompt + memory_context
+
+        logger.info(
+            f"Memory injection: {len(relevant)} memórias injetadas "
+            f"(+{len(memory_context)} chars no prompt)"
+        )
+        return enriched
+
+    except Exception as e:
+        logger.warning(f"Erro na injeção de memória (continuando sem memória): {e}")
+        return system_prompt
