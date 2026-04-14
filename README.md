@@ -51,7 +51,7 @@ A versao 5.0 adiciona **Memory System com staleness detection** (Ch.11), **Sessi
   <img src="img/readme/architecture_v6.svg" alt="Arquitetura Multi-Agent System v5.0" width="100%">
 </p>
 
-O sistema opera com dois pontos de entrada — **Web UI** (`ui/chat.py`) e **CLI** (`main.py`) — que compartilham a mesma logica via modulos centralizados. Para perguntas simples, o comando `/geral` aciona `commands/geral.py` diretamente (zero agentes, zero MCP, ~95% mais barato). Para tarefas de engenharia, o **Supervisor** (Sonnet via Flow Proxy) orquestra **8 agentes especialistas** definidos declarativamente em Markdown com frontmatter YAML. Cada agente declara seus dominios de conhecimento (`kb_domains`), ferramentas, tier e modelo. O Supervisor segue o **Protocolo KB-First + BMAD** com validacao constitucional.
+O sistema opera com dois pontos de entrada — **Web UI** (`ui/chat.py`) e **CLI** (`main.py`) — que compartilham a mesma logica via modulos centralizados. Para perguntas simples, o comando `/geral` aciona `commands/geral.py` diretamente (zero agentes, zero MCP, ~95% mais barato). Para tarefas de engenharia, o **Supervisor** (Sonnet via LiteLLM Proxy) orquestra **8 agentes especialistas** definidos declarativamente em Markdown com frontmatter YAML. Cada agente declara seus dominios de conhecimento (`kb_domains`), ferramentas, tier e modelo. O Supervisor segue o **Protocolo KB-First + BMAD** com validacao constitucional.
 
 ### Fluxo Completo do Supervisor
 
@@ -112,8 +112,8 @@ python main.py
 
 | Variavel                                               | Obrigatoria | Plataforma           |
 | ------------------------------------------------------ | ----------- | -------------------- |
-| `ANTHROPIC_API_KEY`                                  | Sim         | Claude API / Flow    |
-| `ANTHROPIC_BASE_URL`                                 | Nao         | Flow LiteLLM Proxy   |
+| `ANTHROPIC_API_KEY`                                  | Sim         | Claude API           |
+| `ANTHROPIC_BASE_URL`                                 | Nao         | LiteLLM Proxy        |
 | `DATABRICKS_HOST`, `DATABRICKS_TOKEN`              | Nao         | Databricks           |
 | `DATABRICKS_GENIE_SPACES`, `DATABRICKS_GENIE_DEFAULT_SPACE` | Nao | Databricks Genie     |
 | `AZURE_TENANT_ID`, `FABRIC_WORKSPACE_ID`           | Nao         | Fabric               |
@@ -233,7 +233,7 @@ make ui-monitor   # apenas Dashboard (porta 8501)
 | `MAX_BUDGET_USD`       | 5.0     | Limite de custo por sessao                                             |
 | `MAX_TURNS`            | 50      | Limite de turns por sessao                                             |
 | `CONSOLE_LOG_LEVEL`    | WARNING | Nivel de log no terminal (WARNING esconde logs operacionais)           |
-| `ANTHROPIC_BASE_URL`   | ""      | URL do proxy LiteLLM (ex: Flow). Vazio = api.anthropic.com             |
+| `ANTHROPIC_BASE_URL`   | ""      | URL do proxy LiteLLM. Vazio = api.anthropic.com                        |
 | `TIER_MODEL_MAP`       | {}      | Override de modelo por tier: `'{"T1": "bedrock/claude-sonnet-4-6"}'`  |
 | `INJECT_KB_INDEX`      | true    | Injecao automatica de KBs nos agentes                                  |
 | `IDLE_TIMEOUT_MINUTES` | 30      | Reset automatico por inatividade (0 = desabilitar)                     |
