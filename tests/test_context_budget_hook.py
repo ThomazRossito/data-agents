@@ -21,6 +21,13 @@ from hooks.context_budget_hook import (
 )
 
 
+# ── Helper: monta input_data no formato SDK ────────────────────────────────────
+
+
+def _input(tool_name: str, tool_input=None, tool_output=None) -> dict:
+    return {"tool_name": tool_name, "tool_input": tool_input or {}, "tool_output": tool_output}
+
+
 @pytest.fixture(autouse=True)
 def reset_budget():
     """Reseta os contadores antes e depois de cada teste."""
@@ -35,47 +42,54 @@ def reset_budget():
 class TestTrackContextBudget:
     """Testes para a função principal do hook."""
 
-    def test_returns_none_always(self):
-        """O hook não deve modificar o output — sempre retorna None."""
-        result = track_context_budget("Write", {}, "output de teste")
-        assert result is None
+    @pytest.mark.asyncio
+    async def test_returns_empty_dict_always(self):
+        """O hook não deve modificar o output — sempre retorna {}."""
+        result = await track_context_budget(_input("Write", {}, "output de teste"), None, None)
+        assert result == {}
 
-    def test_accumulates_tokens_across_calls(self):
+    @pytest.mark.asyncio
+    async def test_accumulates_tokens_across_calls(self):
         """Tokens devem acumular entre chamadas."""
-        track_context_budget("Write", {"content": "abc"}, "ok")
-        track_context_budget("Read", {"path": "file.py"}, "conteúdo do arquivo")
+        await track_context_budget(_input("Write", {"content": "abc"}, "ok"), None, None)
+        await track_context_budget(
+            _input("Read", {"path": "file.py"}, "conteúdo do arquivo"), None, None
+        )
         usage = get_context_usage()
         assert usage["input_tokens"] > 0
         assert usage["output_tokens"] > 0
 
-    def test_no_crash_on_none_input_output(self):
+    @pytest.mark.asyncio
+    async def test_no_crash_on_none_input_output(self):
         """Input e output None não devem causar erro."""
-        result = track_context_budget("SomeTool", None, None)
-        assert result is None
+        result = await track_context_budget(_input("SomeTool", None, None), None, None)
+        assert result == {}
 
-    def test_warn_logged_at_80_percent(self, caplog):
+    @pytest.mark.asyncio
+    async def test_warn_logged_at_80_percent(self, caplog):
         """WARNING deve ser emitido quando uso atinge 80% do limite."""
         with caplog.at_level(logging.WARNING, logger="data_agents.hooks.context_budget"):
-            # Injeta diretamente o contador para simular 80%+ de uso
             budget_module._session_input_tokens = int(
                 budget_module._INPUT_TOKEN_LIMIT * budget_module._WARN_THRESHOLD
             )
-            track_context_budget("Write", {"x": "y"}, "z")
+            await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
         assert any("CONTEXT ALTO" in r.message for r in caplog.records)
 
-    def test_error_logged_at_95_percent(self, caplog):
+    @pytest.mark.asyncio
+    async def test_error_logged_at_95_percent(self, caplog):
         """ERROR deve ser emitido quando uso atinge 95% do limite."""
         with caplog.at_level(logging.ERROR, logger="data_agents.hooks.context_budget"):
             budget_module._session_input_tokens = int(
                 budget_module._INPUT_TOKEN_LIMIT * budget_module._CRITICAL_THRESHOLD
             )
-            track_context_budget("Write", {"x": "y"}, "z")
+            await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
         assert any("CONTEXT CRÍTICO" in r.message for r in caplog.records)
 
-    def test_uses_sdk_token_counts_when_available(self):
-        """Com metadados do SDK no hook_context, usa os valores exatos."""
+    @pytest.mark.asyncio
+    async def test_uses_sdk_token_counts_when_available(self):
+        """Com metadados do SDK no context, usa os valores exatos."""
         hook_ctx = {"usage": {"input_tokens": 500, "output_tokens": 100}}
-        track_context_budget("Agent", {}, "resp", hook_context=hook_ctx)
+        await track_context_budget(_input("Agent", {}, "resp"), None, hook_ctx)
         usage = get_context_usage()
         assert usage["input_tokens"] == 500
         assert usage["output_tokens"] == 100

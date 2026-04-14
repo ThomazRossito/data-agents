@@ -152,6 +152,35 @@ def _tool_label(name: str) -> str:
     return f"🔧 {clean}"
 
 
+def _enrich_tool_label(tool_name: str, data: dict[str, Any]) -> str:
+    """Retorna label enriquecido com args reais da tool. Retorna '' se não houver info relevante."""
+    if tool_name == "Read":
+        path = data.get("file_path") or data.get("path", "")
+        if path:
+            return f"📖 Lendo {path}..."
+    elif tool_name == "Write":
+        path = data.get("file_path", "")
+        if path:
+            return f"✏️ Escrevendo {path}..."
+    elif tool_name == "Bash":
+        cmd = data.get("command", "")
+        if cmd:
+            truncated = cmd[:60] + "..." if len(cmd) > 60 else cmd
+            return f"⚙️ Executando: {truncated}"
+    elif tool_name == "Grep":
+        pattern = data.get("pattern", "")
+        search_path = data.get("path", "")
+        if pattern and search_path:
+            return f"🔍 Buscando: '{pattern}' em {search_path}"
+        elif pattern:
+            return f"🔍 Buscando: '{pattern}'"
+    elif tool_name == "Glob":
+        pattern = data.get("pattern", "")
+        if pattern:
+            return f"📂 Listando: {pattern}"
+    return ""
+
+
 def _agent_author(raw_name: str) -> str:
     """Retorna o nome de exibição do agente para cl.Message(author=...)."""
     return _AGENT_AUTHORS.get(raw_name, raw_name.replace("-", " ").title())
@@ -166,7 +195,7 @@ def _build_dev_options() -> ClaudeAgentOptions:
     """
     from config.settings import settings  # importação local — evita circular import
 
-    return ClaudeAgentOptions(
+    opts = ClaudeAgentOptions(
         model=settings.default_model,
         system_prompt=_DEV_SYSTEM_PROMPT,
         allowed_tools=["Read", "Write", "Bash", "Grep", "Glob"],
@@ -175,6 +204,8 @@ def _build_dev_options() -> ClaudeAgentOptions:
         max_turns=15,
         permission_mode="bypassPermissions",
     )
+    opts.include_partial_messages = True
+    return opts
 
 
 def _commands_help_text() -> str:
@@ -510,6 +541,7 @@ async def _handle_dev(user_input: str) -> None:
     # ── Estado do streaming ───────────────────────────────────────────────────
     steps = _StepManager()
     current_tool: str | None = None
+    tool_input_buffer: str = ""
     streamed_text = ""
     final_text = ""
 
@@ -527,12 +559,27 @@ async def _handle_dev(user_input: str) -> None:
                     blk = ev.get("content_block", {})
                     if blk.get("type") == "tool_use":
                         current_tool = blk.get("name", "")
+                        tool_input_buffer = ""
                         label = _tool_label(current_tool)
                         await steps.open(label, step_type="tool")
 
                 elif evtype == "content_block_delta":
                     delta = ev.get("delta", {})
-                    if delta.get("type") == "text_delta":
+                    delta_type = delta.get("type")
+
+                    if delta_type == "input_json_delta":
+                        # Acumula JSON do input da tool para enriquecer o label
+                        tool_input_buffer += delta.get("partial_json", "")
+                        if current_tool:
+                            try:
+                                data: dict[str, Any] = json.loads(tool_input_buffer)
+                                enriched = _enrich_tool_label(current_tool, data)
+                                if enriched:
+                                    await steps.rename(enriched)
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+
+                    elif delta_type == "text_delta":
                         token = delta.get("text", "")
                         if token:
                             streamed_text += token
@@ -540,9 +587,16 @@ async def _handle_dev(user_input: str) -> None:
 
                 elif evtype == "content_block_stop":
                     if current_tool:
-                        label = _tool_label(current_tool)
-                        await steps.close(f"✅ {label}")
+                        # Usa label enriquecido se disponível, senão label genérico
+                        try:
+                            data = json.loads(tool_input_buffer) if tool_input_buffer else {}
+                            enriched = _enrich_tool_label(current_tool, data)
+                        except (json.JSONDecodeError, TypeError):
+                            enriched = None
+                        close_label = enriched or _tool_label(current_tool)
+                        await steps.close(f"✅ {close_label}")
                     current_tool = None
+                    tool_input_buffer = ""
 
             # ── AssistantMessage: fallback ────────────────────────────────────
             elif isinstance(message, AssistantMessage):

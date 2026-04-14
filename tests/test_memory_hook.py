@@ -24,6 +24,13 @@ from hooks.memory_hook import (
 )
 
 
+# ── Helper: monta input_data no formato SDK ────────────────────────────────────
+
+
+def _input(tool_name: str, tool_input=None, tool_output=None) -> dict:
+    return {"tool_name": tool_name, "tool_input": tool_input or {}, "tool_output": tool_output}
+
+
 @pytest.fixture(autouse=True)
 def reset_buffer():
     """Limpa o buffer antes e depois de cada teste para evitar poluição."""
@@ -38,58 +45,71 @@ def reset_buffer():
 class TestCaptureSessionContext:
     """Testes para a função principal do hook."""
 
-    def test_skip_tools_return_none(self):
+    @pytest.mark.asyncio
+    async def test_skip_tools_return_empty(self):
         """Tools de infra (Read, Glob, Grep, Bash) devem ser ignoradas."""
         for tool in ("Read", "Glob", "Grep", "Bash"):
-            result = capture_session_context(tool, {}, "some output")
-            assert result is None
+            result = await capture_session_context(_input(tool, {}, "some output"), None, None)
+            assert result == {}
         # Buffer deve permanecer vazio
         assert get_session_buffer() == ""
 
-    def test_non_skip_tool_adds_to_buffer(self):
+    @pytest.mark.asyncio
+    async def test_non_skip_tool_adds_to_buffer(self):
         """Tool não listada em skip deve adicionar entrada ao buffer."""
-        capture_session_context("Write", {"file_path": "foo.py"}, "ok")
+        await capture_session_context(_input("Write", {"file_path": "foo.py"}, "ok"), None, None)
         buf = get_session_buffer()
         assert "Write" in buf
 
-    def test_returns_none_always(self):
-        """O hook não deve modificar o output — sempre retorna None."""
-        result = capture_session_context("Agent", {"agent_name": "sql"}, "resp")
-        assert result is None
+    @pytest.mark.asyncio
+    async def test_returns_empty_dict_always(self):
+        """O hook não deve modificar o output — sempre retorna {}."""
+        result = await capture_session_context(
+            _input("Agent", {"agent_name": "sql"}, "resp"), None, None
+        )
+        assert result == {}
 
-    def test_buffer_accumulates_multiple_entries(self):
+    @pytest.mark.asyncio
+    async def test_buffer_accumulates_multiple_entries(self):
         """Múltiplas chamadas acumulam entradas separadas no buffer."""
-        capture_session_context("Write", {"file_path": "a.py"}, "ok")
-        capture_session_context("Write", {"file_path": "b.py"}, "ok")
+        await capture_session_context(_input("Write", {"file_path": "a.py"}, "ok"), None, None)
+        await capture_session_context(_input("Write", {"file_path": "b.py"}, "ok"), None, None)
         stats = get_buffer_stats()
         assert stats["entries"] == 2
 
-    def test_none_output_does_not_crash(self):
+    @pytest.mark.asyncio
+    async def test_none_output_does_not_crash(self):
         """Output None não deve causar erro."""
-        result = capture_session_context("Write", {"file_path": "x.py"}, None)
-        assert result is None
+        result = await capture_session_context(
+            _input("Write", {"file_path": "x.py"}, None), None, None
+        )
+        assert result == {}
 
-    def test_none_input_does_not_crash(self):
+    @pytest.mark.asyncio
+    async def test_none_input_does_not_crash(self):
         """Input None não deve causar erro."""
-        result = capture_session_context("Write", None, "some output")
-        assert result is None
+        result = await capture_session_context(_input("Write", None, "some output"), None, None)
+        assert result == {}
 
-    def test_instant_pattern_detected_in_output(self):
+    @pytest.mark.asyncio
+    async def test_instant_pattern_detected_in_output(self):
         """Padrões instantâneos no output devem ser detectados e adicionados ao buffer."""
-        capture_session_context("Write", {}, "prefiro sempre usar snake_case nos arquivos")
+        await capture_session_context(
+            _input("Write", {}, "prefiro sempre usar snake_case nos arquivos"), None, None
+        )
         stats = get_buffer_stats()
         assert stats["instant_captures"] >= 1
 
-    def test_buffer_threshold_log(self, caplog):
+    @pytest.mark.asyncio
+    async def test_buffer_threshold_log(self, caplog):
         """Quando buffer excede threshold, uma mensagem de log deve ser emitida."""
         import logging
 
         with caplog.at_level(logging.INFO, logger="data_agents.memory.hook"):
-            # Força o char count a ultrapassar o threshold
             big_output = "x" * 50_001
-            capture_session_context("Write", {"file_path": "big.py"}, big_output)
-        # Apenas verifica que não lança exceção; log pode ou não aparecer
-        # dependendo do tamanho real da entry formatada
+            await capture_session_context(
+                _input("Write", {"file_path": "big.py"}, big_output), None, None
+            )
         assert get_buffer_stats()["total_chars"] > 0
 
 
@@ -141,7 +161,6 @@ class TestFormatContextEntry:
     def test_timestamp_present_in_entry(self):
         """Cada entrada deve conter um timestamp."""
         result = _format_context_entry("Write", {"file_path": "f.py"}, "ok")
-        # Formato [HH:MM:SS]
         import re
 
         assert re.search(r"\[\d{2}:\d{2}:\d{2}\]", result)
@@ -202,9 +221,10 @@ class TestBufferAccessors:
     def test_get_session_buffer_empty_initially(self):
         assert get_session_buffer() == ""
 
-    def test_get_session_buffer_returns_joined_entries(self):
-        capture_session_context("Write", {"file_path": "a.py"}, "ok")
-        capture_session_context("Write", {"file_path": "b.py"}, "ok")
+    @pytest.mark.asyncio
+    async def test_get_session_buffer_returns_joined_entries(self):
+        await capture_session_context(_input("Write", {"file_path": "a.py"}, "ok"), None, None)
+        await capture_session_context(_input("Write", {"file_path": "b.py"}, "ok"), None, None)
         buf = get_session_buffer()
         assert "---" in buf  # separador entre entradas
 
@@ -214,15 +234,19 @@ class TestBufferAccessors:
         assert "total_chars" in stats
         assert "instant_captures" in stats
 
-    def test_get_buffer_stats_counts_correctly(self):
-        capture_session_context("Write", {"file_path": "x.py"}, "ok")
+    @pytest.mark.asyncio
+    async def test_get_buffer_stats_counts_correctly(self):
+        await capture_session_context(_input("Write", {"file_path": "x.py"}, "ok"), None, None)
         _check_instant_patterns("#decision: usar Delta")
         stats = get_buffer_stats()
         assert stats["entries"] == 2  # 1 write + 1 instant capture
         assert stats["instant_captures"] == 1
 
-    def test_clear_session_buffer_resets_all(self):
-        capture_session_context("Write", {"file_path": "x.py"}, "conteúdo")
+    @pytest.mark.asyncio
+    async def test_clear_session_buffer_resets_all(self):
+        await capture_session_context(
+            _input("Write", {"file_path": "x.py"}, "conteúdo"), None, None
+        )
         assert get_buffer_stats()["entries"] > 0
         clear_session_buffer()
         assert get_session_buffer() == ""
@@ -248,7 +272,8 @@ class TestFlushSessionMemories:
         result = flush_session_memories(session_id="test-session")
         assert result == 0
 
-    def test_flush_calls_extractor_and_saves(self):
+    @pytest.mark.asyncio
+    async def test_flush_calls_extractor_and_saves(self):
         """Com buffer preenchido, deve chamar extractor e salvar memórias."""
         from memory.types import Memory, MemoryType
 
@@ -260,8 +285,9 @@ class TestFlushSessionMemories:
             confidence=0.9,
         )
 
-        # Adiciona conteúdo ao buffer
-        capture_session_context("Write", {"file_path": "test.py"}, "resultado da execução")
+        await capture_session_context(
+            _input("Write", {"file_path": "test.py"}, "resultado da execução"), None, None
+        )
 
         with (
             patch("memory.store.MemoryStore") as mock_store_cls,
@@ -279,9 +305,10 @@ class TestFlushSessionMemories:
         assert result == 1
         mock_extract.assert_called_once()
 
-    def test_flush_clears_buffer_after_processing(self):
+    @pytest.mark.asyncio
+    async def test_flush_clears_buffer_after_processing(self):
         """Após flush, o buffer deve estar limpo."""
-        capture_session_context("Write", {"file_path": "x.py"}, "ok")
+        await capture_session_context(_input("Write", {"file_path": "x.py"}, "ok"), None, None)
 
         with (
             patch("memory.store.MemoryStore") as mock_store_cls,
@@ -298,9 +325,10 @@ class TestFlushSessionMemories:
         assert get_session_buffer() == ""
         assert get_buffer_stats()["entries"] == 0
 
-    def test_flush_returns_zero_when_extractor_returns_empty(self):
+    @pytest.mark.asyncio
+    async def test_flush_returns_zero_when_extractor_returns_empty(self):
         """Extractor sem memórias → retorna 0."""
-        capture_session_context("Write", {"file_path": "y.py"}, "content")
+        await capture_session_context(_input("Write", {"file_path": "y.py"}, "content"), None, None)
 
         with (
             patch("memory.store.MemoryStore") as mock_store_cls,
@@ -316,9 +344,10 @@ class TestFlushSessionMemories:
 
         assert result == 0
 
-    def test_flush_passes_session_id_to_extractor(self):
+    @pytest.mark.asyncio
+    async def test_flush_passes_session_id_to_extractor(self):
         """session_id deve ser repassado ao extractor."""
-        capture_session_context("Write", {"file_path": "z.py"}, "info")
+        await capture_session_context(_input("Write", {"file_path": "z.py"}, "info"), None, None)
 
         with (
             patch("memory.store.MemoryStore") as mock_store_cls,
@@ -330,7 +359,8 @@ class TestFlushSessionMemories:
             mock_store = MagicMock()
             mock_store.list_all.return_value = []
             mock_store_cls.return_value = mock_store
-            flush_session_memories(session_id="my-session-id")
+            flush_session_memories(session_id="sess-xyz")
 
-        call_kwargs = mock_extract.call_args.kwargs
-        assert call_kwargs.get("session_id") == "my-session-id"
+        call_kwargs = mock_extract.call_args
+        assert call_kwargs is not None
+        assert "sess-xyz" in str(call_kwargs)

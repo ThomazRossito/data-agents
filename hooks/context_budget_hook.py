@@ -41,31 +41,35 @@ _CRITICAL_THRESHOLD = 0.95
 _CHARS_PER_TOKEN = 4
 
 
-def track_context_budget(
-    tool_name: str,
-    tool_input: dict[str, Any] | None,
-    tool_output: str | None,
-    hook_context: dict[str, Any] | None = None,
-) -> dict[str, Any] | None:
+async def track_context_budget(
+    input_data: dict[str, Any],
+    tool_use_id: str | None,
+    context: Any,
+) -> dict[str, Any]:
     """
     Hook PostToolUse que monitora o consumo de tokens da sessão.
 
     Rastreia tokens acumulados e emite alertas quando o uso se aproxima
     dos limites do context window. Não bloqueia a execução.
 
-    Args:
-        tool_name: Nome da tool chamada.
-        tool_input: Input da tool (pode conter metadados de tokens do SDK).
-        tool_output: Output da tool.
-        hook_context: Contexto adicional do hook (pode conter usage metadata).
+    Assinatura alinhada com o SDK: (input_data, tool_use_id, context).
+    input_data contém: tool_name, tool_input, tool_output.
 
     Returns:
-        None (hook não modifica o output).
+        {} (hook não modifica o output).
     """
     global _session_input_tokens, _session_output_tokens
 
-    # Extrai contagem de tokens do hook_context (se o SDK fornecer)
-    input_tokens, output_tokens = _extract_token_counts(tool_input, tool_output, hook_context)
+    if not input_data or not isinstance(input_data, dict):
+        return {}
+
+    tool_input = input_data.get("tool_input")
+    tool_output = input_data.get("tool_output")
+    if isinstance(tool_output, dict):
+        tool_output = str(tool_output)
+
+    # Extrai contagem de tokens do context (se o SDK fornecer) ou de tool_input/output
+    input_tokens, output_tokens = _extract_token_counts(tool_input, tool_output, context)
 
     _session_input_tokens += input_tokens
     _session_output_tokens += output_tokens
@@ -90,7 +94,7 @@ def track_context_budget(
             f"({usage_ratio:.1%} do limite de {_INPUT_TOKEN_LIMIT:,})"
         )
 
-    return None
+    return {}
 
 
 def _extract_token_counts(

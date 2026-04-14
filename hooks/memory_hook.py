@@ -35,33 +35,38 @@ _buffer_char_count: int = 0
 _BUFFER_FLUSH_THRESHOLD = 50_000
 
 
-def capture_session_context(
-    tool_name: str,
-    tool_input: dict[str, Any] | None,
-    tool_output: str | None,
-    hook_context: dict[str, Any] | None = None,
-) -> dict[str, Any] | None:
+async def capture_session_context(
+    input_data: dict[str, Any],
+    tool_use_id: str | None,
+    context: Any,
+) -> dict[str, Any]:
     """
     Hook PostToolUse que captura contexto da sessão para o sistema de memória.
 
     Acumula o contexto no buffer e detecta padrões de captura instantânea.
     NÃO chama LLM — apenas acumula texto para flush posterior.
 
-    Args:
-        tool_name: Nome da tool chamada.
-        tool_input: Input da tool (JSON).
-        tool_output: Output da tool (texto).
-        hook_context: Contexto adicional do hook.
+    Assinatura alinhada com o SDK: (input_data, tool_use_id, context).
+    input_data contém: tool_name, tool_input, tool_output.
 
     Returns:
-        None (hook não modifica o output).
+        {} (hook não modifica o output).
     """
     global _buffer_char_count
+
+    if not input_data or not isinstance(input_data, dict):
+        return {}
+
+    tool_name = input_data.get("tool_name", "")
+    tool_input = input_data.get("tool_input") or {}
+    tool_output = input_data.get("tool_output")
+    if isinstance(tool_output, dict):
+        tool_output = str(tool_output)
 
     # Ignora tools de infraestrutura (não geram contexto útil)
     skip_tools = {"Glob", "Grep", "Read", "Bash"}
     if tool_name in skip_tools:
-        return None
+        return {}
 
     # Captura contexto relevante
     context_entry = _format_context_entry(tool_name, tool_input, tool_output)
@@ -71,7 +76,7 @@ def capture_session_context(
 
     # Captura instantânea de padrões explícitos (sem LLM)
     if tool_output:
-        _check_instant_patterns(tool_output)
+        _check_instant_patterns(str(tool_output))
 
     # Flush automático se buffer muito grande
     if _buffer_char_count >= _BUFFER_FLUSH_THRESHOLD:
@@ -80,7 +85,7 @@ def capture_session_context(
             f"flush será acionado no próximo checkpoint."
         )
 
-    return None
+    return {}
 
 
 def _format_context_entry(

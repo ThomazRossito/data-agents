@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(python:*)",
-      "Bash(chmod +x:*)"
+      "Bash(chmod +x:*)",
+      "Bash(python3 -c \"import claude_agent_sdk; print\\(f'Version: {claude_agent_sdk.__version__}'\\)\")"
     ]
   }
 }
