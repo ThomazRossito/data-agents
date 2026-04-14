@@ -1,0 +1,406 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1584 396" width="1584" height="396">
+  <defs>
+    <!-- ── BACKGROUNDS ── -->
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#020F1A"/>
+      <stop offset="45%"  stop-color="#041725"/>
+      <stop offset="100%" stop-color="#072335"/>
+    </linearGradient>
+
+    <!-- Title gradient -->
+    <linearGradient id="titleGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#00F0FF"/>
+      <stop offset="60%"  stop-color="#00DDCC"/>
+      <stop offset="100%" stop-color="#00FFB0"/>
+    </linearGradient>
+
+    <!-- Accent line fading right -->
+    <linearGradient id="accentFade" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#00E8FF" stop-opacity="1"/>
+      <stop offset="100%" stop-color="#00E8FF" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Bottom bar -->
+    <linearGradient id="bottomBar" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stop-color="#00E8FF"/>
+      <stop offset="50%"  stop-color="#00FFAA"/>
+      <stop offset="100%" stop-color="#00E8FF" stop-opacity="0.2"/>
+    </linearGradient>
+
+    <!-- Feature box background -->
+    <linearGradient id="featBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#0A2738" stop-opacity="0.97"/>
+      <stop offset="100%" stop-color="#041520" stop-opacity="0.97"/>
+    </linearGradient>
+
+    <!-- Radial ambient glow left -->
+    <radialGradient id="glowL" cx="20%" cy="50%" r="42%">
+      <stop offset="0%"   stop-color="#005566" stop-opacity="0.40"/>
+      <stop offset="100%" stop-color="#005566" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Radial ambient glow graph center -->
+    <radialGradient id="glowGraph" cx="45%" cy="53%" r="32%">
+      <stop offset="0%"   stop-color="#004E66" stop-opacity="0.38"/>
+      <stop offset="100%" stop-color="#004E66" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Dot grid pattern -->
+    <pattern id="dots" width="28" height="28" patternUnits="userSpaceOnUse">
+      <circle cx="14" cy="14" r="0.9" fill="#00C8FF" fill-opacity="0.07"/>
+    </pattern>
+
+    <!-- Subtle glow filter -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Stronger glow for hero title -->
+    <filter id="glowHero" x="-15%" y="-30%" width="130%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Node glow for supervisor -->
+    <filter id="nodeGlow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur stdDeviation="6" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Soft node glow for satellites -->
+    <filter id="satGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Card inner glow -->
+    <filter id="cardGlow" x="-2%" y="-2%" width="104%" height="104%">
+      <feGaussianBlur stdDeviation="2" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- Line glow -->
+    <filter id="lineGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="2.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  BACKGROUND                                                 -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <rect width="1584" height="396" fill="url(#bg)"/>
+  <rect width="1584" height="396" fill="url(#dots)"/>
+  <rect width="1584" height="396" fill="url(#glowL)"/>
+  <rect width="1584" height="396" fill="url(#glowGraph)"/>
+
+  <!-- Diagonal decorative lines (very subtle) -->
+  <line x1="0"    y1="396" x2="320"  y2="0"   stroke="#00C8FF" stroke-opacity="0.035" stroke-width="1.5"/>
+  <line x1="120"  y1="396" x2="440"  y2="0"   stroke="#00C8FF" stroke-opacity="0.025" stroke-width="1"/>
+  <line x1="960"  y1="396" x2="1200" y2="0"   stroke="#00FFAA" stroke-opacity="0.03"  stroke-width="1"/>
+
+  <!-- Divider: left text panel from center graph -->
+  <line x1="395" y1="14" x2="395" y2="382" stroke="#00C8FF" stroke-opacity="0.07" stroke-width="1"/>
+
+  <!-- Divider: center graph from right feature boxes -->
+  <line x1="1052" y1="14" x2="1052" y2="382" stroke="#00C8FF" stroke-opacity="0.08" stroke-width="1"/>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  LEFT TITLE COLUMN  (x: 38–390)                            -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Hero title: AI Agents -->
+  <text x="38" y="100"
+        font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="78" font-weight="900" letter-spacing="-1"
+        fill="url(#titleGrad)" filter="url(#glowHero)">AI Agents</text>
+
+  <!-- Subtitle: Data Engineering -->
+  <text x="41" y="156"
+        font-family="'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+        font-size="46" font-weight="700" letter-spacing="0.5"
+        fill="white" opacity="0.93">Data Engineering</text>
+
+  <!-- Accent underline -->
+  <rect x="41" y="168" width="310" height="2.5" rx="1.5" fill="url(#accentFade)"/>
+
+  <!-- Description -->
+  <text x="41" y="203"
+        font-family="'Segoe UI', Arial, sans-serif"
+        font-size="15" fill="#90D8EC" opacity="0.88" letter-spacing="0.3">
+    Transformando dados em ativos estratégicos
+  </text>
+
+  <!-- Tags row -->
+  <text x="41" y="228"
+        font-family="'Segoe UI', Arial, sans-serif"
+        font-size="12.5" fill="#00E0FF" opacity="0.68" letter-spacing="0.4">
+    Multi-Agent Systems  ·  Spec-Driven Dev  ·  Automação  ·  Data Governance
+  </text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  CENTER: MULTI-AGENT ORCHESTRATION GRAPH (x: 395–1052)     -->
+  <!--  Supervisor: cx=714, cy=212, r=42                          -->
+  <!--  Satellites orbit r=93, node r=21                          -->
+  <!--  SQL(top):   714, 119   Spark(top-R):  794, 165            -->
+  <!--  Pipeline(bot-R): 794, 259   Quality(bot): 714, 305        -->
+  <!--  Governance(bot-L): 634, 259   Semantic(top-L): 634, 165   -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- Section header label -->
+  <text x="714" y="52"
+        font-family="'Segoe UI', Arial, sans-serif"
+        font-size="11.5" font-weight="700"
+        fill="#00C8FF" opacity="0.80" text-anchor="middle" letter-spacing="3.2">
+    MULTI-AGENT ORCHESTRATION
+  </text>
+  <!-- Header separator line -->
+  <line x1="532" y1="61" x2="896" y2="61" stroke="#00C8FF" stroke-opacity="0.18" stroke-width="1"/>
+
+  <!-- Orbital rings (decorative halos around supervisor) -->
+  <circle cx="714" cy="212" r="60"
+          fill="none" stroke="#00E8FF" stroke-opacity="0.055" stroke-width="1.2"
+          stroke-dasharray="5 7"/>
+  <circle cx="714" cy="212" r="93"
+          fill="none" stroke="#00C8FF" stroke-opacity="0.040" stroke-width="1"
+          stroke-dasharray="2 9"/>
+
+  <!-- ── Connection lines: glow layer (drawn first) ── -->
+  <!-- SQL Expert (top) -->
+  <line x1="714" y1="212" x2="714" y2="119"
+        stroke="#00E8FF" stroke-opacity="0.12" stroke-width="5" filter="url(#lineGlow)"/>
+  <!-- Spark Expert (top-right) -->
+  <line x1="714" y1="212" x2="794" y2="165"
+        stroke="#00E8FF" stroke-opacity="0.12" stroke-width="5" filter="url(#lineGlow)"/>
+  <!-- Pipeline Eng. (bottom-right) -->
+  <line x1="714" y1="212" x2="794" y2="259"
+        stroke="#00E8FF" stroke-opacity="0.12" stroke-width="5" filter="url(#lineGlow)"/>
+  <!-- Quality Steward (bottom) -->
+  <line x1="714" y1="212" x2="714" y2="305"
+        stroke="#00E8FF" stroke-opacity="0.12" stroke-width="5" filter="url(#lineGlow)"/>
+  <!-- Governance (bottom-left) -->
+  <line x1="714" y1="212" x2="634" y2="259"
+        stroke="#00E8FF" stroke-opacity="0.12" stroke-width="5" filter="url(#lineGlow)"/>
+  <!-- Semantic Modeler (top-left) -->
+  <line x1="714" y1="212" x2="634" y2="165"
+        stroke="#00E8FF" stroke-opacity="0.12" stroke-width="5" filter="url(#lineGlow)"/>
+
+  <!-- ── Connection lines: crisp layer ── -->
+  <line x1="714" y1="212" x2="714" y2="119" stroke="#00E8FF" stroke-opacity="0.30" stroke-width="1.4"/>
+  <line x1="714" y1="212" x2="794" y2="165" stroke="#00E8FF" stroke-opacity="0.28" stroke-width="1.4"/>
+  <line x1="714" y1="212" x2="794" y2="259" stroke="#00E8FF" stroke-opacity="0.28" stroke-width="1.4"/>
+  <line x1="714" y1="212" x2="714" y2="305" stroke="#00E8FF" stroke-opacity="0.30" stroke-width="1.4"/>
+  <line x1="714" y1="212" x2="634" y2="259" stroke="#00E8FF" stroke-opacity="0.28" stroke-width="1.4"/>
+  <line x1="714" y1="212" x2="634" y2="165" stroke="#00E8FF" stroke-opacity="0.28" stroke-width="1.4"/>
+
+  <!-- ── Data-flow dots on lines (decorative midpoints) ── -->
+  <circle cx="714" cy="165" r="2.5" fill="#00E8FF" opacity="0.45"/>
+  <circle cx="754" cy="188" r="2.5" fill="#00E8FF" opacity="0.40"/>
+  <circle cx="754" cy="236" r="2.5" fill="#00E8FF" opacity="0.40"/>
+  <circle cx="714" cy="258" r="2.5" fill="#00E8FF" opacity="0.45"/>
+  <circle cx="674" cy="236" r="2.5" fill="#00E8FF" opacity="0.40"/>
+  <circle cx="674" cy="188" r="2.5" fill="#00E8FF" opacity="0.40"/>
+
+  <!-- ── SUPERVISOR NODE (hero center) ── -->
+  <!-- Outer glow ring -->
+  <circle cx="714" cy="212" r="48"
+          fill="none" stroke="#00E8FF" stroke-opacity="0.18" stroke-width="3"/>
+  <!-- Main node -->
+  <circle cx="714" cy="212" r="42"
+          fill="#082B3D" stroke="#00E8FF" stroke-opacity="0.80" stroke-width="2.2"
+          filter="url(#nodeGlow)"/>
+  <!-- Inner highlight arc -->
+  <circle cx="714" cy="212" r="36"
+          fill="none" stroke="#00F0FF" stroke-opacity="0.12" stroke-width="1"/>
+  <!-- Supervisor label -->
+  <text x="714" y="206"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="10.5" font-weight="800"
+        fill="#00E8FF" text-anchor="middle" letter-spacing="0.8">SUPERVISOR</text>
+  <text x="714" y="220"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="10" font-weight="600"
+        fill="#00E8FF" text-anchor="middle" opacity="0.80">AGENT</text>
+
+  <!-- ── SATELLITE NODES ── -->
+  <!-- ── 1. SQL Expert (top, cy=119) ── -->
+  <circle cx="714" cy="119" r="21"
+          fill="#061E2C" stroke="#00FFAA" stroke-opacity="0.72" stroke-width="1.7"
+          filter="url(#satGlow)"/>
+  <text x="714" y="115"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9.5" font-weight="700"
+        fill="#00FFAA" text-anchor="middle">SQL</text>
+  <text x="714" y="127"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#00FFAA"
+        text-anchor="middle" opacity="0.80">Expert</text>
+
+  <!-- ── 2. Spark Expert (top-right, cx=794, cy=165) ── -->
+  <circle cx="794" cy="165" r="21"
+          fill="#061E2C" stroke="#00FFAA" stroke-opacity="0.72" stroke-width="1.7"
+          filter="url(#satGlow)"/>
+  <text x="794" y="161"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9.5" font-weight="700"
+        fill="#00FFAA" text-anchor="middle">Spark</text>
+  <text x="794" y="173"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#00FFAA"
+        text-anchor="middle" opacity="0.80">Expert</text>
+
+  <!-- ── 3. Pipeline Eng. (bottom-right, cx=794, cy=259) ── -->
+  <circle cx="794" cy="259" r="21"
+          fill="#061E2C" stroke="#00FFAA" stroke-opacity="0.72" stroke-width="1.7"
+          filter="url(#satGlow)"/>
+  <text x="794" y="255"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9.5" font-weight="700"
+        fill="#00FFAA" text-anchor="middle">Pipeline</text>
+  <text x="794" y="267"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#00FFAA"
+        text-anchor="middle" opacity="0.80">Eng.</text>
+
+  <!-- ── 4. Quality Steward (bottom, cx=714, cy=305) ── -->
+  <circle cx="714" cy="305" r="21"
+          fill="#061E2C" stroke="#00FFAA" stroke-opacity="0.72" stroke-width="1.7"
+          filter="url(#satGlow)"/>
+  <text x="714" y="301"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9.5" font-weight="700"
+        fill="#00FFAA" text-anchor="middle">Quality</text>
+  <text x="714" y="313"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#00FFAA"
+        text-anchor="middle" opacity="0.80">Steward</text>
+
+  <!-- ── 5. Data Governance (bottom-left, cx=634, cy=259) ── -->
+  <circle cx="634" cy="259" r="21"
+          fill="#061E2C" stroke="#00FFAA" stroke-opacity="0.72" stroke-width="1.7"
+          filter="url(#satGlow)"/>
+  <text x="634" y="255"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9.5" font-weight="700"
+        fill="#00FFAA" text-anchor="middle">Data</text>
+  <text x="634" y="267"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#00FFAA"
+        text-anchor="middle" opacity="0.80">Govern.</text>
+
+  <!-- ── 6. Semantic Modeler (top-left, cx=634, cy=165) ── -->
+  <circle cx="634" cy="165" r="21"
+          fill="#061E2C" stroke="#00FFAA" stroke-opacity="0.72" stroke-width="1.7"
+          filter="url(#satGlow)"/>
+  <text x="634" y="161"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9.5" font-weight="700"
+        fill="#00FFAA" text-anchor="middle">Semantic</text>
+  <text x="634" y="173"
+        font-family="'Segoe UI', Arial, sans-serif" font-size="9" fill="#00FFAA"
+        text-anchor="middle" opacity="0.80">Modeler</text>
+
+  <!-- Graph bottom caption -->
+  <text x="714" y="356"
+        font-family="'Segoe UI', Arial, sans-serif"
+        font-size="10.5" fill="#00C8FF" opacity="0.50" text-anchor="middle" letter-spacing="0.5">
+    Databricks · Microsoft Fabric · Apache Kafka · PySpark
+  </text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  RIGHT FEATURE BOXES (x: 1060–1581)                        -->
+  <!--  Col1: x=1063  Col2: x=1326                                -->
+  <!--  Row1: y=24    Row2: y=148   Row3: y=272                    -->
+  <!--  Box: w=250 h=106 gap=13                                   -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+
+  <!-- ── Row 1 Left: Spec-Driven Development ── -->
+  <rect x="1063" y="24" width="250" height="106" rx="9" fill="url(#featBg)"
+        stroke="#00C8FF" stroke-opacity="0.38" stroke-width="1.3"/>
+  <rect x="1063" y="24" width="4" height="106" rx="2" fill="#00E8FF" opacity="0.75"/>
+  <g transform="translate(1083, 44)" filter="url(#cardGlow)">
+    <rect x="0" y="0" width="22" height="27" rx="3" fill="none" stroke="#00E8FF" stroke-width="1.5" opacity="0.80"/>
+    <polyline points="0,6 6,0 22,0" fill="none" stroke="#00E8FF" stroke-width="1.5" opacity="0.60"/>
+    <rect x="6" y="0" width="1" height="6" fill="#00E8FF" opacity="0.4"/>
+    <line x1="5" y1="12" x2="17" y2="12" stroke="#00E8FF" stroke-width="1.3" opacity="0.65"/>
+    <line x1="5" y1="17" x2="17" y2="17" stroke="#00E8FF" stroke-width="1.3" opacity="0.65"/>
+    <line x1="5" y1="22" x2="12" y2="22" stroke="#00E8FF" stroke-width="1.3" opacity="0.55"/>
+  </g>
+  <text x="1116" y="62" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Spec-Driven</text>
+  <text x="1116" y="80" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Development</text>
+  <text x="1116" y="100" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#00C8FF" opacity="0.65">Arquitetura antes da execução</text>
+
+  <!-- ── Row 1 Right: Automated Pipelines ── -->
+  <rect x="1326" y="24" width="250" height="106" rx="9" fill="url(#featBg)"
+        stroke="#00C8FF" stroke-opacity="0.38" stroke-width="1.3"/>
+  <rect x="1326" y="24" width="4" height="106" rx="2" fill="#00FFB0" opacity="0.75"/>
+  <g transform="translate(1346, 50)">
+    <circle cx="5"  cy="12" r="5" fill="none" stroke="#00FFB0" stroke-width="1.5" opacity="0.80"/>
+    <line   x1="10" y1="12" x2="17" y2="12" stroke="#00FFB0" stroke-width="1.5" opacity="0.65"/>
+    <circle cx="22" cy="12" r="5" fill="none" stroke="#00FFB0" stroke-width="1.5" opacity="0.80"/>
+    <line   x1="27" y1="12" x2="34" y2="12" stroke="#00FFB0" stroke-width="1.5" opacity="0.65"/>
+    <circle cx="39" cy="12" r="5" fill="none" stroke="#00FFB0" stroke-width="1.5" opacity="0.80"/>
+    <polygon points="34,9 38,12 34,15" fill="#00FFB0" opacity="0.65"/>
+    <polygon points="17,9 21,12 17,15" fill="#00FFB0" opacity="0.65"/>
+  </g>
+  <text x="1379" y="62" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Automated</text>
+  <text x="1379" y="80" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Pipelines</text>
+  <text x="1379" y="100" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#00C8FF" opacity="0.65">Bronze → Silver → Gold</text>
+
+  <!-- ── Row 2 Left: Pattern Recognition ── -->
+  <rect x="1063" y="148" width="250" height="106" rx="9" fill="url(#featBg)"
+        stroke="#00C8FF" stroke-opacity="0.38" stroke-width="1.3"/>
+  <rect x="1063" y="148" width="4" height="106" rx="2" fill="#00E8FF" opacity="0.75"/>
+  <g transform="translate(1083, 168)">
+    <polygon points="13,0 24,6.5 24,19.5 13,26 2,19.5 2,6.5" fill="none" stroke="#00E8FF" stroke-width="1.5" opacity="0.78"/>
+    <circle cx="13" cy="13" r="4.5" fill="#00E8FF" opacity="0.25"/>
+    <circle cx="13" cy="13" r="2"   fill="#00E8FF" opacity="0.60"/>
+    <line x1="13" y1="0"  x2="13" y2="8"  stroke="#00E8FF" stroke-width="1" opacity="0.35"/>
+    <line x1="13" y1="18" x2="13" y2="26" stroke="#00E8FF" stroke-width="1" opacity="0.35"/>
+  </g>
+  <text x="1116" y="186" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Pattern</text>
+  <text x="1116" y="204" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Recognition</text>
+  <text x="1116" y="224" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#00C8FF" opacity="0.65">ML-driven anomaly detection</text>
+
+  <!-- ── Row 2 Right: Real-time Quality Monitor ── -->
+  <rect x="1326" y="148" width="250" height="106" rx="9" fill="url(#featBg)"
+        stroke="#00C8FF" stroke-opacity="0.38" stroke-width="1.3"/>
+  <rect x="1326" y="148" width="4" height="106" rx="2" fill="#00FFB0" opacity="0.75"/>
+  <g transform="translate(1346, 164)">
+    <rect x="0" y="0" width="44" height="28" rx="3" fill="none" stroke="#00FFB0" stroke-width="1.5" opacity="0.78"/>
+    <polyline points="4,14 9,6 14,20 19,10 24,16 29,8 34,14 40,14"
+              fill="none" stroke="#00FFB0" stroke-width="1.5" opacity="0.70"/>
+    <rect x="14" y="30" width="16" height="2" rx="1" fill="#00FFB0" opacity="0.45"/>
+  </g>
+  <text x="1379" y="186" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Real-time Quality</text>
+  <text x="1379" y="204" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Monitor</text>
+  <text x="1379" y="224" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#00C8FF" opacity="0.65">SLAs e alertas automáticos</text>
+
+  <!-- ── Row 3 Left: Data Governance ── -->
+  <rect x="1063" y="272" width="250" height="106" rx="9" fill="url(#featBg)"
+        stroke="#00C8FF" stroke-opacity="0.38" stroke-width="1.3"/>
+  <rect x="1063" y="272" width="4" height="106" rx="2" fill="#00E8FF" opacity="0.75"/>
+  <g transform="translate(1083, 290)">
+    <path d="M13,0 L26,5 L26,16 C26,23 13,28 13,28 C13,28 0,23 0,16 L0,5 Z"
+          fill="none" stroke="#00E8FF" stroke-width="1.5" opacity="0.80"/>
+    <polyline points="7,14 11,18 19,9" fill="none" stroke="#00E8FF" stroke-width="2" opacity="0.70"/>
+  </g>
+  <text x="1116" y="310" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Data</text>
+  <text x="1116" y="328" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Governance</text>
+  <text x="1116" y="348" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#00C8FF" opacity="0.65">LGPD · Lineage · Auditoria</text>
+
+  <!-- ── Row 3 Right: AI-Powered Transformation ── -->
+  <rect x="1326" y="272" width="250" height="106" rx="9" fill="url(#featBg)"
+        stroke="#00C8FF" stroke-opacity="0.38" stroke-width="1.3"/>
+  <rect x="1326" y="272" width="4" height="106" rx="2" fill="#00FFB0" opacity="0.75"/>
+  <g transform="translate(1346, 290)">
+    <circle cx="13" cy="14" r="12" fill="none" stroke="#00FFB0" stroke-width="1.5" opacity="0.78"/>
+    <line x1="13" y1="2"  x2="13" y2="6"  stroke="#00FFB0" stroke-width="1.2" opacity="0.55"/>
+    <line x1="13" y1="22" x2="13" y2="26" stroke="#00FFB0" stroke-width="1.2" opacity="0.55"/>
+    <line x1="1"  y1="14" x2="5"  y2="14" stroke="#00FFB0" stroke-width="1.2" opacity="0.55"/>
+    <line x1="21" y1="14" x2="25" y2="14" stroke="#00FFB0" stroke-width="1.2" opacity="0.55"/>
+    <circle cx="9"  cy="10" r="2" fill="#00FFB0" opacity="0.55"/>
+    <circle cx="17" cy="10" r="2" fill="#00FFB0" opacity="0.55"/>
+    <circle cx="13" cy="18" r="2" fill="#00FFB0" opacity="0.55"/>
+    <line x1="9"  y1="10" x2="17" y2="10" stroke="#00FFB0" stroke-width="1" opacity="0.40"/>
+    <line x1="9"  y1="10" x2="13" y2="18" stroke="#00FFB0" stroke-width="1" opacity="0.40"/>
+    <line x1="17" y1="10" x2="13" y2="18" stroke="#00FFB0" stroke-width="1" opacity="0.40"/>
+  </g>
+  <text x="1379" y="310" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">AI-Powered</text>
+  <text x="1379" y="328" font-family="'Segoe UI', Arial, sans-serif" font-size="14" font-weight="700" fill="white">Transformation</text>
+  <text x="1379" y="348" font-family="'Segoe UI', Arial, sans-serif" font-size="10" fill="#00C8FF" opacity="0.65">Agentes autônomos end-to-end</text>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <!--  BOTTOM ACCENT LINE                                         -->
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <rect x="0" y="391" width="1584" height="5" rx="0" fill="url(#bottomBar)"/>
+
+</svg>
