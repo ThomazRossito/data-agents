@@ -84,6 +84,35 @@ class Settings(BaseSettings):
     kusto_service_uri: str = ""
     kusto_service_default_db: str = ""
 
+    # --- Context7 (MCP — Documentação atualizada de bibliotecas) ---
+    # Sem credenciais no plano gratuito (repos públicos).
+    # Plano Pro requer conta em context7.com — configure CONTEXT7_API_KEY para ativá-lo.
+    # Free: 1.000 requests/mês | Pro: $7/seat/mês (repos privados)
+    context7_api_key: str = ""  # opcional — vazio = plano gratuito (repos públicos)
+
+    # --- Tavily (MCP — Busca web otimizada para LLMs) ---
+    # Obrigatório. Obtenha em: https://app.tavily.com/
+    # Free: 1.000 créditos/mês (sem cartão) | Pago: $0.008/crédito
+    tavily_api_key: str = ""
+
+    # --- GitHub (MCP — Gestão de repositórios, issues e pull requests) ---
+    # Obrigatório. Crie em: GitHub → Settings → Developer Settings → PAT (classic)
+    # Escopos: repo, read:org (para repos privados)
+    # Gratuito via Personal Access Token
+    github_personal_access_token: str = ""
+
+    # --- Firecrawl (MCP — Web scraping e crawling estruturado) ---
+    # Obrigatório. Obtenha em: https://www.firecrawl.dev/app/api-keys
+    # Free: 500 créditos/mês | Pago: a partir de $16/mês (3.000 créditos)
+    firecrawl_api_key: str = ""
+
+    # --- PostgreSQL (MCP — Queries somente leitura em banco PostgreSQL) ---
+    # Connection string completa do banco alvo.
+    # Formato: postgresql://usuario:senha@host:5432/banco
+    # Formato cloud: postgresql://usuario:senha@host:5432/banco?sslmode=require
+    # Gratuito (open source oficial da Anthropic)
+    postgres_url: str = ""  # vazio = MCP postgres não será ativado
+
     # --- Configurações do Sistema ---
     default_model: str = "bedrock/anthropic.claude-4-6-sonnet"
     # default_model: str = "claude-opus-4-6"
@@ -257,6 +286,37 @@ class Settings(BaseSettings):
                 },
                 "required": ["KUSTO_SERVICE_URI", "KUSTO_SERVICE_DEFAULT_DB"],
             },
+            # ── MCPs externos (sem plataforma de dados própria) ──────────────
+            # Context7: sem credenciais obrigatórias no plano free → sempre "ready"
+            "context7": {
+                "fields": {"_no_credentials_required": "true"},
+                "required": [],  # free tier não requer credenciais
+            },
+            # Tavily: requer API key
+            "tavily": {
+                "fields": {"TAVILY_API_KEY": self.tavily_api_key},
+                "required": ["TAVILY_API_KEY"],
+            },
+            # GitHub: requer Personal Access Token
+            "github": {
+                "fields": {"GITHUB_PERSONAL_ACCESS_TOKEN": self.github_personal_access_token},
+                "required": ["GITHUB_PERSONAL_ACCESS_TOKEN"],
+            },
+            # Firecrawl: requer API key
+            "firecrawl": {
+                "fields": {"FIRECRAWL_API_KEY": self.firecrawl_api_key},
+                "required": ["FIRECRAWL_API_KEY"],
+            },
+            # Postgres: requer connection string
+            "postgres": {
+                "fields": {"POSTGRES_URL": self.postgres_url},
+                "required": ["POSTGRES_URL"],
+            },
+            # Memory MCP: sem credenciais → sempre "ready"
+            "memory_mcp": {
+                "fields": {"_no_credentials_required": "true"},
+                "required": [],
+            },
         }
 
         results: dict[str, dict] = {}
@@ -313,6 +373,18 @@ class Settings(BaseSettings):
                 logger.warning(
                     f"⚠️  {platform.upper()}: variáveis ausentes: {', '.join(info['missing'])}. "
                     f"MCP server desta plataforma não será ativado."
+                )
+
+        # MCPs externos (sem plataforma de dados própria)
+        external_mcps = ["context7", "memory_mcp", "tavily", "github", "firecrawl", "postgres"]
+        for mcp in external_mcps:
+            info = status[mcp]
+            if info["ready"]:
+                logger.info(f"✅ {mcp.upper()}: configurado.")
+            elif info["missing"]:
+                logger.info(
+                    f"ℹ️  {mcp.upper()}: variáveis ausentes: {', '.join(info['missing'])}. "
+                    f"Configure no .env para ativar."
                 )
 
         logger.info(

@@ -3,8 +3,8 @@ name: data-quality-steward
 description: "Especialista em Qualidade de Dados. Use para: validação de dados com expectations no Spark, configuração de alertas de qualidade no Fabric Activator e Databricks, data profiling de tabelas novas ou modificadas, detecção de schema drift e data drift em pipelines, e definição de contratos de SLA de dados."
 # model: bedrock/anthropic.claude-4-6-sonnet
 model: claude-sonnet-4-6
-tools: [Read, Grep, Glob, Write, databricks_readonly, mcp__databricks__execute_sql, fabric_readonly, fabric_rti_readonly, mcp__fabric_rti__kusto_query]
-mcp_servers: [databricks, fabric, fabric_community, fabric_rti]
+tools: [Read, Grep, Glob, Write, databricks_readonly, mcp__databricks__execute_sql, fabric_readonly, fabric_rti_readonly, mcp__fabric_rti__kusto_query, postgres_all]
+mcp_servers: [databricks, fabric, fabric_community, fabric_rti, postgres]
 kb_domains: [data-quality, databricks, fabric]
 tier: T2
 ---

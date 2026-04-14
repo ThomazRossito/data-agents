@@ -18,16 +18,23 @@ Para adicionar uma nova plataforma:
 
 import logging
 
+from mcp_servers.context7.server_config import get_context7_mcp_config
 from mcp_servers.databricks.server_config import get_databricks_mcp_config
 from mcp_servers.databricks_genie.server_config import get_databricks_genie_mcp_config
 from mcp_servers.fabric.server_config import get_fabric_mcp_config
 from mcp_servers.fabric_rti.server_config import get_fabric_rti_mcp_config
 from mcp_servers.fabric_sql.server_config import get_fabric_sql_mcp_config
+from mcp_servers.firecrawl.server_config import get_firecrawl_mcp_config
+from mcp_servers.github.server_config import get_github_mcp_config
+from mcp_servers.memory_mcp.server_config import get_memory_mcp_config
+from mcp_servers.postgres.server_config import get_postgres_mcp_config
+from mcp_servers.tavily.server_config import get_tavily_mcp_config
 
 logger = logging.getLogger("data_agents.mcp")
 
 # Registry completo de plataformas disponíveis
 ALL_MCP_CONFIGS: dict = {
+    # ── Plataformas de dados ──────────────────────────────────────────────────
     "databricks": get_databricks_mcp_config,
     # databricks_genie: MCP customizado que expõe a Genie Conversation + Space Management API.
     # Resolve o gap do databricks-mcp-server oficial que não inclui as tools de Genie.
@@ -40,6 +47,20 @@ ALL_MCP_CONFIGS: dict = {
     # Requer: FABRIC_SQL_ENDPOINT + FABRIC_LAKEHOUSE_NAME no .env
     "fabric_sql": get_fabric_sql_mcp_config,
     "fabric_rti": get_fabric_rti_mcp_config,
+    # ── MCPs externos ─────────────────────────────────────────────────────────
+    # context7: documentação atualizada de bibliotecas (free até 1k req/mês, sem credenciais)
+    "context7": get_context7_mcp_config,
+    # tavily: busca web otimizada para LLMs (free até 1k créditos/mês, requer TAVILY_API_KEY)
+    "tavily": get_tavily_mcp_config,
+    # github: gestão de repos, issues e PRs (gratuito via PAT, requer GITHUB_PERSONAL_ACCESS_TOKEN)
+    "github": get_github_mcp_config,
+    # firecrawl: web scraping estruturado (free até 500 créditos/mês, requer FIRECRAWL_API_KEY)
+    "firecrawl": get_firecrawl_mcp_config,
+    # postgres: queries somente leitura em PostgreSQL (gratuito, requer POSTGRES_URL)
+    "postgres": get_postgres_mcp_config,
+    # memory_mcp: knowledge graph persistente de entidades e relações (gratuito, sem credenciais)
+    # Complementa o módulo memory/ existente: memory/ = memória episódica, memory_mcp = grafo de entidades
+    "memory_mcp": get_memory_mcp_config,
     # Adicione novas plataformas aqui:
     # "snowflake": get_snowflake_mcp_config,
     # "bigquery":  get_bigquery_mcp_config,
@@ -68,10 +89,16 @@ def build_mcp_registry(platforms: list[str] | None = None) -> dict:
         from config.settings import settings
 
         available = settings.get_available_platforms()
-        platforms = available if available else list(ALL_MCP_CONFIGS.keys())
+
+        # MCPs sem credenciais obrigatórias — sempre ativos independente do .env
+        ALWAYS_ACTIVE_MCPS = ["context7", "memory_mcp"]
+
         if available:
-            logger.info(f"MCP servers ativos (por credenciais): {platforms}")
+            # Ativa plataformas com credenciais + MCPs que não precisam de credenciais
+            platforms = list(dict.fromkeys(available + ALWAYS_ACTIVE_MCPS))
+            logger.info(f"MCP servers ativos (por credenciais + sem credenciais): {platforms}")
         else:
+            platforms = list(ALL_MCP_CONFIGS.keys())
             logger.warning(
                 "Nenhuma credencial de plataforma configurada. "
                 "Registrando todos os MCP servers como fallback."
