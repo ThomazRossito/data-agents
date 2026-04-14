@@ -75,7 +75,7 @@ TOOL_LABELS: dict[str, str] = {
 # Grupos de comandos para a sidebar
 COMMAND_GROUPS: dict[str, list[str]] = {
     "📋 Intake & Planejamento": ["/brief", "/plan", "/review", "/status"],
-    "⚡ Databricks": ["/sql", "/spark", "/pipeline"],
+    "⚡ Databricks": ["/sql", "/spark", "/pipeline", "/dbt"],
     "🏭 Microsoft Fabric": ["/fabric", "/semantic"],
     "🔍 Qualidade & Gov.": ["/quality", "/governance"],
     "🔧 Sistema": ["/health"],

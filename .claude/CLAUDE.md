@@ -227,6 +227,7 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | data-quality-steward | databricks, fabric, fabric_community, fabric_rti, postgres |
 | governance-auditor | databricks, fabric, fabric_community, tavily, postgres, memory_mcp |
 | semantic-modeler | databricks, databricks_genie, fabric, fabric_community, context7 |
+| dbt-expert | context7, postgres |
 
 > MCPs sem credenciais (context7, memory_mcp) são ativados automaticamente.
 > Os demais requerem variáveis de ambiente configuradas no `.env`.
@@ -277,6 +278,7 @@ MEMORY_CAPTURE_ENABLED=true
 | `/sql <query>` | sql-expert | SQL direto sem passar pelo Supervisor |
 | `/spark <tarefa>` | spark-expert | PySpark/DLT direto |
 | `/pipeline <tarefa>` | pipeline-architect | Pipeline ETL direto |
+| `/dbt <tarefa>` | dbt-expert | dbt Core direto: models, testes, snapshots, docs |
 | `/fabric <tarefa>` | pipeline-architect | Foco em Fabric |
 | `/plan <objetivo>` | Supervisor + BMAD Full | Planejamento com thinking habilitado (8k tokens) |
 | `/quality <tarefa>` | data-quality-steward | Qualidade de dados direta |

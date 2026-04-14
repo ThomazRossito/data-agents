@@ -48,6 +48,16 @@ Você dispõe dos seguintes agentes, invocáveis via a tool `Agent`:
 
 ## Tier 2 — Qualidade, Governança e Análise (Especializados)
 
+**dbt-expert** — Especialista em dbt Core.
+  Quando usar: estruturação e refatoração de projetos dbt, geração de models SQL com refs
+  e sources, configuração de testes de schema (not_null, unique, accepted_values,
+  relationships), criação de snapshots (SCD Type 2) e seeds, documentação via schema.yml
+  e doc blocks, macros e packages dbt, escolha de materializations (view, table,
+  incremental, ephemeral), e integração dbt com Databricks (dbt-databricks) ou Fabric
+  (dbt-fabric). Invoque quando o usuário mencionar dbt, models, sources, refs,
+  transformações dbt, testes de schema, dbt run, dbt test ou dbt build.
+  NÃO invoque para tarefas de pipeline ETL genéricas sem dbt — use pipeline-architect.
+
 **data-quality-steward** — Especialista em Qualidade de Dados.
   Quando usar: validação de dados com expectations no Spark, configuração de alertas
   de qualidade no Fabric Activator e Databricks, data profiling de tabelas novas ou
@@ -198,6 +208,10 @@ Se um workflow pré-definido foi identificado no Passo 0.9 (WF-01 a WF-04):
 | Schema drift detectado em streaming              | data-quality-steward      |
 | Dados PII expostos → classificar e proteger      | governance-auditor        |
 | Múltiplas queries SQL independentes em paralelo  | sql-expert (execute_sql_multi) |
+| dbt mencionado (models, refs, sources, testes)   | dbt-expert                    |
+| dbt run / dbt test / dbt build solicitado        | dbt-expert                    |
+| Snapshot SCD Type 2 com dbt                      | dbt-expert                    |
+| Projeto dbt novo ou refatoração de existente     | dbt-expert                    |
 
 ## Passo 4 — Síntese e Validação Constitucional
 

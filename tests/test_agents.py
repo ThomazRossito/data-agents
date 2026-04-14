@@ -85,6 +85,7 @@ class TestLoadAllAgents:
             "data-quality-steward",
             "governance-auditor",
             "semantic-modeler",
+            "dbt-expert",
         ]
         for name in expected:
             assert name in agents, f"Agente '{name}' não encontrado no registry"
@@ -243,6 +244,44 @@ class TestGovernanceAuditor:
         assert "mcp__databricks__execute_sql" in (agent.tools or []), (
             "Governance Auditor deve ter execute_sql para System Tables de auditoria"
         )
+
+
+class TestDbtExpert:
+    """Testes específicos para o dbt-expert."""
+
+    def test_dbt_expert_model_is_sonnet(self):
+        agents = load_all_agents()
+        agent = agents["dbt-expert"]
+        assert "sonnet" in agent.model.lower()
+
+    def test_dbt_expert_has_no_platform_mcp_tools(self):
+        """dbt-expert não executa queries em Databricks/Fabric diretamente."""
+        agents = load_all_agents()
+        agent = agents["dbt-expert"]
+        ALLOWED_MCP_PREFIXES = ("mcp__context7__", "mcp__postgres__")
+        platform_mcp_tools = [
+            t
+            for t in (agent.tools or [])
+            if t.startswith("mcp__") and not t.startswith(ALLOWED_MCP_PREFIXES)
+        ]
+        assert len(platform_mcp_tools) == 0, (
+            f"dbt-expert não deve ter MCP tools de plataforma de dados: {platform_mcp_tools}"
+        )
+
+    def test_dbt_expert_has_context7(self):
+        """dbt-expert precisa de context7 para buscar docs atualizadas do dbt."""
+        agents = load_all_agents()
+        agent = agents["dbt-expert"]
+        context7_tools = [t for t in (agent.tools or []) if "context7" in t]
+        assert len(context7_tools) > 0, "dbt-expert deve ter tools do context7"
+
+    def test_dbt_expert_tier_is_t2(self):
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "dbt-expert.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        assert meta.get("tier") == "T2", "dbt-expert deve ter tier: T2"
 
 
 class TestSemanticModeler:
@@ -448,7 +487,7 @@ class TestModelRoutingByTier:
         """Todos os agentes T2 devem declarar tier no frontmatter."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        t2_agents = ["data-quality-steward", "governance-auditor", "semantic-modeler"]
+        t2_agents = ["data-quality-steward", "governance-auditor", "semantic-modeler", "dbt-expert"]
         for name in t2_agents:
             path = AGENTS_REGISTRY_DIR / f"{name}.md"
             content = path.read_text(encoding="utf-8")
@@ -492,6 +531,7 @@ class TestKBInjection:
             "semantic-modeler",
             "data-quality-steward",
             "governance-auditor",
+            "dbt-expert",
         ]
         for name in agents_with_kb:
             assert "[Contexto Injetado]" in agents[name].prompt, (

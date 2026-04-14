@@ -241,6 +241,21 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         ),
         display_template="[bold purple]🔄 [Review] Revisitando PRD existente...[/bold purple]",
     ),
+    "dbt": CommandDefinition(
+        name="dbt",
+        agent="dbt-expert",
+        bmad_mode="express",
+        description="Envia tarefa dbt diretamente para o dbt Expert (BMAD Express). Use para models, testes, snapshots, seeds, documentação e boas práticas de projeto dbt.",
+        skills=["kb/sql-patterns/index.md"],
+        prompt_template=(
+            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para dbt-expert. "
+            "Não crie PRD, não peça aprovação. "
+            "Instrua o agente a ler `kb/sql-patterns/index.md` antes de executar "
+            "e a buscar documentação atualizada via context7 se necessário. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]🛠️ [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+    ),
     "quality": CommandDefinition(
         name="quality",
         agent="data-quality-steward",
