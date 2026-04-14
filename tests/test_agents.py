@@ -143,8 +143,18 @@ class TestSparkExpert:
     def test_spark_expert_has_no_mcp_tools(self):
         agents = load_all_agents()
         agent = agents["spark-expert"]
-        mcp_tools = [t for t in (agent.tools or []) if t.startswith("mcp__")]
-        assert len(mcp_tools) == 0, f"Spark Expert não deve ter MCP tools: {mcp_tools}"
+        # spark-expert gera código localmente — não executa queries nem acessa catálogos.
+        # MCPs de plataformas de dados (Databricks, Fabric) não são permitidos.
+        # MCPs utilitários sem credenciais (ex: context7 para docs atualizadas) são permitidos.
+        UTILITY_MCP_PREFIXES = ("mcp__context7__", "mcp__memory_mcp__")
+        platform_mcp_tools = [
+            t
+            for t in (agent.tools or [])
+            if t.startswith("mcp__") and not t.startswith(UTILITY_MCP_PREFIXES)
+        ]
+        assert len(platform_mcp_tools) == 0, (
+            f"Spark Expert não deve ter MCP tools de plataforma de dados: {platform_mcp_tools}"
+        )
 
     def test_spark_expert_model_is_sonnet(self):
         agents = load_all_agents()
