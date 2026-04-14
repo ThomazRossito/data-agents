@@ -20,6 +20,8 @@ import json
 import logging
 import os
 import re
+import time
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -27,6 +29,54 @@ from typing import Any
 from config.settings import settings
 
 logger = logging.getLogger("data_agents.workflow_tracker")
+
+# ─── Callback system ────────────────────────────────────────────────────────
+# CLI e UI podem registrar callbacks para receber eventos de progresso em tempo
+# real. Callbacks são chamados de forma síncrona, devem ser rápidos (sem I/O).
+
+_progress_callbacks: list[Callable[[str, dict[str, Any]], None]] = []
+
+# Rastreia tempo de início por tool_use_id para calcular duração
+_tool_start_times: dict[str, float] = {}
+
+
+def register_progress_callback(callback: Callable[[str, dict[str, Any]], None]) -> None:
+    """
+    Registra um callback para receber eventos de progresso em tempo real.
+
+    O callback recebe (event_name: str, data: dict) onde event_name é um de:
+      - "agent_start"  — data: {"agent": str, "tool_use_id": str}
+      - "tool_call"    — data: {"tool": str, "args_preview": str, "tool_use_id": str}
+      - "agent_done"   — data: {"agent": str, "duration": float, "tool_use_id": str}
+
+    Útil para o CLI (Rich spinner) e UI (st.status) mostrarem progresso em tempo real.
+    Os callbacks são chamados de forma síncrona — devem ser rápidos.
+    """
+    if callback not in _progress_callbacks:
+        _progress_callbacks.append(callback)
+
+
+def unregister_progress_callback(callback: Callable[[str, dict[str, Any]], None]) -> None:
+    """Remove um callback previamente registrado."""
+    try:
+        _progress_callbacks.remove(callback)
+    except ValueError:
+        pass
+
+
+def clear_progress_callbacks() -> None:
+    """Remove todos os callbacks registrados."""
+    _progress_callbacks.clear()
+
+
+def _emit_progress(event_name: str, data: dict[str, Any]) -> None:
+    """Emite um evento de progresso para todos os callbacks registrados."""
+    for cb in _progress_callbacks:
+        try:
+            cb(event_name, data)
+        except Exception as exc:
+            logger.debug(f"Callback de progresso falhou (ignorado): {exc}")
+
 
 # Caminho do log de workflows (mesmo diretório dos outros logs)
 WORKFLOWS_LOG_PATH: Path = Path(settings.audit_log_path).parent / "workflows.jsonl"
@@ -105,6 +155,64 @@ def _normalize_agent_name(raw: str) -> str:
     return _DISPLAY_NAMES.get(raw, raw)
 
 
+async def pre_track_workflow_events(
+    input_data: dict[str, Any],
+    tool_use_id: str | None,
+    context: Any,
+) -> dict[str, Any]:
+    """
+    PreToolUse hook — emite eventos de progresso ANTES da tool executar.
+
+    Emite "agent_start" quando o Supervisor delega para um sub-agente,
+    e "tool_call" para qualquer tool MCP relevante. Registra o tempo de
+    início para que o PostToolUse possa calcular a duração.
+    """
+    if not input_data or not isinstance(input_data, dict):
+        return {}
+
+    tool_name = input_data.get("tool_name", "")
+    tool_input = input_data.get("tool_input", {})
+
+    if not tool_name:
+        return {}
+
+    # Registra tempo de início para calcular duração no PostToolUse
+    tid = tool_use_id or tool_name
+    _tool_start_times[tid] = time.monotonic()
+
+    # Emite evento de delegação de agente
+    if tool_name == "Agent":
+        agent_name = _extract_agent_name(tool_input)
+        _emit_progress(
+            "agent_start",
+            {"agent": agent_name, "tool_use_id": tid},
+        )
+
+    # Emite evento de tool call para qualquer ferramenta
+    elif tool_name:
+        # Preview dos args (sem segredos — apenas campos não-sensíveis)
+        safe_keys = {
+            "query",
+            "command",
+            "statement",
+            "path",
+            "file_path",
+            "catalog",
+            "schema",
+            "table",
+            "database",
+        }
+        args_preview = ", ".join(
+            f"{k}={str(v)[:40]}" for k, v in (tool_input or {}).items() if k in safe_keys and v
+        )
+        _emit_progress(
+            "tool_call",
+            {"tool": tool_name, "args_preview": args_preview, "tool_use_id": tid},
+        )
+
+    return {}
+
+
 async def track_workflow_events(
     input_data: dict[str, Any],
     tool_use_id: str | None,
@@ -116,6 +224,7 @@ async def track_workflow_events(
     Intercepta chamadas ao tool "Agent" e analisa o prompt de delegação
     para detectar workflows, Clarity Checkpoint e specs.
     Também intercepta "Write" para detectar specs salvos em output/specs/.
+    Emite "agent_done" para delegações concluídas.
     """
     if not input_data or not isinstance(input_data, dict):
         return {}
@@ -127,6 +236,20 @@ async def track_workflow_events(
         return {}
 
     timestamp = datetime.now(timezone.utc).isoformat()
+
+    # ── Emitir agent_done com duração calculada ──
+    if tool_name == "Agent":
+        tid = tool_use_id or tool_name
+        start = _tool_start_times.pop(tid, None)
+        duration = (time.monotonic() - start) if start is not None else 0.0
+        raw_agent_name = _extract_agent_name(tool_input)
+        _emit_progress(
+            "agent_done",
+            {"agent": raw_agent_name, "duration": duration, "tool_use_id": tid},
+        )
+    else:
+        # Limpa entradas de outras tools para não acumular memória indefinidamente
+        _tool_start_times.pop(tool_use_id or tool_name, None)
 
     # ── Rastrear delegações de agentes ──
     if tool_name == "Agent":

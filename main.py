@@ -14,6 +14,7 @@ Uso:
 import asyncio
 import logging
 import sys
+import time
 
 from rich.console import Console
 from rich.live import Live
@@ -179,6 +180,10 @@ async def _stream_response(
     live_status: Live | None = None
     metrics: dict[str, float | int] = {"cost": 0.0, "turns": 0}
 
+    # Rastreia tempo de início por tool call para exibir elapsed time
+    _step_start: float = time.monotonic()
+    _current_agent: str | None = None  # nome do agente em delegação ativa
+
     def _start_spinner(message: str) -> Live:
         """Inicia um spinner animado com a mensagem fornecida."""
         spinner = Spinner("dots", text=Text(message, style="dim"))
@@ -190,6 +195,11 @@ async def _stream_response(
         """Para o spinner se estiver ativo."""
         if live and live.is_started:
             live.stop()
+
+    def _elapsed() -> str:
+        """Retorna o tempo decorrido desde o início do passo atual."""
+        secs = time.monotonic() - _step_start
+        return f"{secs:.1f}s"
 
     # Inicia o spinner de "pensando"
     live_status = _start_spinner("Agente pensando...")
@@ -206,6 +216,8 @@ async def _stream_response(
                 if block.get("type") == "tool_use":
                     current_tool = block.get("name", "unknown")
                     tool_input_buffer = ""
+                    _step_start = time.monotonic()
+                    _current_agent = None
                     label = _get_tool_label(current_tool)
                     _stop_spinner(live_status)
                     live_status = _start_spinner(f"{label}...")
@@ -215,20 +227,51 @@ async def _stream_response(
                 delta = event.get("delta", {})
                 if delta.get("type") == "input_json_delta":
                     tool_input_buffer += delta.get("partial_json", "")
-                    # Quando for Agent tool, tenta mostrar o nome do agente assim que disponível
-                    if current_tool == "Agent" and "agent_name" in tool_input_buffer:
-                        label = _get_agent_label(tool_input_buffer)
-                        _stop_spinner(live_status)
-                        live_status = _start_spinner(label)
+                    # Quando for Agent tool, mostra o nome do agente assim que disponível
+                    if current_tool == "Agent" and _current_agent is None:
+                        try:
+                            import json as _json
+
+                            data = _json.loads(tool_input_buffer)
+                            agent_name = (
+                                data.get("agent_name")
+                                or data.get("subagent_type")
+                                or data.get("name")
+                                or ""
+                            )
+                            if agent_name:
+                                _current_agent = agent_name
+                                _stop_spinner(live_status)
+                                live_status = _start_spinner(
+                                    f"🤖 Delegando para → [bold yellow]{agent_name}[/bold yellow]..."
+                                )
+                        except Exception:
+                            pass
 
             # Tool call finalizada
             elif event_type == "content_block_stop":
                 if current_tool:
+                    elapsed = _elapsed()
+                    if current_tool == "Agent" and _current_agent:
+                        # Mostra conclusão do agente especialista com tempo
+                        _stop_spinner(live_status)
+                        console.print(
+                            f"[dim]  ✅ [bold]{_current_agent}[/bold] concluído ({elapsed})[/dim]"
+                        )
+                    elif current_tool != "Agent":
+                        # Para tools não-Agent, mostra conclusão discreta
+                        label = _get_tool_label(current_tool)
+                        _stop_spinner(live_status)
+                        console.print(f"[dim]  ✓ {label} ({elapsed})[/dim]")
+                    else:
+                        _stop_spinner(live_status)
+
                     current_tool = None
                     tool_input_buffer = ""
+                    _current_agent = None
                     turn_count += 1
-                    _stop_spinner(live_status)
-                    live_status = _start_spinner(f"Agente processando... (etapa {turn_count})")
+                    _step_start = time.monotonic()
+                    live_status = _start_spinner(f"Processando... (etapa {turn_count})")
 
         # ── AssistantMessage: resposta final completa ─────────────────
         elif isinstance(message, AssistantMessage):

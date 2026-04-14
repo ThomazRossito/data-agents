@@ -36,7 +36,7 @@ from hooks.cost_guard_hook import log_cost_generating_operations
 from hooks.memory_hook import capture_session_context
 from hooks.output_compressor_hook import compress_tool_output
 from hooks.security_hook import block_destructive_commands, check_sql_cost
-from hooks.workflow_tracker import track_workflow_events
+from hooks.workflow_tracker import pre_track_workflow_events, track_workflow_events
 
 
 def build_supervisor_options(
@@ -149,6 +149,11 @@ def build_supervisor_options(
                 # Sem matcher → intercepta todas as tools.
                 HookMatcher(
                     hooks=[check_sql_cost],  # type: ignore[list-item]
+                ),
+                # pre_track: emite agent_start / tool_call para callbacks de progresso
+                # registrados pelo CLI e UI — feedback visual em tempo real.
+                HookMatcher(
+                    hooks=[pre_track_workflow_events],  # type: ignore[list-item]
                 ),
             ],
         },

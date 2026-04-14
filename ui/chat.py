@@ -255,7 +255,12 @@ def _strip_rich(text: str) -> str:
 
 
 # ── Execução do agente (ClaudeSDKClient persistente) ─────────────────────────
-def _run_agent(prompt: str, enable_thinking: bool = False, session_type: str = "ui") -> dict:
+def _run_agent(
+    prompt: str,
+    enable_thinking: bool = False,
+    session_type: str = "ui",
+    progress_placeholder: "st.delta_generator.DeltaGenerator | None" = None,
+) -> dict:
     """
     Envia prompt para o ClaudeSDKClient persistente e aguarda a resposta.
 
@@ -268,6 +273,9 @@ def _run_agent(prompt: str, enable_thinking: bool = False, session_type: str = "
     O modo thinking é ajustado em options antes de cada query:
       - /plan, /brief → enable_thinking=True  → 8000 tokens de budget
       - demais        → enable_thinking=False → thinking disabled
+
+    progress_placeholder: se fornecido, recebe atualizações de status em tempo real
+    via `st.empty()` — exibe o agente ativo e as ferramentas enquanto executa.
     """
     from claude_agent_sdk import AssistantMessage, ResultMessage, TextBlock
     from claude_agent_sdk.types import StreamEvent
@@ -289,18 +297,79 @@ def _run_agent(prompt: str, enable_thinking: bool = False, session_type: str = "
         "turns": 0,
         "duration": 0.0,
         "error": None,
+        # Eventos de progresso capturados para exibição após conclusão
+        "_progress_events": [],
     }
 
     async def _async() -> None:
+        current_tool: str | None = None
+        current_agent: str | None = None
+
         try:
             await client.query(prompt)
             async for message in client.receive_response():
                 if isinstance(message, StreamEvent):
                     ev = message.event
-                    if ev.get("type") == "content_block_start":
+                    ev_type = ev.get("type", "")
+
+                    if ev_type == "content_block_start":
                         blk = ev.get("content_block", {})
                         if blk.get("type") == "tool_use":
-                            result["tools"].append(blk.get("name", ""))
+                            current_tool = blk.get("name", "")
+                            current_agent = None
+                            result["tools"].append(current_tool)
+                            # Registra evento de progresso para exibição
+                            result["_progress_events"].append(
+                                {"type": "tool_start", "tool": current_tool, "agent": None}
+                            )
+
+                    elif ev_type == "content_block_delta":
+                        delta = ev.get("delta", {})
+                        if delta.get("type") == "input_json_delta" and current_tool == "Agent":
+                            # Tenta detectar nome do agente assim que disponível no buffer
+                            if current_agent is None:
+                                import json as _json
+
+                                try:
+                                    buf = "".join(
+                                        e.get("partial", "")
+                                        for e in result["_progress_events"]
+                                        if e.get("type") == "json_buf"
+                                    ) + delta.get("partial_json", "")
+                                    # Accumulate buffer in progress_events for detection
+                                    result["_progress_events"].append(
+                                        {
+                                            "type": "json_buf",
+                                            "partial": delta.get("partial_json", ""),
+                                        }
+                                    )
+                                    data = _json.loads(buf)
+                                    agent_name = (
+                                        data.get("agent_name")
+                                        or data.get("subagent_type")
+                                        or data.get("name")
+                                        or ""
+                                    )
+                                    if agent_name:
+                                        current_agent = agent_name
+                                        result["_progress_events"].append(
+                                            {"type": "agent_active", "agent": agent_name}
+                                        )
+                                except Exception:
+                                    result["_progress_events"].append(
+                                        {
+                                            "type": "json_buf",
+                                            "partial": delta.get("partial_json", ""),
+                                        }
+                                    )
+
+                    elif ev_type == "content_block_stop":
+                        if current_tool == "Agent" and current_agent:
+                            result["_progress_events"].append(
+                                {"type": "agent_done", "agent": current_agent}
+                            )
+                        current_tool = None
+                        current_agent = None
 
                 elif isinstance(message, AssistantMessage):
                     for blk in message.content:
@@ -311,7 +380,6 @@ def _run_agent(prompt: str, enable_thinking: bool = False, session_type: str = "
                     result["cost"] = float(message.total_cost_usd or 0)
                     result["turns"] = int(message.num_turns or 0)
                     result["duration"] = float(message.duration_ms or 0) / 1000
-                    # Persiste métricas no sessions.jsonl para o monitoramento
                     from hooks.session_logger import log_session_result
 
                     log_session_result(
@@ -839,12 +907,41 @@ with st.chat_message("assistant"):
         with st.spinner("💬 Haiku pensando..."):
             result = _run_geral(bmad_prompt)
     else:
-        with st.spinner("⏳ Agente processando..."):
+        # st.status() mostra progresso em tempo real com passos expandíveis
+        with st.status("⏳ Agente processando...", expanded=True) as status_box:
+            st.write("Inicializando Supervisor e MCP servers...")
             result = _run_agent(
                 bmad_prompt, enable_thinking=enable_thinking, session_type=_session_type
             )
+            # Monta resumo de passos a partir dos eventos capturados
+            events = result.pop("_progress_events", [])
+            active_agents: list[str] = []
+            tools_used: list[str] = []
+            for ev in events:
+                if ev["type"] == "agent_active":
+                    agent = ev["agent"]
+                    if agent not in active_agents:
+                        active_agents.append(agent)
+                        st.write(f"💭 **{agent}** está processando...")
+                elif ev["type"] == "agent_done":
+                    st.write(f"✅ **{ev['agent']}** concluído")
+                elif ev["type"] == "tool_start" and ev["tool"] and ev["tool"] != "Agent":
+                    label = _tool_label(ev["tool"])
+                    if label not in tools_used:
+                        tools_used.append(label)
+                        st.write(f"  {label}")
 
-    # Ferramentas usadas (apenas para Claude — Gemini não usa ferramentas)
+            if result["error"]:
+                status_box.update(label="❌ Erro durante processamento", state="error")
+            else:
+                agent_summary = ", ".join(active_agents) if active_agents else "Supervisor"
+                status_box.update(
+                    label=f"✅ Concluído — {agent_summary}",
+                    state="complete",
+                    expanded=False,
+                )
+
+    # Ferramentas usadas — expander com todas as ferramentas (histórico completo)
     if result["tools"]:
         with tools_box.expander(
             f"🔧 {len(result['tools'])} ferramenta(s) executada(s)", expanded=False
