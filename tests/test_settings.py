@@ -51,7 +51,8 @@ class TestPlatformCredentials:
 
     def test_no_credentials_returns_not_ready(self):
         """Sem credenciais, nenhuma plataforma de dados deve estar ready."""
-        # Força todos os campos de credencial a string vazia para isolar do ambiente
+        # Força TODOS os campos de credencial a string vazia para isolar do .env local.
+        # Inclui os novos MCPs externos para garantir que o teste não vaze credenciais reais.
         s = Settings(
             databricks_host="",
             databricks_token="",
@@ -62,10 +63,19 @@ class TestPlatformCredentials:
             fabric_workspace_id="",
             kusto_service_uri="",
             kusto_service_default_db="",
+            # MCPs externos — explicitamente vazios para isolar do .env
+            tavily_api_key="",
+            github_personal_access_token="",
+            firecrawl_api_key="",
+            postgres_url="",
         )
         status = s.validate_platform_credentials()
+        # MCPs sem credenciais obrigatórias são sempre ready — excluídos desta verificação.
+        # context7: plano free não requer credenciais (repos públicos).
+        # memory_mcp: knowledge graph local, sem autenticação.
+        CREDENTIAL_FREE_MCPS = {"context7", "memory_mcp"}
         for platform, info in status.items():
-            if platform != "anthropic":
+            if platform != "anthropic" and platform not in CREDENTIAL_FREE_MCPS:
                 assert not info["ready"], f"{platform} deveria estar not ready"
 
     def test_databricks_ready_with_credentials(self):

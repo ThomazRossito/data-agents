@@ -29,12 +29,17 @@ from typing import Any, Literal, cast
 
 from claude_agent_sdk import AgentDefinition
 
+from mcp_servers.context7.server_config import CONTEXT7_MCP_TOOLS
 from mcp_servers.databricks.server_config import (
     DATABRICKS_MCP_TOOLS,
     DATABRICKS_MCP_READONLY_TOOLS,
     DATABRICKS_AIBI_TOOLS,
     DATABRICKS_SERVING_TOOLS,
     DATABRICKS_COMPUTE_TOOLS,
+)
+from mcp_servers.databricks_genie.server_config import (
+    DATABRICKS_GENIE_MCP_TOOLS,
+    DATABRICKS_GENIE_MCP_READONLY_TOOLS,
 )
 from mcp_servers.fabric.server_config import (
     FABRIC_MCP_TOOLS,
@@ -44,11 +49,18 @@ from mcp_servers.fabric_rti.server_config import (
     FABRIC_RTI_MCP_TOOLS,
     FABRIC_RTI_READONLY_TOOLS,
 )
-from mcp_servers.databricks_genie.server_config import (
-    DATABRICKS_GENIE_MCP_TOOLS,
-    DATABRICKS_GENIE_MCP_READONLY_TOOLS,
-)
 from mcp_servers.fabric_sql.server_config import FABRIC_SQL_MCP_TOOLS
+from mcp_servers.firecrawl.server_config import FIRECRAWL_MCP_TOOLS
+from mcp_servers.github.server_config import (
+    GITHUB_MCP_TOOLS,
+    GITHUB_MCP_READONLY_TOOLS,
+)
+from mcp_servers.memory_mcp.server_config import (
+    MEMORY_MCP_TOOLS,
+    MEMORY_MCP_READONLY_TOOLS,
+)
+from mcp_servers.postgres.server_config import POSTGRES_MCP_TOOLS
+from mcp_servers.tavily.server_config import TAVILY_MCP_TOOLS
 
 from memory.store import MemoryStore
 from memory.retrieval import retrieve_relevant_memories, format_memories_for_injection
@@ -92,6 +104,21 @@ MCP_TOOL_SETS: dict[str, list[str]] = {
         for t in FABRIC_SQL_MCP_TOOLS
         if any(kw in t for kw in ["list_", "describe_", "sample_", "count_", "diagnostics"])
     ],
+    # ── MCPs externos ─────────────────────────────────────────────────────────
+    # context7: documentação atualizada de bibliotecas (resolve-library-id + get-library-docs)
+    "context7_all": CONTEXT7_MCP_TOOLS,
+    # tavily: busca web + extração de conteúdo de URLs
+    "tavily_all": TAVILY_MCP_TOOLS,
+    # github: acesso completo (repos, issues, PRs, commits, branches)
+    "github_all": GITHUB_MCP_TOOLS,
+    "github_readonly": GITHUB_MCP_READONLY_TOOLS,
+    # firecrawl: web scraping e crawling estruturado
+    "firecrawl_all": FIRECRAWL_MCP_TOOLS,
+    # postgres: queries somente leitura em PostgreSQL
+    "postgres_all": POSTGRES_MCP_TOOLS,
+    # memory_mcp: knowledge graph persistente de entidades e relações
+    "memory_mcp_all": MEMORY_MCP_TOOLS,
+    "memory_mcp_readonly": MEMORY_MCP_READONLY_TOOLS,
 }
 
 
