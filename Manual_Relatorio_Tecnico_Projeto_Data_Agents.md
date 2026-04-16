@@ -70,7 +70,7 @@ O projeto Data Agents nasceu de uma frustração real: ferramentas de IA generat
 
 A solução foi construir um sistema que não apenas conversa, mas age: uma plataforma de múltiplos agentes especializados, cada um com o conjunto certo de ferramentas, o conhecimento correto (via Knowledge Bases e Skills), e um conjunto de restrições invioláveis (a Constituição) que garante que o comportamento seja sempre seguro, auditável e alinhado com as melhores práticas de engenharia de dados.
 
-Esta é a versão 1.0 — a primeira release pública do projeto. Ela consolida um ecossistema com 11 agentes especialistas, 13 MCP servers, Party Mode para consultas paralelas, sistema de refresh automático de Skills, 7 tipos de memória com decay configurável, e o protocolo DOMA completo para orquestração disciplinada de tarefas complexas.
+Esta é a versão 1.0 — a primeira release pública do projeto. Ela consolida um ecossistema com 12 agentes especialistas, 13 MCP servers, Party Mode para consultas paralelas, sistema de refresh automático de Skills, 5 tipos de memória com decay configurável por tipo, e o protocolo DOMA completo para orquestração disciplinada de tarefas complexas.
 
 Este manual foi escrito pensando em quatro perfis de leitores simultaneamente:
 
@@ -149,7 +149,7 @@ O modelo de custo é controlado: cada sessão tem um limite de budget em dólare
 
 Esta é a primeira release pública do Data Agents. O ecossistema entrega, de forma integrada:
 
-**11 Agentes Especialistas** com tiers diferenciados (Opus para planejamento e intake, Sonnet para execução técnica), triggers precisos de roteamento e `output_budget` declarativo no frontmatter para controle de verbosidade.
+**12 Agentes Especialistas** com tiers diferenciados (Opus para planejamento e intake, Sonnet para execução técnica), triggers precisos de roteamento e `output_budget` declarativo no frontmatter para controle de verbosidade.
 
 **Protocolo DOMA** (Data Orchestration Method for Agents) com 7 passos — KB-First, Clarity Checkpoint, Spec-First, Planejamento, Aprovação, Delegação e Validação Constitucional. Três modos de velocidade: Full (`/plan`), Express (comandos diretos) e Internal (diagnóstico do sistema).
 
@@ -157,13 +157,13 @@ Esta é a primeira release pública do Data Agents. O ecossistema entrega, de fo
 
 **Knowledge Bases modulares** em 8 domínios, com separação `concepts/` (teoria) e `patterns/` (implementação com código). Biblioteca centralizada de anti-padrões com 29 entradas catalogadas por severidade.
 
-**13 MCP Servers** — incluindo servidores customizados para Fabric SQL Analytics, Fabric RTI, Genie Conversations, Fabric Semantic Models e Migration Source (SQL Server/PostgreSQL), que resolvem limitações dos servidores oficiais.
+**13 MCP Servers** — incluindo servidores customizados para Fabric SQL Analytics, Fabric RTI, Genie Conversations, Fabric Semantic Models e Migration Source (SQL Server/PostgreSQL), que resolvem limitações dos servidores oficiais. Servidores gratuitos sem credenciais (`context7`, `memory_mcp`) são ativados automaticamente.
 
 **Memória persistente em dois layers** — episódica com 7 tipos e decay configurável, e knowledge graph via `memory_mcp` para entidades e relações permanentes.
 
 **Workflow Context Cache** (Regra W8) — antes do primeiro agente de qualquer workflow WF-01 a WF-04, o Supervisor compila um arquivo de contexto unificado, eliminando releituras redundantes de spec e KBs.
 
-**9 Hooks de segurança e controle** — 33 padrões destrutivos cobertos, auditoria JSONL completa, compressão de outputs, rastreamento de custo e ciclo de vida de sessão.
+**10 Hooks de segurança e controle** — 22 padrões destrutivos + 11 de evasão cobertos, auditoria JSONL completa, compressão de outputs, rastreamento de custo, métricas de sessão e ciclo de vida completo.
 
 ---
 
@@ -264,7 +264,7 @@ Plataforma open-source para gerenciamento do ciclo de vida de modelos de Machine
 
 **Memória Persistente**
 
-Sistema que permite ao agente lembrar informações relevantes entre sessões diferentes. Implementado em `memory/` com quatro tipos: Episódica (eventos específicos), Semântica (padrões aprendidos), Procedimental (preferências de execução) e Arquitetural (decisões de design do ambiente). Cada memória é armazenada como arquivo Markdown com frontmatter YAML e tem nível de confiança (0.0 a 1.0).
+Sistema que permite ao agente lembrar informações relevantes entre sessões diferentes. Implementado em `memory/` com cinco tipos de decay configurável: **USER** (orientações do usuário, sem decay), **ARCHITECTURE** (decisões de arquitetura, sem decay), **PROGRESS** (tarefas em andamento, decay 7 dias), **FEEDBACK** (orientações do Supervisor, decay 90 dias) e **PIPELINE_STATUS** (status de pipelines, decay 14 dias). Cada memória é armazenada como arquivo Markdown com frontmatter YAML.
 
 | **Termo**                       | **O que significa**                                                    | **Analogia rápida**                                           |
 | --------------------------------| ---------------------------------------------------------------------- | ------------------------------------------------------------- |
@@ -381,7 +381,7 @@ Comandos de diagnóstico e controle do próprio sistema. Não delegam para agent
 
 ## 4. Os Agentes: A Equipe Virtual
 
-O projeto conta com **11 agentes especialistas** divididos em três níveis de atuação (Tiers), mais o Supervisor. Todos os agentes — com exceção do Supervisor — são definidos em arquivos Markdown na pasta `agents/registry/`. Isso é uma decisão de design deliberada: para criar um novo agente, você não precisa escrever Python. Basta criar um arquivo `.md` com o frontmatter YAML correto e o prompt em Markdown.
+O projeto conta com **12 agentes especialistas** divididos em três níveis de atuação (Tiers), mais o Supervisor. Todos os agentes — com exceção do Supervisor — são definidos em arquivos Markdown na pasta `agents/registry/`. Isso é uma decisão de design deliberada: para criar um novo agente, você não precisa escrever Python. Basta criar um arquivo `.md` com o frontmatter YAML correto e o prompt em Markdown.
 
 Essa abordagem declarativa tem três vantagens cruciais. Primeiro, a barreira de entrada é baixa — qualquer pessoa que entenda o negócio pode contribuir com um novo agente sem conhecimento de programação. Segundo, o código Python do `loader.py` permanece inalterado quando novos agentes são adicionados. Terceiro, o frontmatter YAML serve como configuração versionada — você pode ver exatamente quais tools, KBs e MCP servers cada agente tem, em um formato legível por humanos.
 
@@ -578,7 +578,26 @@ O Migration Expert é o único agente do sistema com acesso ao MCP `migration_so
 
 **Colaboração:** Para objetos complexos (procedures com lógica de negócio crítica), delega revisão ao `sql-expert`. Para jobs de ingestão PySpark de alta escala, colabora com `spark-expert`. Para reconciliação e validação pós-migração, aciona `data-quality-steward`.
 
-### 4.5 Tabela Comparativa dos 11 Agentes
+#### Python Expert (/python)
+
+**Modelo:** `claude-sonnet-4-6`
+
+**Analogia:** O desenvolvedor Python sênior da equipe — a pessoa que cria pacotes, automatiza tarefas, escreve APIs, CLIs e testes unitários, sem depender de nenhuma plataforma de dados específica.
+
+O Python Expert é o agente de propósito geral para tarefas de desenvolvimento Python puro. Ele não acessa Databricks nem Fabric diretamente — usa apenas `context7` para garantir que o código gerado segue as versões mais recentes das bibliotecas. É o agente certo para criar scripts de automação, CLIs com `argparse`/`typer`, APIs REST com `FastAPI`, processamento com `pandas`/`polars`, e testes com `pytest`.
+
+**Capacidades técnicas:**
+- Escrita de scripts Python completos com tratamento de erros e logging
+- Criação de pacotes Python com `pyproject.toml` e estrutura modular
+- Desenvolvimento de CLIs com `argparse`, `typer` ou `click`
+- APIs REST com `FastAPI` ou `Flask`, incluindo autenticação e validação Pydantic
+- Testes unitários e de integração com `pytest`, incluindo fixtures e mocks
+- Processamento de dados com `pandas`, `polars` e `pyarrow`
+- Automação de tarefas: downloads, transformações de arquivos, notificações
+
+**Diferencial:** Ao contrário do Spark Expert (que escreve PySpark para execução distribuída em clusters), o Python Expert escreve Python nativo para execução local ou em containers — sem dependência de infraestrutura Databricks ou Fabric.
+
+### 4.5 Tabela Comparativa dos 12 Agentes
 
 | **Agente**           | **Tier** | **Modelo**   | **MCP Servers**                | **Acesso Principal**                            |
 | -------------------- | -------- | ------------ | ------------------------------ | ----------------------------------------------- |
@@ -586,13 +605,15 @@ O Migration Expert é o único agente do sistema com acesso ao MCP `migration_so
 | Business Analyst     | T3       | opus-4-6     | tavily, firecrawl              | Read/Write local + pesquisa web                 |
 | SQL Expert           | T1       | sonnet-4-6   | Databricks, Fabric, RTI        | Read-only na nuvem, write em .sql               |
 | Spark Expert         | T1       | sonnet-4-6   | context7                       | Read/Write + filesystem local completo          |
+| Python Expert        | T1       | sonnet-4-6   | context7                       | Read/Write local completo + docs atualizadas    |
 | Pipeline Architect   | T1       | sonnet-4-6   | Databricks, Fabric, github     | Execução completa + compute/KA/MAS              |
-| Migration Expert     | T1       | sonnet-4-6   | migration_source, Databricks, Fabric | DDL extraction + Medallion design + transpilação |
+| Migration Expert     | T1       | sonnet-4-6   | migration_source, Databricks, Fabric, fabric_sql, context7 | DDL extraction + Medallion design + transpilação |
 | Data Quality Steward | T2       | sonnet-4-6   | Databricks, Fabric             | Read/Write completo                             |
 | Governance Auditor   | T2       | sonnet-4-6   | Databricks, Fabric, memory_mcp | Read/Write completo + knowledge graph           |
-| Semantic Modeler     | T2       | sonnet-4-6   | Databricks, Fabric             | Read-only + Genie + AI/BI Dashboard + Serving   |
+| Semantic Modeler     | T2       | sonnet-4-6   | Databricks, fabric_semantic, Fabric | Read-only + Genie + AI/BI Dashboard + Serving   |
 | dbt Expert           | T2       | sonnet-4-6   | context7, postgres             | Read/Write local + documentação atualizada      |
 | Skill Updater        | T2       | sonnet-4-6   | context7, tavily, firecrawl    | Write em SKILL.md + busca de documentação       |
+| Geral                | T3       | sonnet-4-6   | *(nenhum)*                     | Resposta direta sem MCP — zero custo de infra   |
 
 ---
 
@@ -776,84 +797,104 @@ O projeto segue uma organização modular e declarativa. Cada pasta tem uma resp
 ```
 data-agents/
 ├── agents/
-│   ├── registry/              # Agentes definidos em Markdown (11 agentes + template)
+│   ├── registry/              # Agentes definidos em Markdown (12 agentes + template)
 │   │   ├── _template.md       # Template para criar novos agentes
 │   │   ├── business-analyst.md
 │   │   ├── sql-expert.md
 │   │   ├── spark-expert.md
+│   │   ├── python-expert.md   # Python puro: pacotes, APIs, CLIs, testes
 │   │   ├── pipeline-architect.md
+│   │   ├── migration-expert.md  # Migração SQL Server/PostgreSQL → Databricks/Fabric
+│   │   ├── dbt-expert.md
 │   │   ├── data-quality-steward.md
 │   │   ├── governance-auditor.md
-│   │   └── semantic-modeler.md
+│   │   ├── semantic-modeler.md
+│   │   ├── skill-updater.md
+│   │   └── geral.md
+│   ├── cache_prefix.md        # Prefixo byte-idêntico para prompt caching (NUNCA dinâmico)
 │   ├── loader.py              # Motor que transforma .md em agentes vivos
 │   ├── supervisor.py          # Factory do ClaudeAgentOptions para o Supervisor
 │   ├── prompts/
-│   │   └── supervisor_prompt.py  # System prompt completo (223 linhas)
+│   │   └── supervisor_prompt.py  # System prompt completo do Supervisor
 │   └── mlflow_wrapper.py      # Wrapper PyFunc para Databricks Model Serving
 │
 ├── commands/
-│   └── parser.py              # Slash commands com roteamento DOMA
+│   ├── parser.py              # Slash commands com roteamento DOMA
+│   ├── party.py               # Party Mode: múltiplos agentes em paralelo
+│   └── geral.py               # Bypass direto sem Supervisor
 │
 ├── config/
 │   ├── settings.py            # Pydantic BaseSettings com validação de credenciais
 │   ├── exceptions.py          # Hierarquia de exceções personalizadas
 │   ├── logging_config.py      # Logging estruturado JSONL + console Rich
-│   └── mcp_servers.py         # Registry central de conexões MCP
+│   └── mcp_servers.py         # Registry central de conexões MCP (ALL_MCP_CONFIGS)
 │
 ├── hooks/
 │   ├── audit_hook.py          # Log JSONL com categorização de erros (6 categorias)
 │   ├── checkpoint.py          # Checkpoint de sessão (save/load/resume)
+│   ├── context_budget_hook.py # Monitora tokens acumulados; alerta a 80% e 95%
 │   ├── cost_guard_hook.py     # Classificação HIGH/MEDIUM/LOW de custos
-│   ├── memory_hook.py         # NOVO v5.0: Captura insights para memória persistente
+│   ├── memory_hook.py         # Captura insights para memória persistente
 │   ├── output_compressor_hook.py  # Trunca outputs MCP (economia de tokens)
-│   ├── security_hook.py       # Bloqueia comandos destrutivos e SQL custoso
-│   ├── session_lifecycle_hook.py  # NOVO v5.0: Gerencia eventos do ciclo de sessão
+│   ├── security_hook.py       # Bloqueia 22 padrões destrutivos + 11 de evasão
+│   ├── session_lifecycle.py   # Gerencia eventos do ciclo de sessão (Start/End)
 │   ├── session_logger.py      # Métricas de custo/turnos/duração por sessão
 │   └── workflow_tracker.py    # Rastreia delegações, workflows e Clarity Checkpoint
 │
 ├── kb/
-│   ├── constitution.md        # Documento de autoridade máxima (~50 regras)
-│   ├── collaboration-workflows.md  # Workflows Colaborativos (WF-01 a WF-04)
+│   ├── constitution.md        # Documento de autoridade máxima (~50 regras invioláveis)
+│   ├── collaboration-workflows.md  # Workflows Colaborativos (WF-01 a WF-05)
 │   ├── data-quality/          # Expectations, profiling, drift detection, SLAs
 │   ├── databricks/            # Unity Catalog, compute, bundles, AI/ML, jobs
 │   ├── fabric/                # RTI, Eventhouse, Data Factory, Direct Lake
 │   ├── governance/            # Auditoria, linhagem, PII, compliance
+│   ├── migration/             # Anti-padrões e estratégias de migração relacional
 │   ├── pipeline-design/       # Medallion, orquestração, cross-platform, Star Schema
+│   ├── python-patterns/       # Padrões Python: packaging, testing, APIs, CLIs
 │   ├── semantic-modeling/     # DAX, Direct Lake, Metric Views, reporting
-│   ├── spark-patterns/        # Delta Lake, SDP/LakeFlow, streaming, performance
+│   ├── spark-patterns/        # Delta Lake, LakeFlow, streaming, performance
 │   └── sql-patterns/          # DDL, otimização, conversão de dialetos, Star Schema
 │
-├── memory/                    # NOVO v5.0: Sistema de Memória Persistente
+├── memory/                    # Sistema de Memória Persistente
 │   ├── __init__.py
-│   ├── types.py               # MemoryType, MemoryEntry, to_frontmatter()
-│   ├── store.py               # MemoryStore: save, load, list
-│   ├── retriever.py           # MemoryRetriever: busca por relevância
-│   └── pruner.py              # MemoryPruner: poda de memórias obsoletas
-│
-├── memory_storage/            # Arquivos .md de memórias persistidas (gitignored)
-│   ├── episodic/
-│   ├── semantic/
-│   ├── procedural/
-│   └── architectural/
+│   ├── types.py               # MemoryType enum (USER, ARCHITECTURE, PROGRESS, FEEDBACK, PIPELINE_STATUS)
+│   ├── store.py               # MemoryStore: save, load, list com decay configurável
+│   ├── retrieval.py           # Busca semântica por relevância
+│   ├── extractor.py           # Extração de fatos e eventos das respostas dos agentes
+│   ├── compiler.py            # Compilação de daily logs
+│   ├── decay.py               # Obsolescência automática por tipo de memória
+│   └── lint.py                # Verificação de memórias stale
 │
 ├── mcp_servers/
+│   ├── _template/             # Template para novos MCPs
+│   ├── context7/              # Docs atualizadas de libs (free, sem credenciais)
 │   ├── databricks/            # 65+ tools: UC, SQL, Jobs, LakeFlow, Compute, AI/BI
-│   ├── databricks_genie/      # MCP customizado: 9 tools para Genie Conversation API
-│   ├── fabric/                # 28 tools Community + servidor oficial
-│   ├── fabric_sql/            # MCP customizado: 8 tools SQL Analytics via TDS
-│   └── fabric_rti/            # Tools para KQL, Eventstreams, Activator
+│   ├── databricks_genie/      # MCP customizado: Genie Conversation API
+│   ├── fabric/                # Fabric REST API (Workspaces, Lakehouses, Data Factory)
+│   ├── fabric_community/      # Linhagem de dados, dependências entre itens Fabric
+│   ├── fabric_rti/            # KQL, Eventhouse, Eventstreams, Activator
+│   ├── fabric_semantic/       # MCP customizado: Semantic Models (TMDL, DAX, RLS)
+│   ├── fabric_sql/            # MCP customizado: SQL Analytics Endpoint via TDS
+│   ├── firecrawl/             # Web scraping estruturado
+│   ├── github/                # Repos, Issues, PRs, commits
+│   ├── memory_mcp/            # Knowledge graph persistente (free, sem credenciais)
+│   ├── migration_source/      # MCP customizado: DDL/schema extraction SQL Server/PostgreSQL
+│   ├── postgres/              # Queries read-only em PostgreSQL
+│   └── tavily/                # Busca web otimizada para LLMs
 │
 ├── monitoring/
 │   └── app.py                 # Dashboard Streamlit (9 páginas, porta 8501)
 │
 ├── output/
 │   ├── prd/                   # PRDs gerados pelo /plan
-│   ├── specs/                 # SPECs geradas após aprovação
-│   └── backlog/               # Backlogs P0/P1/P2 do /brief
+│   ├── specs/                 # SPECs geradas após aprovação do PRD
+│   └── backlog/               # Backlogs P0/P1/P2 gerados pelo /brief
 │
 ├── skills/
-│   ├── databricks/            # 27 módulos operacionais Databricks
-│   └── fabric/                # 5 módulos operacionais Fabric
+│   ├── databricks/            # Skills operacionais Databricks (27+ módulos)
+│   ├── fabric/                # Skills operacionais Fabric (10+ módulos)
+│   ├── migration/             # Skills de migração relacional
+│   └── root/                  # Skills transversais (spark, sql, data quality, etc.)
 │
 ├── templates/
 │   ├── backlog.md             # Template P0/P1/P2 para Business Analyst
@@ -861,11 +902,12 @@ data-agents/
 │   ├── pipeline-spec.md       # Template para pipelines ETL/ELT Bronze-Gold
 │   └── star-schema-spec.md    # Template para Star Schema com SS1-SS5
 │
-├── tests/                     # 11 módulos de teste (cobertura 80%)
+├── tests/                     # Suite de testes pytest (cobertura mínima 80%)
 │
 ├── ui/
 │   ├── __init__.py
-│   └── chat.py                # Chat UI Streamlit com ClaudeSDKClient persistente
+│   ├── chat.py                # Chat UI Streamlit (porta 8502)
+│   └── chainlit_app.py        # Chat UI Chainlit com steps em tempo real (porta 8503)
 │
 ├── logs/                      # Arquivos JSONL de log (gitignored)
 │   ├── audit.jsonl
@@ -875,13 +917,14 @@ data-agents/
 │   └── compression.jsonl
 │
 ├── main.py                    # Entrada principal com loop interativo
-├── start.sh                   # Script para subir Web UI + Monitoring
+├── start.sh                   # Script para subir Streamlit UI + Monitoring
+├── start_chainlit.sh          # Script para subir Chainlit UI (recomendada)
 ├── pyproject.toml             # Dependências, metadata, configuração de ferramentas
-├── Makefile                   # 18 targets de automação
+├── Makefile                   # Targets de automação (test, lint, health, refresh-skills)
 ├── .env.example               # Modelo de credenciais (nunca commitar o .env real)
 └── .github/
     └── workflows/
-        ├── ci.yml             # Integração Contínua: lint, test, security
+        ├── ci.yml             # Integração Contínua: lint, type-check, test, bandit
         └── cd.yml             # Deploy Contínuo: Databricks Asset Bundles
 ```
 
@@ -927,15 +970,21 @@ O campo `kb_domains` é o que o loader usa para lazy-loading: apenas as KBs dess
 
 ### 6.3 Pasta memory/ — O Novo Sistema da v5.0
 
-A pasta `memory/` é completamente nova na versão 5.0. Ela implementa o sistema de memória persistente do projeto. É composta por quatro módulos:
+A pasta `memory/` implementa o sistema de memória persistente do projeto. É composta por sete módulos:
 
-- **types.py:** Define os tipos de dados. `MemoryType` é um enum com quatro valores (`EPISODIC`, `SEMANTIC`, `PROCEDURAL`, `ARCHITECTURAL`). `MemoryEntry` é o dataclass que representa uma memória individual, com campos como `id`, `type`, `summary`, `tags`, `confidence`, `created_at`, `updated_at`, `source_session`, `related_ids` e `superseded_by`. O método `to_frontmatter()` serializa a memória em formato Markdown com YAML frontmatter.
+- **types.py:** Define os tipos de dados. `MemoryType` é um enum com cinco valores que refletem diferentes categorias de conhecimento com decay distinto: `USER` (orientações do usuário — sem decay), `ARCHITECTURE` (decisões de arquitetura — sem decay), `PROGRESS` (tarefas em andamento — 7 dias), `FEEDBACK` (orientações do Supervisor — 90 dias), `PIPELINE_STATUS` (status de pipelines — 14 dias). Os prazos de decay são configuráveis via `.env`.
 
-- **store.py:** `MemoryStore` gerencia persistência em disco. Cada memória é salva como um arquivo `.md` individual na pasta `memory_storage/<tipo>/`. Usa um formato padronizado que é legível por humanos e por código.
+- **store.py:** `MemoryStore` gerencia persistência em disco com decay automático configurável por tipo. Cada memória é um arquivo `.md` com frontmatter YAML legível por humanos.
 
-- **retriever.py:** `MemoryRetriever` implementa busca por relevância. Dado um prompt ou contexto de tarefa, retorna as memórias mais relevantes usando correspondência de tags e similaridade de texto.
+- **retrieval.py:** Busca semântica por relevância — dado um prompt, retorna as memórias mais pertinentes para injetar no contexto.
 
-- **pruner.py:** `MemoryPruner` implementa poda automática. Remove memórias que foram substituídas por versões mais recentes (campo `superseded_by` preenchido), que perderam confiança abaixo do threshold, ou que são mais antigas que o limite de retenção por tipo.
+- **extractor.py:** Extrai fatos e eventos relevantes das respostas dos agentes para persistência automática.
+
+- **compiler.py:** Compila daily logs de memória para visão consolidada por sessão.
+
+- **decay.py:** Aplica obsolescência automática removendo memórias expiradas por tipo.
+
+- **lint.py:** Verifica memórias potencialmente stale para manutenção manual.
 
 ### 6.4 Pasta output/ — Os Artefatos do Trabalho
 
@@ -1181,7 +1230,7 @@ Isso previne que requisições HTTP internas do SDK Anthropic encham os logs com
 
 Os Hooks são o sistema de controle e auditoria do Data Agents. São funções que o Claude Agent SDK chama automaticamente em momentos específicos da execução — antes de uma ferramenta ser chamada (PreToolUse), depois que uma ferramenta retornou (PostToolUse), no início da sessão (SessionStart), e no fim da sessão (SessionEnd).
 
-O Data Agents v7.0 possui **9 Hooks** especializados, organizados em três categorias: Segurança (prevenção), Auditoria (registro e rastreamento), e Controle (custo, compressão e ciclo de vida).
+O Data Agents possui **10 Hooks** especializados, organizados em três categorias: Segurança (prevenção), Auditoria (registro e rastreamento), e Controle (custo, compressão e ciclo de vida).
 
 ### 8.1 Por Que Hooks? Uma Decisão de Arquitetura
 
@@ -1370,19 +1419,21 @@ O `session_lifecycle_hook.py` gerencia o ciclo de vida completo da sessão. Ele 
 
 O config snapshot é um recurso importante para debugging: quando um comportamento mudou entre uma sessão e outra, você pode comparar os snapshots e identificar qual mudança de configuração foi responsável.
 
-### 8.4 Resumo Completo dos 9 Hooks
+### 8.4 Resumo Completo dos 10 Hooks
 
-| **Hook**                  | **Tipo**         | **Proteção / Função**                                |
-| ------------------------- | ---------------- | ---------------------------------------------------- |
-| block_destructive_commands | PreToolUse (Bash) | Bloqueia 17 padrões destrutivos + 11 de evasão       |
-| check_sql_cost            | PreToolUse (All)  | Bloqueia SELECT * sem WHERE/LIMIT em qualquer tool   |
-| audit_hook                | PostToolUse       | Log JSONL com classificação e 6 categorias de erro   |
-| workflow_tracker          | PostToolUse       | Delegações, workflows, Clarity Checkpoint score      |
-| cost_guard_hook           | PostToolUse       | Custo HIGH/MEDIUM/LOW com alerta após 5 HIGH         |
-| output_compressor_hook    | PostToolUse       | Trunca outputs por tipo, registra economia em JSONL  |
-| session_logger            | PostToolUse       | Métricas finais de custo/turns/duração por sessão    |
-| memory_hook               | PostToolUse       | Captura insights para persistir na memória           |
-| session_lifecycle_hook    | SessionStart/End  | Config snapshot, injeção de memórias, auditoria      |
+| **Hook**                  | **Tipo**          | **Proteção / Função**                                |
+| ------------------------- | ----------------- | ---------------------------------------------------- |
+| `security_hook.py` (cmd)  | PreToolUse (Bash) | Bloqueia 22 padrões destrutivos + 11 de evasão       |
+| `security_hook.py` (sql)  | PreToolUse (All)  | Bloqueia SELECT * sem WHERE/LIMIT em qualquer tool   |
+| `audit_hook.py`           | PostToolUse       | Log JSONL com classificação e 6 categorias de erro   |
+| `workflow_tracker.py`     | PostToolUse       | Delegações, workflows, Clarity Checkpoint score      |
+| `cost_guard_hook.py`      | PostToolUse       | Custo HIGH/MEDIUM/LOW com alerta após 5 HIGH         |
+| `output_compressor_hook.py` | PostToolUse     | Trunca outputs por tipo, registra economia em JSONL  |
+| `session_logger.py`       | PostToolUse       | Métricas finais de custo/turns/duração por sessão    |
+| `memory_hook.py`          | PostToolUse       | Captura insights para persistir na memória           |
+| `context_budget_hook.py`  | PostToolUse       | Alerta a 80% e 95% do limite de contexto por agente  |
+| `checkpoint.py`           | —                 | Save/restore do estado da sessão para retomada       |
+| `session_lifecycle.py`    | SessionStart/End  | Config snapshot, injeção de memórias, auditoria      |
 
 ---
 
@@ -1561,13 +1612,21 @@ Quando usar: Auditoria completa de um lakehouse ou de um domínio específico, c
 
 O Governance Auditor varre o ambiente, rastreia linhagem e identifica riscos de PII. O Data Quality Steward avalia a qualidade dos dados nos schemas auditados. Ao final, um relatório consolidado é gerado em `output/` com findings e recomendações.
 
+**WF-05: Migração Relacional → Nuvem**
+
+Sequência: `migration-expert → sql-expert → spark-expert → data-quality-steward + governance-auditor`
+
+Quando usar: Migração de bancos relacionais legados (SQL Server, PostgreSQL) para Databricks ou Microsoft Fabric com arquitetura Medallion.
+
+O Migration Expert conduz as 5 fases (ASSESS → ANALYZE → DESIGN → TRANSPILE → RECONCILE), conectando-se diretamente ao banco de origem via MCP `migration_source`. O SQL Expert revisa objetos complexos (procedures, views com lógica de negócio). O Spark Expert implementa os jobs de ingestão PySpark Bronze incremental. O Data Quality Steward valida contagens e integridade; o Governance Auditor verifica conformidade e linhagem no destino.
+
 ### 10.3 Como o Sistema Decide Usar um Workflow
 
 O Supervisor usa três critérios para decidir se aciona um workflow colaborativo:
 
 1. **Número de agentes envolvidos:** Se a tarefa requer 3 ou mais especialistas diferentes, um workflow é acionado.
 2. **Número de plataformas:** Se a tarefa envolve Databricks E Fabric, WF-03 é considerado.
-3. **Tipo de tarefa:** Palavras-chave no prompt mapeiam para workflows específicos — "pipeline completo" → WF-01, "star schema" → WF-02, "migração" → WF-03, "auditoria" → WF-04.
+3. **Tipo de tarefa:** Palavras-chave no prompt mapeiam para workflows específicos — "pipeline completo" → WF-01, "star schema" → WF-02, "migração cross-platform" → WF-03, "auditoria" → WF-04, "migração SQL Server/PostgreSQL" → WF-05.
 
 Quando nenhum workflow pré-definido se encaixa, o Supervisor cria uma cadeia customizada baseada na tarefa específica, seguindo o mesmo protocolo de handoff.
 
@@ -1896,16 +1955,17 @@ O `MemoryStore` é responsável por salvar e carregar memórias do disco. Cada m
 
 ```
 memory_storage/
-├── episodic/
+├── user/               # Orientações e preferências do usuário (sem decay)
+│   └── user_pref_dlt.md
+├── architecture/       # Decisões de arquitetura do ambiente (sem decay)
+│   └── arch_catalog_structure.md
+├── progress/           # Tarefas em andamento (decay: 7 dias)
 │   ├── sess_20250610_pipeline.md
 │   └── sess_20250612_schema_error.md
-├── semantic/
-│   ├── pref_dlt_over_notebooks.md
-│   └── env_warehouse_mapping.md
-├── procedural/
-│   └── proc_create_tables.md
-└── architectural/
-    └── arch_catalog_structure.md
+├── feedback/           # Orientações do Supervisor (decay: 90 dias)
+│   └── fb_use_sonnet_for_sql.md
+└── pipeline_status/    # Status de pipelines de dados (decay: 14 dias)
+    └── ps_ingestao_vendas.md
 ```
 
 O `store.py` implementa três operações principais:
@@ -2690,7 +2750,7 @@ O Data Agents oferece três interfaces de uso complementares, projetadas para pe
 
 O Chainlit é a interface mais rica do sistema. Ao iniciar, apresenta dois botões de seleção de modo:
 
-**Modo Data Agents** — Supervisor completo com os 11 agentes especialistas, todos os slash commands e MCPs de plataforma. Para cada tool call e delegação, exibe um `cl.Step()` expansível em tempo real.
+**Modo Data Agents** — Supervisor completo com os 12 agentes especialistas, todos os slash commands e MCPs de plataforma. Para cada tool call e delegação, exibe um `cl.Step()` expansível em tempo real.
 
 **Modo Dev Assistant** — Claude direto (sem Supervisor), ferramentas `Read`, `Write`, `Bash`, `Grep`, `Glob`. Mantém histórico de conversa para follow-ups. Usa `settings.default_model` (Bedrock) — custo zero pelo acordo corporativo. Ideal para desenvolvimento e debugging do próprio projeto.
 
@@ -2850,7 +2910,7 @@ A página inicial com os KPIs mais importantes de um único olhar:
 **Página 2: Agentes**
 
 Detalhe de performance por agente:
-- Cards individuais para cada um dos 11 agentes com: número de delegações recebidas, taxa de erro, custo médio por uso
+- Cards individuais para cada um dos 12 agentes com: número de delegações recebidas, taxa de erro, custo médio por uso
 - Gráfico de delegações por agente ao longo do tempo
 - Tabela de erros por categoria (auth, timeout, rate_limit, etc.) por agente
 - Histograma de duração de execução por agente
@@ -3233,7 +3293,7 @@ A versão 7.0 introduz manutenção automática de Skills, roteamento preciso de
 | Injeção automática via skill_domains    | Frontmatter skill_domains injeta índice de SKILL.md por agente automaticamente    |
 | 3 novos tipos de memória de domínio     | data_asset, platform_decision, pipeline_status com decay configurável via .env    |
 | Decay configurável por tipo             | MEMORY_DECAY_FEEDBACK_DAYS, PROGRESS_DAYS, PIPELINE_STATUS_DAYS no .env          |
-| Triggers de roteamento precisos         | "Invoque quando:" em todos os 11 agentes — Supervisor roteia corretamente         |
+| Triggers de roteamento precisos         | "Invoque quando:" em todos os 12 agentes — Supervisor roteia corretamente         |
 | 5 novos padrões de segurança git        | Bloqueia force-push, reset --hard, branch -D (case-sensitive para -D vs -d)      |
 | Checkpoint: retomada direta             | Instrução imperativa: lê arquivos, determina CONCLUÍDO vs INCOMPLETO, responde    |
 | Budget reset em novo chat (Chainlit)    | on_chat_start sempre seta needs_reconnect=True para zerar custo acumulado         |
@@ -3251,7 +3311,7 @@ A versão 7.0 introduz manutenção automática de Skills, roteamento preciso de
 | Biblioteca de Anti-Padrões Centralizada (kb/shared/anti-patterns.md) | 29 padrões catalogados: C7 CRÍTICO, H12 ALTA, M10 MÉDIA |
 | Protocolo KB-First v2 com Agreement Matrix | Confiança calibrada e proveniência obrigatória em respostas técnicas |
 | Cascade Tracking PRD→SPEC no workflow_tracker | Rastreabilidade automática de dependências entre artefatos |
-| `output_budget` no frontmatter dos 11 agentes | Controle declarativo de verbosidade sem modificar runtime |
+| `output_budget` no frontmatter dos 12 agentes | Controle declarativo de verbosidade sem modificar runtime |
 | Resolução de 3 duplicações críticas (Star Schema, Direct Lake, Orchestration) | Fonte canônica única para cada tópico |
 | Chainlit Tool Result Display: output real das tools nos steps expansíveis | Visibilidade completa da execução |
 | Correção do modelo ativo: bedrock/anthropic.claude-4-6-sonnet via LiteLLM proxy | Todos os 11 agentes usando o modelo correto |
@@ -3290,10 +3350,10 @@ Um resumo numérico do ecossistema Data Agents v1.0:
 | **Métrica**                      | **Valor**                                                                        |
 | -------------------------------- | -------------------------------------------------------------------------------- |
 | Versão atual                     | 1.0.0                                                                            |
-| Agentes especialistas            | 11 (1 Supervisor + 1 Tier 3 + 4 Tier 1 + 5 Tier 2)                             |
-| Slash commands                   | 17 (/brief, /plan, /geral, /sql, /spark, /pipeline, /dbt, /fabric, /quality, /governance, /semantic, /migrate, /party, /health, /status, /review, /memory) |
+| Agentes especialistas            | 12 (1 Supervisor + 2 Tier 3 + 5 Tier 1 + 5 Tier 2)                             |
+| Slash commands                   | 22 (/brief, /plan, /geral, /sql, /spark, /python, /pipeline, /dbt, /fabric, /quality, /governance, /semantic, /migrate, /skill, /genie, /dashboard, /party, /health, /status, /review, /memory, /party) |
 | Interfaces de usuário            | 3 (Terminal + Web UI Streamlit + Web UI Chainlit)                                |
-| Hooks de segurança e controle    | 9 (audit, cost, security/SQL, compression, workflow, session, memory, lifecycle, checkpoint) |
+| Hooks de segurança e controle    | 10 (security cmd, security SQL, audit, workflow, cost, compression, session_logger, memory, context_budget, session_lifecycle) + checkpoint |
 | Padrões destrutivos no hook      | 22 diretos + 11 de evasão (total: 33 padrões)                                   |
 | Tipos de log                     | 5 (audit, app, sessions, workflows, compression) + config_snapshots             |
 | Tipos de memória                 | 7 (user, feedback, architecture, progress, data_asset, platform_decision, pipeline_status) |
