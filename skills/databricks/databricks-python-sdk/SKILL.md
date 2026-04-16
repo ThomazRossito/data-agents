@@ -1,6 +1,8 @@
 ---
 name: databricks-python-sdk
 description: "Databricks development guidance including Python SDK, Databricks Connect, CLI, and REST API. Use when working with databricks-sdk, databricks-connect, or Databricks APIs."
+updated_at: 2026-04-16
+sdk_version: ">=0.40.0"
 ---
 
 # Databricks Development Guide

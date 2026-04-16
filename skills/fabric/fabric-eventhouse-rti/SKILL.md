@@ -1,7 +1,12 @@
+---
+updated_at: "2026-04-16"
+source: kb/fabric/concepts/rti-concepts.md + kb/fabric/patterns/rti-patterns.md + skills/fabric/kql-rti-optimizations.md
+---
+
 # SKILL: Microsoft Fabric — Real-Time Intelligence (Eventhouse, KQL, Eventstreams, Activator)
 
-> **Fonte:** Microsoft Learn (learn.microsoft.com/fabric/real-time-intelligence)
-> **Atualizado:** Janeiro 2026
+> **Fonte:** Microsoft Learn (learn.microsoft.com/fabric/real-time-intelligence) + KB interna
+> **Atualizado:** Abril 2026
 > **Uso:** Leia este arquivo ANTES de projetar pipelines de dados em tempo real no Fabric.
 
 ---
@@ -10,7 +15,7 @@
 
 ```
 Fontes de Eventos
-  (Kafka, Event Hub, IoT Hub, APIs, Change Data)
+  (Kafka, Event Hub, IoT Hub, APIs, Change Data, Cosmos DB Change Feed)
          │
          ▼
   ┌─────────────┐
@@ -22,14 +27,33 @@ EVENTHOUSE  LAKEHOUSE  ACTIVATOR
 (KQL/Kusto)  (Delta)  (Alertas/Ações)
 ```
 
+**Latência típica:** <1 segundo (vs. Lakehouse batch: minutos).
+
 ### Eventhouse
+
 Container para múltiplos **KQL Databases** (Kusto). Otimizado para dados de séries temporais, logs, telemetria. Dados são automaticamente indexados por tempo de ingestão. Suporta hot cache (memória) + cold storage (OneLake Parquet).
 
 ### Eventstreams
-Pipeline de streaming sem código. Conecta fontes (Event Hub, Kafka, IoT Hub, Custom Apps) a múltiplos destinos simultaneamente (Eventhouse, Lakehouse, Activator). Suporta transformações inline (filter, aggregate, join).
+
+Pipeline de streaming sem código. Conecta fontes (Event Hub, Kafka, IoT Hub, Custom Apps, Event Grid, Cosmos DB Change Feed) a múltiplos destinos simultaneamente (Eventhouse, Lakehouse, Activator). Suporta transformações inline (filter, aggregate, join).
 
 ### Activator
+
 Motor de automação baseado em regras sobre dados em tempo real. Monitora Eventstreams ou Eventhouse e dispara ações (email, Teams, webhook, Power Automate) quando condições são atendidas.
+
+---
+
+## Decision Matrix: Lakehouse vs Eventhouse
+
+Use esta matriz para decidir onde armazenar dados.
+
+| Use Lakehouse quando...                          | Use Eventhouse quando...                        |
+|--------------------------------------------------|-------------------------------------------------|
+| Dados batch (diários, horários)                  | Streaming contínuo (eventos/logs)               |
+| Schema estável, transformações complexas         | Real-time dashboards (<1s latência)             |
+| BI/Reports com Direct Lake                       | Alertas automáticos via Activator               |
+| Volume: 100 GB–10 TB histórico                   | Volume: 1M–10M+ eventos/dia com TTL curto       |
+| Joins complexos com dimensões estáveis           | Séries temporais, telemetria, IoT, logs         |
 
 ---
 
@@ -60,19 +84,28 @@ eventos
 | `LIKE '%texto%'`                       | `\| where col contains "texto"` (case-insensitive)   |
 | `DISTINCT col`                         | `\| distinct col` ou `\| summarize by col`            |
 | `ORDER BY col DESC`                    | `\| order by col desc` ou `\| sort by col desc`      |
+| `COUNT(DISTINCT col)`                  | `\| summarize dcount(col)`                            |
 
 ### Agregações e Séries Temporais
 
 ```kusto
-// Contagem por janela de 5 minutos (análise de séries temporais)
+// Contagem por janela de 5 minutos com métricas adicionais
 telemetria
 | where ingestion_time() > ago(24h)
 | summarize
     total_eventos = count(),
+    usuarios_unicos = dcount(user_id),
     erros = countif(level == "ERROR"),
-    latencia_p99 = percentile(response_ms, 99)
+    latencia_p99 = percentile(response_ms, 99),
+    avg_latencia = avg(response_ms)
     by bin(timestamp, 5m), endpoint
 | order by timestamp desc
+
+// Render como gráfico de série temporal (Fabric RTI dashboard)
+telemetria
+| where ingestion_time() > ago(7d)
+| summarize count() by bin(timestamp, 1h), event_type
+| render timechart
 ```
 
 ### Detecção de Anomalias
@@ -104,6 +137,36 @@ eventos_rt
 
 ---
 
+## Materialized Views
+
+Materialized Views pré-computam agregações e são atualizadas incrementalmente. Use para queries recorrentes de alto custo.
+
+```kusto
+// Criar MV com agregação horária
+.create materialized-view hourly_stats
+  on table user_events
+{
+  user_events
+  | summarize
+      event_count = count(),
+      unique_users = dcount(user_id),
+      avg_value = avg(value)
+      by bin(timestamp, 1h), event_type
+}
+
+// Query MV — resposta instantânea (dados pré-computados)
+hourly_stats
+| where timestamp > ago(24h)
+| order by timestamp desc
+
+// Verificar status da MV
+.show materialized-view hourly_stats
+```
+
+**Quando usar:** agregações por janela de tempo consultadas repetidamente, dashboards de baixa latência, relatórios por hora/dia.
+
+---
+
 ## Políticas de Retenção e Cache
 
 ### Configuração de Caching Policy
@@ -125,16 +188,39 @@ eventos_rt
 ### Retenção de Dados
 
 ```kusto
-// Definir retenção total (hot + cold) de 365 dias
-.alter table logs policy retention softdelete = 365d recoverability = disabled
+// Retenção com recoverability explícito (padrão recomendado)
+.alter-merge table user_events policy retention
+  softdelete = 365d recoverability = disabled
 
 // Para tabelas de log de curta vida (30 dias)
 .alter table audit_logs policy retention softdelete = 30d
+
+// Verificar política de retenção
+.show table user_events policy retention
 ```
+
+### Tiering de Dados (Hot / Warm / Cold)
+
+| Tier | Duração Típica | Latência de Query | Custo Relativo |
+|------|----------------|-------------------|----------------|
+| Hot  | 30–90 dias     | <1 s              | Normal         |
+| Warm | 90–365 dias    | ~10 s             | Reduzido       |
+| Cold | 365+ dias      | ~1 min            | Mínimo         |
 
 ---
 
 ## Eventstreams — Ingestão e Roteamento
+
+### Fontes Suportadas
+
+| Fonte          | Padrão                    | Nota                          |
+|----------------|---------------------------|-------------------------------|
+| Event Hub      | Connection string         | Azure nativo                  |
+| Kafka          | Topic + Consumer Group    | Default em clouds             |
+| IoT Hub        | Shared access policy      | Dispositivos IoT              |
+| Event Grid     | Topic subscription        | Serverless                    |
+| Cosmos DB      | Change Feed               | Eventos NoSQL                 |
+| Custom Source  | HTTP POST / SDK           | APIs genéricas                |
 
 ### Padrão de Multi-Destino
 
@@ -181,21 +267,126 @@ with producer:
     producer.send_batch(event_data_batch)
 ```
 
+### Eventstream via REST API
+
+```http
+POST /workspaces/{workspace-id}/eventstreams
+{
+  "displayName": "user-events-stream",
+  "type": "EventStream",
+  "sources": [
+    {
+      "type": "EventHub",
+      "connectionId": "{connection-id}",
+      "eventHubName": "user-events",
+      "consumerGroup": "$Default"
+    }
+  ],
+  "destinations": [
+    {
+      "type": "Eventhouse",
+      "eventhouseId": "{eventhouse-id}",
+      "tableName": "user_events",
+      "mappingType": "Json"
+    }
+  ]
+}
+```
+
+---
+
+## Eventhouse — Criação e Gerenciamento de Tabelas
+
+```json
+POST /workspaces/{workspace-id}/eventhouse/{eventhouse-id}/tables
+{
+  "tableName": "user_events",
+  "schema": [
+    {"columnName": "timestamp", "columnType": "datetime"},
+    {"columnName": "user_id",   "columnType": "string"},
+    {"columnName": "event_type","columnType": "string"},
+    {"columnName": "value",     "columnType": "real"}
+  ]
+}
+```
+
+---
+
+## Ingestão Direta via Python (kusto-ingest)
+
+Para ingestão em lote fora do Eventstream (ex: backfill, scripts de carga):
+
+```python
+from azure.kusto.data import KustoConnectionStringBuilder
+from azure.kusto.ingest import QueuedIngestClient, IngestionProperties, DataFormat
+
+kcsb = KustoConnectionStringBuilder.with_aad_application_key_authentication(
+    connection_string="https://ingest-<cluster>.kusto.windows.net",
+    aad_app_id="<app_id>",
+    app_key="<app_key>",
+    authority_id="<tenant_id>"
+)
+
+client = QueuedIngestClient(kcsb)
+
+ingestion_props = IngestionProperties(
+    database="<database>",
+    table="<table_name>",
+    data_format=DataFormat.JSON,
+    ingestion_mapping_reference="json_mapping"
+)
+
+client.ingest_from_blob(
+    "<blob_uri>?<sas_token>",
+    ingestion_properties=ingestion_props
+)
+```
+
+> Pacote: `azure-kusto-ingest` (substitui `kusto_client` descontinuado).
+
 ---
 
 ## Activator — Alertas e Automação
 
 ### Casos de Uso
 
-| Condição                              | Ação Configurável                          |
-|---------------------------------------|--------------------------------------------|
-| Erros > 100 em 5 minutos              | Alerta no Teams + email para on-call       |
-| Latência P99 > 2000ms                 | Webhook para PagerDuty / OpsGenie          |
-| Pedido de alto valor recebido (> R$10k)| Notificação para equipe de vendas         |
-| Sensor IoT fora do range              | Disparo de Power Automate para manutenção  |
-| Fraude detectada (score > 0.9)        | Bloqueio automático via API                |
+| Condição                                   | Ação Configurável                           |
+|--------------------------------------------|---------------------------------------------|
+| Erros > 100 em 5 minutos                   | Alerta no Teams + email para on-call        |
+| Latência P99 > 2000 ms                     | Webhook para PagerDuty / OpsGenie           |
+| Pedido de alto valor recebido (> R$10 k)   | Notificação para equipe de vendas           |
+| Sensor IoT fora do range                   | Disparo de Power Automate para manutenção   |
+| Fraude detectada (score > 0.9)             | Bloqueio automático via API                 |
+| Sem dados por 10 minutos (dead source)     | Alerta de ingestão parada                   |
 
-### Configuração de Trigger (via interface ou API)
+### Tipos de Trigger no Activator
+
+| Condição         | Exemplo                      | Resposta                    |
+|------------------|------------------------------|-----------------------------|
+| Threshold        | `count > 1000`               | Email SLA                   |
+| Anomalia         | `stdev(value) > 3 * mean`    | Slack notification          |
+| Dead source      | `count == 0 por 10 min`      | PagerDuty alert             |
+| Degradação       | `latency > 5s`               | Dashboard highlight         |
+
+### Configuração de Trigger via REST API
+
+```http
+POST /workspaces/{workspace-id}/activator/{activator-id}/triggers
+{
+  "displayName": "High Error Rate Alert",
+  "query": "user_events | where event_type == 'error' | count",
+  "condition": "count > 100",
+  "timeWindow": "5m",
+  "action": {
+    "type": "Email",
+    "recipients": ["ops@company.com"],
+    "subject": "Error spike detected",
+    "body": "Count: {result}"
+  }
+}
+```
+
+### Configuração de Trigger (formato JSON genérico)
 
 ```json
 {
@@ -217,6 +408,40 @@ with producer:
 
 ---
 
+## Troubleshooting — Comandos `.show`
+
+```kusto
+// Verificar falhas de ingestion
+.show ingestion failures
+| where Table == "user_events"
+| order by FailedOn desc
+| limit 10
+
+// Tamanho total de uma tabela
+.show table user_events extents
+| summarize TotalSize = sum(ExtentSize)
+
+// Listar todas as tabelas do database
+.show tables
+
+// Schema de uma tabela
+.show table user_events columns
+
+// Status de Materialized Views
+.show materialized-views
+
+// Verificar política de cache em vigor
+.show table user_events policy caching
+
+// Verificar operações de ingestion recentes
+.show operations
+| where Operation == "DataIngest"
+| order by StartedOn desc
+| limit 20
+```
+
+---
+
 ## Boas Práticas RTI
 
 ### KQL
@@ -225,35 +450,48 @@ with producer:
 - Prefira `summarize` a `extend + project` para agregações — é mais eficiente.
 - Use `materialize()` para subqueries reutilizadas: `let t = materialize(tabela | where ...);`
 - Limite `take` em vez de `limit` para desenvolvimento — `take` é mais rápido em Kusto.
+- Use `dcount()` para contagem aproximada de distintos em alta cardinalidade (mais rápido que `count(distinct ...)`).
+- Use `render timechart` em Fabric RTI Dashboards para visualizações de série temporal.
+- KQL não suporta UPDATE/DELETE — use novo schema + materialized view para correções.
 
 ### Eventhouse
 - Habilite **Always-On** apenas para Eventhouses de produção (reduz custo em dev/test).
 - Configure caching policy por tabela — dados históricos não precisam de hot cache.
 - Use **External Tables** para cruzar dados KQL com Delta do OneLake sem duplicar.
 - Monitor consumption via `Fabric Capacity Metrics` — Eventhouse cobra por CU consumida.
+- Crie **Materialized Views** para agregações recorrentes de alto custo (dashboards em tempo real).
 
 ### Eventstreams
 - Um único Eventstream pode ter múltiplos destinos — use isso para fan-out sem duplicar fontes.
 - Transformações inline reduzem volume enviado ao Eventhouse (filtros antes de persistir).
 - Defina **schema explícito** no Eventstream para evitar inferência em tempo real.
+- Para telemetria massiva, ajuste a Update Policy da tabela para controlar latência de batching.
 
 ---
 
 ## Checklist RTI
 
+- [ ] Decision matrix Lakehouse vs Eventhouse aplicada
 - [ ] Filtro temporal na primeira linha de todas as queries KQL
 - [ ] Caching policy definida por tabela (hot vs cold)
-- [ ] Retenção configurada explicitamente
-- [ ] Eventstream com múltiplos destinos configurados
+- [ ] Retenção configurada explicitamente com `recoverability`
+- [ ] Eventstream com schema explícito definido
+- [ ] Eventstream com múltiplos destinos configurados (fan-out)
+- [ ] Materialized Views criadas para agregações recorrentes
 - [ ] Activator com cooldown para evitar flood de alertas
-- [ ] Schema do evento documentado e aplicado no Eventstream
+- [ ] `.show ingestion failures` monitorado via alerta
 - [ ] External Tables configuradas para joins com OneLake (evitar duplicar dados)
+- [ ] Biblioteca Python: usar `azure-kusto-ingest` (não `kusto_client`)
 
 ---
 
 ## Referências
 
+- [Real-Time Intelligence overview](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/overview)
 - [Eventhouse overview](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/eventhouse)
 - [Eventstreams overview](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/event-streams/overview)
 - [KQL quick reference](https://learn.microsoft.com/en-us/azure/data-explorer/kql-quick-reference)
+- [KQL language reference](https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/)
+- [Materialized views](https://learn.microsoft.com/en-us/azure/data-explorer/kusto/management/materialized-views/materialized-view-overview)
 - [Real-Time Intelligence consumption](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/real-time-intelligence-consumption)
+- [Activator overview](https://learn.microsoft.com/en-us/fabric/real-time-intelligence/data-activator/activator-introduction)

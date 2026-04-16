@@ -1,7 +1,19 @@
+---
+skill: fabric-data-factory
+domain: fabric
+updated_at: 2026-04-16
+version: "2.0"
+sources:
+  - https://learn.microsoft.com/en-us/fabric/data-factory/transform-data
+  - https://learn.microsoft.com/en-us/fabric/fundamentals/decision-guide-pipeline-dataflow-spark
+  - https://learn.microsoft.com/en-us/fabric/data-factory/dataflow-gen2-performance-best-practices
+  - https://learn.microsoft.com/en-us/fabric/data-factory/dataflows-gen2-fast-copy
+---
+
 # SKILL: Microsoft Fabric Data Factory — Pipelines, Copy Activity e Dataflows Gen2
 
 > **Fonte:** Microsoft Learn (learn.microsoft.com/fabric/data-factory)
-> **Atualizado:** Janeiro 2026
+> **Atualizado:** 2026-04-16
 > **Uso:** Leia este arquivo ANTES de projetar pipelines de orquestração ou ingestão no Fabric.
 
 ---

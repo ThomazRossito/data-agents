@@ -5,7 +5,8 @@
       "cron": "17 2 */3 * *",
       "prompt": "Execute a atualização automática das Skills do projeto data-agents. Rode o seguinte comando bash: `cd /Users/thomaz_rossito/Projects/data-agents && python scripts/refresh_skills.py` e reporte o resultado (quantas skills foram atualizadas, puladas, erros e custo total).",
       "createdAt": 1776293108845,
-      "recurring": true
+      "recurring": true,
+      "lastFiredAt": 1776318420165
     }
   ]
 }

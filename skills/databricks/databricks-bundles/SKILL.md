@@ -1,5 +1,7 @@
 ---
 name: databricks-bundles
+updated_at: 2026-04-16
+source: kb-internal + known-docs
 description: "Create and configure Declarative Automation Bundles (formerly Asset Bundles) with best practices for multi-environment deployments (CICD). Use when working with: (1) Creating new DAB projects, (2) Adding resources (dashboards, pipelines, jobs, alerts), (3) Configuring multi-environment deployments, (4) Setting up permissions, (5) Deploying or running bundle resources"
 ---
 
@@ -33,8 +35,10 @@ include:
 
 variables:
   catalog:
+    description: "Unity Catalog catalog name"
     default: "default_catalog"
   schema:
+    description: "Unity Catalog schema name"
     default: "default_schema"
   warehouse_id:
     lookup:
@@ -50,6 +54,14 @@ targets:
       catalog: "dev_catalog"
       schema: "dev_schema"
 
+  staging:
+    mode: development
+    workspace:
+      profile: staging-profile
+    variables:
+      catalog: "staging_catalog"
+      schema: "staging_schema"
+
   prod:
     mode: production
     workspace:
@@ -58,6 +70,10 @@ targets:
       catalog: "prod_catalog"
       schema: "prod_schema"
 ```
+
+**Mode behavior:**
+- `development`: prepends `[dev]` prefix to resource names, marks resources as development, enables `bundle.uuid` suffix for isolation
+- `production`: enforces stricter validation, no name prefix; ideal for shared prod workspaces
 
 ### Dashboard Resources
 
@@ -94,17 +110,49 @@ resources:
   jobs:
     job_name:
       name: "[${bundle.target}] Job Name"
+
+      # Optional: run as service principal for production
+      run_as:
+        service_principal_name: "sp-data-engineering@company.com"
+
       tasks:
         - task_key: "main_task"
           notebook_task:
             notebook_path: ../src/notebooks/main.py  # Relative to resources/
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+          # Option A: serverless (recommended for most tasks)
+          environment_key: serverless_env
+
+        - task_key: "cluster_task"
+          notebook_task:
+            notebook_path: ../src/notebooks/heavy.py
+          # Option B: job cluster (for tasks requiring specific Spark config)
+          job_cluster_key: main_cluster
+
+      # Required when using serverless tasks
+      environments:
+        - environment_key: serverless_env
+          spec:
+            client: "1"
+
+      # Required when using job clusters
+      job_clusters:
+        - job_cluster_key: main_cluster
           new_cluster:
-            spark_version: "13.3.x-scala2.12"
+            spark_version: "15.4.x-scala2.12"
             node_type_id: "i3.xlarge"
             num_workers: 2
+
       schedule:
         quartz_cron_expression: "0 0 9 * * ?"
-        timezone_id: "America/Los_Angeles"
+        timezone_id: "America/Sao_Paulo"
+
+      email_notifications:
+        on_failure:
+          - "data-team@company.com"
+
       permissions:
         - level: CAN_VIEW
           group_name: "users"
@@ -112,7 +160,56 @@ resources:
 
 **Permission levels**: `CAN_VIEW`, `CAN_MANAGE_RUN`, `CAN_MANAGE`
 
+> Use Serverless Tasks (`environment_key`) by default — lower startup latency and no cluster management overhead. Fall back to `job_cluster_key` only when Spark-level configuration is required.
+
 ⚠️ **Cannot modify "admins" group permissions** on jobs - verify custom groups exist before use
+
+### Model Serving Endpoints
+
+DABs can manage Model Serving endpoints as first-class resources. Requires CLI 0.279.0+.
+
+```yaml
+resources:
+  model_serving_endpoints:
+    my_endpoint:
+      name: "[${bundle.target}] my-model-endpoint"
+      config:
+        served_models:
+          - model_name: "main.ml.my_model"
+            model_version: "1"
+            workload_size: "Small"
+            scale_to_zero_enabled: true
+        traffic_config:
+          routes:
+            - served_model_name: "my_model-1"
+              traffic_percentage: 100
+      permissions:
+        - level: CAN_QUERY
+          group_name: "users"
+```
+
+**Permission levels for Model Serving**: `CAN_QUERY`, `CAN_MANAGE`
+
+### Quality Monitors
+
+DABs can manage Lakehouse Monitoring quality monitors as resources.
+
+```yaml
+resources:
+  quality_monitors:
+    my_monitor:
+      table_name: ${var.catalog}.${var.schema}.my_table
+      assets_dir: /Shared/monitors/my_monitor
+      output_schema_name: ${var.catalog}.monitoring
+      snapshot:
+        {}  # Use snapshot for non-time-series tables
+      # OR: time_series for event/fact tables
+      # time_series:
+      #   timestamp_col: event_ts
+      #   granularities:
+      #     - "1 day"
+      #     - "1 week"
+```
 
 ### Path Resolution
 
@@ -138,6 +235,24 @@ resources:
 ```
 
 ⚠️ **Volumes use `grants` not `permissions`** - different format from other resources
+
+### Schema Resources
+
+DABs can create Unity Catalog schemas directly, useful for ensuring target schemas exist before deploying tables or pipelines.
+
+```yaml
+resources:
+  schemas:
+    my_schema:
+      catalog_name: ${var.catalog}
+      name: ${var.schema}
+      comment: "Managed by DABs — do not modify manually"
+      grants:
+        - privilege: USE_SCHEMA
+          principal: "data_engineers"
+        - privilege: SELECT
+          principal: "analysts"
+```
 
 ### Apps Resources
 
@@ -217,9 +332,57 @@ targets:
 
 ⚠️ **Important**: When source code is in project root (not src/app), use `source_code_path: ..` in the resource file
 
+### Variables — Advanced Syntax
+
+Variables support `type`, `description`, and `lookup` for dynamic resolution:
+
+```yaml
+variables:
+  # Simple with description
+  catalog:
+    description: "Target Unity Catalog catalog"
+    default: "dev_catalog"
+
+  # Typed variable
+  num_workers:
+    type: int
+    description: "Number of cluster workers"
+    default: 2
+
+  # Complex type (object)
+  cluster_policy:
+    type: complex
+    default:
+      spark_version: "15.4.x-scala2.12"
+      node_type_id: "i3.xlarge"
+
+  # Dynamic lookup — resolves by resource name at deploy time
+  warehouse_id:
+    lookup:
+      warehouse: "Shared SQL Warehouse"
+
+  # Cluster lookup
+  cluster_id:
+    lookup:
+      cluster: "My Interactive Cluster"
+```
+
+**Override at CLI time:**
+```bash
+databricks bundle deploy -t prod --var="catalog=prod_catalog" --var="num_workers=4"
+```
+
 ### Other Resources
 
-DABs supports schemas, models, experiments, clusters, warehouses, etc. Use `databricks bundle schema` to inspect schemas.
+DABs supports schemas, models, experiments, clusters, warehouses, registered_models, and more. Use `databricks bundle schema` to inspect the full schema.
+
+**Full resource type list** (as of 2026):
+- `jobs`, `pipelines`, `dashboards`, `apps`
+- `model_serving_endpoints`, `quality_monitors`
+- `schemas`, `volumes`
+- `clusters`, `warehouses`
+- `registered_models`, `experiments` (MLflow)
+- `sql_alerts`, `sql_queries`, `sql_dashboards` (legacy DBSQL)
 
 **Reference**: [DABs Resource Types](https://docs.databricks.com/dev-tools/bundles/resources)
 
@@ -231,12 +394,21 @@ databricks bundle validate                    # Validate default target
 databricks bundle validate -t prod           # Validate specific target
 ```
 
+### Plan (Dry-run)
+```bash
+databricks bundle plan                        # Preview changes for default target
+databricks bundle plan -t prod               # Preview changes for prod — always run before prod deploy
+```
+
+> Always run `bundle plan` before deploying to staging or prod. It shows exactly which resources will be created, updated, or deleted.
+
 ### Deployment
 ```bash
 databricks bundle deploy                      # Deploy to default target
 databricks bundle deploy -t prod             # Deploy to specific target
 databricks bundle deploy --auto-approve      # Skip confirmation prompts
 databricks bundle deploy --force             # Force overwrite remote changes
+databricks bundle deploy --var="catalog=override_catalog"  # Override variable at deploy time
 ```
 
 ### Running Resources
@@ -246,6 +418,20 @@ databricks bundle run pipeline_name -t prod  # Run in specific environment
 
 # Apps require bundle run to start after deployment
 databricks bundle run app_resource_key -t dev    # Start/deploy the app
+```
+
+### Summary
+```bash
+databricks bundle summary                    # Show deployed state of all resources (IDs, URLs, status)
+databricks bundle summary -t prod           # Summary for specific target
+```
+
+### Generate (Scaffold from Existing Resources)
+```bash
+# Generate config from any existing resource (job, pipeline, dashboard, app)
+databricks bundle generate job --existing-job-id 12345 --key my_job
+databricks bundle generate pipeline --existing-pipeline-id abc-123 --key my_pipeline
+databricks bundle generate app --existing-app-name my-app --key my_app --profile DEFAULT
 ```
 
 ### Monitoring & Logs
@@ -268,11 +454,11 @@ databricks apps logs my-streamlit-app-prod -p DEFAULT
 - Stack traces for errors
 
 **Key log patterns to look for:**
-- ✅ `Deployment successful` - Confirms deployment completed
-- ✅ `App started successfully` - App is running
-- ✅ `Initialized real backend` - Backend connected to Unity Catalog
-- ❌ `Error:` - Look for error messages and stack traces
-- 📝 `Requirements installed` - Dependencies loaded correctly
+- `Deployment successful` - Confirms deployment completed
+- `App started successfully` - App is running
+- `Initialized real backend` - Backend connected to Unity Catalog
+- `Error:` - Look for error messages and stack traces
+- `Requirements installed` - Dependencies loaded correctly
 
 ### Cleanup
 ```bash
@@ -290,7 +476,7 @@ databricks bundle destroy -t prod --auto-approve
 | **App not connecting to Unity Catalog** | Check logs for backend connection errors; verify warehouse ID and permissions |
 | **Wrong permission level** | Dashboards: CAN_READ/RUN/EDIT/MANAGE; Jobs: CAN_VIEW/MANAGE_RUN/MANAGE |
 | **Path resolution fails** | Use `../src/` in resources/*.yml, `./src/` in databricks.yml |
-| **Catalog doesn't exist** | Create catalog first or update variable |
+| **Catalog doesn't exist** | Create catalog first or update variable; use `schemas` resource to auto-create |
 | **"admins" group error on jobs** | Cannot modify admins permissions on jobs |
 | **Volume permissions** | Use `grants` not `permissions` for volumes |
 | **Hardcoded catalog in dashboard** | Use dataset_catalog parameter (CLI v0.281.0+), create environment-specific files, or parameterize JSON |
@@ -298,14 +484,20 @@ databricks bundle destroy -t prod --auto-approve
 | **App env vars not working** | Environment variables go in `app.yaml` (source dir), not databricks.yml |
 | **Wrong app source path** | Use `../` from resources/ dir if source is in project root |
 | **Debugging any app issue** | First step: `databricks apps logs <app-name>` to see what went wrong |
+| **Unknown resource changes** | Run `bundle summary` to see current deployed state before making changes |
+| **Variable not resolved** | Check `type` matches usage; use `bundle validate` to catch unresolved references |
+| **Service principal auth** | Add `run_as` block to jobs for service principal execution in prod |
 
 ## Key Principles
 
 1. **Path resolution**: `../src/` in resources/*.yml, `./src/` in databricks.yml
-2. **Variables**: Parameterize catalog, schema, warehouse
+2. **Variables**: Parameterize catalog, schema, warehouse — add `description` to all variables
 3. **Mode**: `development` for dev/staging, `production` for prod
 4. **Groups**: Use `"users"` for all workspace users
 5. **Job permissions**: Verify custom groups exist; can't modify "admins"
+6. **Plan before prod**: Always run `bundle plan -t prod` before deploying to production
+7. **Serverless Tasks**: Prefer `environment_key` over `job_cluster_key` for job tasks
+8. **run_as**: Set `run_as.service_principal_name` in production jobs for predictable identity
 
 ## Related Skills
 

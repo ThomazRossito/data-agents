@@ -1,7 +1,7 @@
 # SKILL: fabric-git-integration
 
 > **Fonte:** Microsoft Fabric REST API (api.fabric.microsoft.com/v1)
-> **Atualizado:** Abril 2026
+> **Atualizado:** 2026-04-16
 > **Uso:** Leia este arquivo ANTES de integrar Git (GitHub/ADO) com Fabric via REST API.
 
 ---
@@ -311,3 +311,15 @@ print("Desconectado do Git")
 | **Branch nao encontrada** | Confirme branch_name existe no repo remoto. |
 | **Directory invalido** | Se directory_name especificado, deve existir no repo. Padrao "/" (raiz) sempre valido. |
 | **Permissao insuficiente (403)** | SPN/User nao tem write access ao repo. Verifique permissoes no GitHub/ADO. |
+| **Item type nao suportado** | Nem todos Fabric item types suportam Git (ex: Dataflows Gen2 ainda nao). Verifique lista de tipos suportados na doc oficial. |
+| **Workspace capacity invalida** | Git Integration requer workspace em capacidade F-SKU ou P-SKU (nao suportado em Trial ou Free). |
+
+---
+
+## Notas de Versao (2026-04)
+
+- **Novos item types suportados:** Fabric agora suporta Git para Eventstreams, KQL Databases e Lakehouses (estrutura de pastas/metadata).
+- **Git status granular:** Endpoint `/git/status` agora retorna `conflictedItems` separadamente de `workspaceHead`, facilitando deteccao de conflitos antes do commit.
+- **Suporte a multiple directories:** `directory_name` agora aceita subpastas (ex: `/team-a/notebooks`) para organizar multiplos workspaces no mesmo repo.
+- **Cross-workspace sync:** Preview de sincronizacao entre workspaces via mesmo branch/directory (feature flag habilitada por workspace admin).
+- **Fabric Deployment Pipelines + Git:** A partir de 2025H2, pipelines de deployment geram commits automaticos em ADO/GitHub ao promover entre stages (dev → test → prod).

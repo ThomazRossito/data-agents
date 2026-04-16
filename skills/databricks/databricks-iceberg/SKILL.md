@@ -1,5 +1,7 @@
 ---
 name: databricks-iceberg
+updated_at: "2026-04-16"
+source: tavily
 description: "Apache Iceberg tables on Databricks — Managed Iceberg tables, External Iceberg Reads (fka Uniform), Compatibility Mode, Iceberg REST Catalog (IRC), Iceberg v3, Snowflake interop, PyIceberg, OSS Spark, external engine access and credential vending. Use when creating Iceberg tables, enabling External Iceberg Reads (uniform) on Delta tables (including Streaming Tables and Materialized Views via compatibility mode), configuring external engines to read Databricks tables via Unity Catalog IRC, integrating with Snowflake catalog to read Foreign Iceberg tables"
 ---
 
@@ -26,7 +28,7 @@ Databricks provides multiple ways to work with Apache Iceberg: native managed Ic
 | Concept | Summary |
 |---------|---------|
 | **Managed Iceberg Table** | Native Iceberg table created with `USING ICEBERG` — full read/write in Databricks and via external Iceberg engines |
-| **External Iceberg Reads (Uniform)** | Delta table that auto-generates Iceberg metadata — read as Iceberg externally, write as Delta internally |
+| **External Iceberg Reads (UniForm)** | Delta table that auto-generates Iceberg metadata — read as Iceberg externally, write as Delta internally |
 | **Compatibility Mode** | UniForm variant for streaming tables and materialized views in SDP pipelines |
 | **Iceberg REST Catalog (IRC)** | Unity Catalog's built-in REST endpoint implementing the Iceberg REST Catalog spec — lets external engines (Spark, PyIceberg, Snowflake) access UC-managed Iceberg data |
 | **Iceberg v3** | Next-gen format (Beta, DBR 17.3+) — deletion vectors, VARIANT type, row lineage |
@@ -122,10 +124,12 @@ SET TBLPROPERTIES (
 | **No Change Data Feed (CDF)** | CDF is not supported on managed Iceberg tables. Use Delta + UniForm if you need CDF. |
 | **UniForm async delay** | Iceberg metadata generation is asynchronous. After a write, there may be a brief delay before external engines see the latest data. Check status with `DESCRIBE EXTENDED table_name`. |
 | **Compression codec change** | Managed Iceberg tables use `zstd` compression by default (not `snappy`). Older Iceberg readers that don't support zstd will fail. Verify reader compatibility or set `write.parquet.compression-codec` to `snappy`. |
-| **Snowflake 1000-commit limit** | Snowflake's Iceberg catalog integration can only see the last 1000 Iceberg commits. High-frequency writers must compact metadata or Snowflake will lose visibility of older data. |
-| **Deletion vectors with UniForm** | UniForm requires deletion vectors to be disabled (`delta.enableDeletionVectors = false`). If your table has deletion vectors enabled, disable them before enabling UniForm. |
+| **Snowflake 1000-commit limit** | Snowflake processes at most 1000 Delta commit files per refresh cycle. High-frequency writers must compact metadata. Multiple refreshes can be chained — each continues from where the previous stopped. |
+| **Deletion vectors with UniForm** | UniForm requires deletion vectors to be disabled (`delta.enableDeletionVectors = false`). If your table has deletion vectors enabled, run `REORG TABLE ... APPLY (PURGE)` before enabling UniForm. |
 | **No shallow clone for Iceberg** | `SHALLOW CLONE` is not supported for Iceberg tables. Use `DEEP CLONE` or `CREATE TABLE ... AS SELECT` instead. |
 | **Version mismatch with external engines** | Ensure external engines use an Iceberg library version compatible with the format version of your tables. Iceberg v3 tables require Iceberg library 1.9.0+. |
+| **No Structured Streaming sink** | Cannot use `writeStream` directly to write to Iceberg tables. Use `INSERT INTO` or `MERGE` in batch, or SDP streaming tables with Compatibility Mode for external reads. |
+| **IP access list blocking IRC connections** | If workspace has IP access lists enabled, add the client egress CIDR to the allowlist. Symptoms: connection timeout or `403 Forbidden` even with valid credentials. |
 
 ---
 
