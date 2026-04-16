@@ -64,13 +64,13 @@ Repositório: [github.com/ThomazRossito/data-agents](https://github.com/ThomazRo
 
 ## Prefácio
 
-Este documento não é apenas um manual técnico. É o registro completo de uma jornada de engenharia — da ideia inicial de "e se eu pudesse ter uma equipe de IA especializada no meu ambiente de dados?" até um sistema de produção com dez agentes autônomos, nove camadas de segurança, memória persistente entre sessões e integração direta com Databricks e Microsoft Fabric.
+Este documento não é apenas um manual técnico. É o registro completo de uma jornada de engenharia — da ideia inicial de "e se eu pudesse ter uma equipe de IA especializada no meu ambiente de dados?" até um sistema de produção com onze agentes autônomos, nove camadas de segurança, memória persistente entre sessões e integração direta com Databricks e Microsoft Fabric.
 
 O projeto Data Agents nasceu de uma frustração real: ferramentas de IA generativas são excelentes para responder perguntas, mas sua utilidade cai drasticamente quando precisamos que elas ajam — que executem um pipeline, criem uma tabela Delta, auditorizem um lakehouse, ou gerem um modelo semântico DAX. A distância entre "escrever o código" e "executar o código no lugar certo" era o problema a resolver.
 
 A solução foi construir um sistema que não apenas conversa, mas age: uma plataforma de múltiplos agentes especializados, cada um com o conjunto certo de ferramentas, o conhecimento correto (via Knowledge Bases e Skills), e um conjunto de restrições invioláveis (a Constituição) que garante que o comportamento seja sempre seguro, auditável e alinhado com as melhores práticas de engenharia de dados.
 
-Esta é a versão 1.0 — a primeira release pública do projeto. Ela consolida um ecossistema com 10 agentes especialistas, 12 MCP servers, Party Mode para consultas paralelas, sistema de refresh automático de Skills, 7 tipos de memória com decay configurável, e o protocolo DOMA completo para orquestração disciplinada de tarefas complexas.
+Esta é a versão 1.0 — a primeira release pública do projeto. Ela consolida um ecossistema com 11 agentes especialistas, 13 MCP servers, Party Mode para consultas paralelas, sistema de refresh automático de Skills, 7 tipos de memória com decay configurável, e o protocolo DOMA completo para orquestração disciplinada de tarefas complexas.
 
 Este manual foi escrito pensando em quatro perfis de leitores simultaneamente:
 
@@ -149,7 +149,7 @@ O modelo de custo é controlado: cada sessão tem um limite de budget em dólare
 
 Esta é a primeira release pública do Data Agents. O ecossistema entrega, de forma integrada:
 
-**10 Agentes Especialistas** com tiers diferenciados (Opus para planejamento e intake, Sonnet para execução técnica), triggers precisos de roteamento e `output_budget` declarativo no frontmatter para controle de verbosidade.
+**11 Agentes Especialistas** com tiers diferenciados (Opus para planejamento e intake, Sonnet para execução técnica), triggers precisos de roteamento e `output_budget` declarativo no frontmatter para controle de verbosidade.
 
 **Protocolo DOMA** (Data Orchestration Method for Agents) com 7 passos — KB-First, Clarity Checkpoint, Spec-First, Planejamento, Aprovação, Delegação e Validação Constitucional. Três modos de velocidade: Full (`/plan`), Express (comandos diretos) e Internal (diagnóstico do sistema).
 
@@ -157,7 +157,7 @@ Esta é a primeira release pública do Data Agents. O ecossistema entrega, de fo
 
 **Knowledge Bases modulares** em 8 domínios, com separação `concepts/` (teoria) e `patterns/` (implementação com código). Biblioteca centralizada de anti-padrões com 29 entradas catalogadas por severidade.
 
-**12 MCP Servers** — incluindo servidores customizados para Fabric SQL Analytics, Fabric RTI, Genie Conversations e Fabric Semantic Models, que resolvem limitações dos servidores oficiais.
+**13 MCP Servers** — incluindo servidores customizados para Fabric SQL Analytics, Fabric RTI, Genie Conversations, Fabric Semantic Models e Migration Source (SQL Server/PostgreSQL), que resolvem limitações dos servidores oficiais.
 
 **Memória persistente em dois layers** — episódica com 7 tipos e decay configurável, e knowledge graph via `memory_mcp` para entidades e relações permanentes.
 
@@ -228,7 +228,7 @@ Modelo de dados para analytics que organiza informações em uma tabela de fatos
 
 **Knowledge Base (KB)**
 
-Arquivos Markdown que contêm as regras de negócio e padrões arquiteturais da empresa. A IA lê esses documentos antes de começar a trabalhar para saber o que deve ser feito e como. O projeto possui 8 domínios de KB: sql-patterns, spark-patterns, pipeline-design, data-quality, governance, semantic-modeling, databricks e fabric.
+Arquivos Markdown que contêm as regras de negócio e padrões arquiteturais da empresa. A IA lê esses documentos antes de começar a trabalhar para saber o que deve ser feito e como. O projeto possui 9 domínios de KB: sql-patterns, spark-patterns, pipeline-design, data-quality, governance, semantic-modeling, databricks, fabric e migration.
 
 **Skills**
 
@@ -381,7 +381,7 @@ Comandos de diagnóstico e controle do próprio sistema. Não delegam para agent
 
 ## 4. Os Agentes: A Equipe Virtual
 
-O projeto conta com **10 agentes especialistas** divididos em três níveis de atuação (Tiers), mais o Supervisor. Todos os agentes — com exceção do Supervisor — são definidos em arquivos Markdown na pasta `agents/registry/`. Isso é uma decisão de design deliberada: para criar um novo agente, você não precisa escrever Python. Basta criar um arquivo `.md` com o frontmatter YAML correto e o prompt em Markdown.
+O projeto conta com **11 agentes especialistas** divididos em três níveis de atuação (Tiers), mais o Supervisor. Todos os agentes — com exceção do Supervisor — são definidos em arquivos Markdown na pasta `agents/registry/`. Isso é uma decisão de design deliberada: para criar um novo agente, você não precisa escrever Python. Basta criar um arquivo `.md` com o frontmatter YAML correto e o prompt em Markdown.
 
 Essa abordagem declarativa tem três vantagens cruciais. Primeiro, a barreira de entrada é baixa — qualquer pessoa que entenda o negócio pode contribuir com um novo agente sem conhecimento de programação. Segundo, o código Python do `loader.py` permanece inalterado quando novos agentes são adicionados. Terceiro, o frontmatter YAML serve como configuração versionada — você pode ver exatamente quais tools, KBs e MCP servers cada agente tem, em um formato legível por humanos.
 
@@ -554,7 +554,31 @@ O Skill Updater é o único agente sem exposição direta ao usuário via slash 
 - `SKILL_REFRESH_INTERVAL_DAYS=3` — pula skills atualizadas há menos de N dias
 - `SKILL_REFRESH_DOMAINS=databricks,fabric` — domínios a atualizar
 
-### 4.5 Tabela Comparativa dos 10 Agentes
+#### Migration Expert (/migrate)
+
+**Modelo:** `claude-sonnet-4-6`
+
+**Analogia:** O Especialista em Migração de Dados — a pessoa que conhece tanto o banco legado de origem quanto as plataformas de destino (Databricks e Fabric), e garante que cada tabela, view, procedure e função chegue ao destino com tipos corretos, arquitetura Medallion e zero perda de semântica de negócio.
+
+O Migration Expert é o único agente do sistema com acesso ao MCP `migration_source` — um servidor MCP customizado que se conecta diretamente ao banco relacional de origem (SQL Server ou PostgreSQL) via pyodbc/psycopg2, usando um registry de fontes configurado em JSON no `.env`. Esse MCP é read-only por design: nunca modifica o banco de origem.
+
+**O ciclo de trabalho em 5 fases:**
+
+1. **ASSESS** — Conecta à fonte via `migration_source_list_sources` e `migration_source_get_schema_summary`. Inventaria schemas, tabelas, views, procedures e functions. Produz um relatório de complexidade por objeto (Simples/Médio/Complexo/Bloqueado).
+
+2. **ANALYZE** — Classifica incompatibilidades de tipo (ex: `MONEY` → `DECIMAL(19,4)`, `NVARCHAR(MAX)` → `STRING`), identifica features proprietárias sem equivalência direta (ex: sequences, triggers, computed columns) e anti-padrões conhecidos documentados em `kb/migration/index.md`.
+
+3. **DESIGN** — Propõe estrutura Medallion no destino (Bronze para ingestão raw, Silver para tipos canônicos, Gold para Star Schema), com estratégia de particionamento, convenções de naming e mapeamento schema-a-schema. Nunca mistura Databricks e Fabric no mesmo plano sem confirmação explícita.
+
+4. **TRANSPILE** — Gera DDL alvo no dialeto correto (Spark SQL para Databricks, T-SQL para Fabric SQL Analytics), produce jobs PySpark para carga Bronze incremental ou full-load, e documenta cada decisão de transpilação com justificativa.
+
+5. **RECONCILE** — Após a carga, valida contagens linha-a-linha, amostras (`migration_source_sample_table`), e integridade referencial. Produz relatório de desvios.
+
+**Regra de isolamento de plataforma:** O Migration Expert nunca usa tools Databricks e Fabric simultaneamente sem confirmar o destino com o usuário. Se o destino não for especificado na primeira mensagem, ele pergunta antes de começar o DESIGN.
+
+**Colaboração:** Para objetos complexos (procedures com lógica de negócio crítica), delega revisão ao `sql-expert`. Para jobs de ingestão PySpark de alta escala, colabora com `spark-expert`. Para reconciliação e validação pós-migração, aciona `data-quality-steward`.
+
+### 4.5 Tabela Comparativa dos 11 Agentes
 
 | **Agente**           | **Tier** | **Modelo**   | **MCP Servers**                | **Acesso Principal**                            |
 | -------------------- | -------- | ------------ | ------------------------------ | ----------------------------------------------- |
@@ -563,6 +587,7 @@ O Skill Updater é o único agente sem exposição direta ao usuário via slash 
 | SQL Expert           | T1       | sonnet-4-6   | Databricks, Fabric, RTI        | Read-only na nuvem, write em .sql               |
 | Spark Expert         | T1       | sonnet-4-6   | context7                       | Read/Write + filesystem local completo          |
 | Pipeline Architect   | T1       | sonnet-4-6   | Databricks, Fabric, github     | Execução completa + compute/KA/MAS              |
+| Migration Expert     | T1       | sonnet-4-6   | migration_source, Databricks, Fabric | DDL extraction + Medallion design + transpilação |
 | Data Quality Steward | T2       | sonnet-4-6   | Databricks, Fabric             | Read/Write completo                             |
 | Governance Auditor   | T2       | sonnet-4-6   | Databricks, Fabric, memory_mcp | Read/Write completo + knowledge graph           |
 | Semantic Modeler     | T2       | sonnet-4-6   | Databricks, Fabric             | Read-only + Genie + AI/BI Dashboard + Serving   |
@@ -751,7 +776,7 @@ O projeto segue uma organização modular e declarativa. Cada pasta tem uma resp
 ```
 data-agents/
 ├── agents/
-│   ├── registry/              # Agentes definidos em Markdown (10 agentes + template)
+│   ├── registry/              # Agentes definidos em Markdown (11 agentes + template)
 │   │   ├── _template.md       # Template para criar novos agentes
 │   │   ├── business-analyst.md
 │   │   ├── sql-expert.md
@@ -1565,7 +1590,7 @@ O template preenchido é salvo em `output/specs/spec_<nome>.md` e serve como con
 
 O MCP (Model Context Protocol) é o que transforma o Data Agents de um chatbot sofisticado em um sistema capaz de agir no mundo real. Sem MCP, os agentes poderiam apenas escrever código e sugerir ações. Com MCP, eles executam essas ações diretamente.
 
-O projeto possui 12 conexões MCP ativas, cobrindo dois ecossistemas de dados diferentes — Databricks e Microsoft Fabric — além de MCP servers externos para busca web, documentação, repositórios de código e grafos de conhecimento, com profundidade e integração genuína em cada um.
+O projeto possui 13 conexões MCP ativas, cobrindo dois ecossistemas de dados diferentes — Databricks e Microsoft Fabric — além de MCP servers externos para busca web, documentação, repositórios de código, grafos de conhecimento e conexão direta a bancos relacionais de origem para migração, com profundidade e integração genuína em cada um.
 
 ### 11.1 Como o MCP Funciona na Prática
 
@@ -1688,7 +1713,50 @@ O **servidor Fabric Community** (`microsoft-fabric-mcp`) é o servidor primário
 
 O **servidor Fabric RTI** cobre Real-Time Intelligence: tools para KQL (consultas no Eventhouse), Eventstreams (criar e gerenciar streams de eventos), e Activator (configurar alertas baseados em regras sobre métricas em tempo real). É o servidor mais especializado do conjunto — usado principalmente pelo Data Quality Steward para configurar alertas de qualidade em tempo real.
 
-### 11.6 Tabela Resumo de todos os Servidores MCP
+### 11.6 Servidor Migration Source (Customizado)
+
+O servidor `migration-source-mcp` resolve um problema que nenhum dos servidores oficiais cobre: conexão read-only a bancos relacionais **legados** que servem como **origem** em projetos de migração para Databricks ou Microsoft Fabric.
+
+**Por que um MCP dedicado para migração?**
+
+Projetos de migração envolvem dois ambientes simultaneamente: o banco de origem (SQL Server, PostgreSQL on-premise ou em nuvem) e o destino (Databricks ou Fabric). Sem um MCP de origem, o agente teria que pedir ao usuário para extrair DDLs manualmente, cole-los no chat, e só então prosseguir — um processo manual, propenso a erros e que não escala para schemas com centenas de tabelas.
+
+O `migration-source-mcp` automatiza completamente a fase de discovery: o agente conecta diretamente ao banco de origem, extrai o inventário completo (DDLs, procedures, views, functions, estatísticas de tamanho) e raciocina sobre cada objeto antes de propor a estrutura de destino.
+
+**Configuração via registry JSON:**
+
+Segue o mesmo padrão do `fabric-sql-mcp`: um registry JSON no `.env` com nomes simbólicos para cada fonte.
+
+```bash
+MIGRATION_SOURCES={"ERP_PROD": {"type": "sqlserver", "host": "10.0.0.1", "port": 1433, "database": "ERP", "user": "sa", "password": "..."}, "ANALYTICS": {"type": "postgresql", "host": "10.0.0.2", "port": 5432, "database": "analytics", "user": "postgres", "password": "..."}}
+MIGRATION_DEFAULT_SOURCE=ERP_PROD
+```
+
+**Segurança por design:** O servidor é estritamente read-only. Não há nenhuma tool de escrita, INSERT, UPDATE ou DDL de criação. O agente pode ver tudo, mas não pode modificar o banco de origem.
+
+**As 15 tools do servidor Migration Source:**
+
+| **Tool** | **Descrição** |
+|----------|---------------|
+| `migration_source_list_sources` | Lista todas as fontes do registry com tipo e status |
+| `migration_source_diagnostics` | Verifica conectividade com todas as fontes configuradas |
+| `migration_source_list_schemas` | Lista schemas de uma fonte |
+| `migration_source_list_tables` | Lista tabelas de um schema |
+| `migration_source_describe_table` | Schema completo: colunas, tipos, PKs, FKs, indexes |
+| `migration_source_get_table_ddl` | Gera DDL CREATE TABLE reconstruído via INFORMATION_SCHEMA |
+| `migration_source_count_tables_by_schema` | Contagem de tabelas por schema (visão de complexidade) |
+| `migration_source_list_views` | Lista views de um schema |
+| `migration_source_get_view_definition` | Retorna o corpo SELECT de uma view |
+| `migration_source_list_procedures` | Lista stored procedures de um schema |
+| `migration_source_get_procedure_definition` | Retorna o corpo T-SQL ou PL/pgSQL de uma procedure |
+| `migration_source_list_functions` | Lista funções de um schema |
+| `migration_source_get_function_definition` | Retorna o corpo de uma função |
+| `migration_source_get_schema_summary` | Estatísticas agregadas: linhas, tamanho, PKs, FKs por tabela |
+| `migration_source_sample_table` | Retorna amostra de N linhas (padrão: 10) — read-only |
+
+**Implementação técnica:** SQL Server usa `pyodbc` (ODBC Driver 17 ou 18, autodetectado). PostgreSQL usa `psycopg2-binary`. A abstração de placeholders paramétricos (`?` para SQL Server, `%s` para PostgreSQL) é tratada internamente pelo helper `_fetchall()`, tornando os tools independentes de dialeto.
+
+### 11.7 Tabela Resumo de todos os Servidores MCP
 
 | **Servidor**          | **Plataforma**   | **Tools** | **Tipo**    | **Capacidades Principais**                        |
 | --------------------- | ---------------- | --------- | ----------- | ------------------------------------------------- |
@@ -1698,6 +1766,7 @@ O **servidor Fabric RTI** cobre Real-Time Intelligence: tools para KQL (consulta
 | Fabric SQL ⭐         | Microsoft Fabric | 8         | Customizado | SQL Analytics via TDS (bronze/silver/gold)        |
 | Fabric Official       | Microsoft Fabric | Variável  | Oficial     | OneLake, operações de arquivo (complementar)      |
 | Fabric RTI            | Eventhouse/Kusto | 15+       | Oficial     | KQL, Eventstreams, Activator, triggers            |
+| Migration Source ⭐   | SQL Server / PostgreSQL | 15  | Customizado | DDL, views, procedures, functions, stats, samples |
 
 > ⭐ = MCP customizado desenvolvido neste projeto para resolver limitações dos servidores oficiais.
 
@@ -2028,7 +2097,7 @@ Porque bypassa os sistemas de governança, o `/geral` tem algumas limitações i
 
 ## 15. Comandos Disponíveis (Slash Commands)
 
-O Data Agents oferece 14 slash commands divididos em quatro categorias: Pré-planejamento (intake), Planejamento completo, Execução especializada e Controle do sistema.
+O Data Agents oferece 15 slash commands divididos em quatro categorias: Pré-planejamento (intake), Planejamento completo, Execução especializada e Controle do sistema.
 
 ### 15.1 Tabela Completa de Comandos
 
@@ -2044,6 +2113,7 @@ O Data Agents oferece 14 slash commands divididos em quatro categorias: Pré-pla
 | `/quality`    | Profiling, expectations, alertas de qualidade       | Express   | Data Quality Steward                | —                          |
 | `/governance` | Auditoria, linhagem, PII, compliance LGPD           | Express   | Governance Auditor                  | —                          |
 | `/semantic`   | DAX, Direct Lake, Genie, AI/BI Dashboard            | Express   | Semantic Modeler                    | —                          |
+| `/migrate`    | Assessment e migração de banco relacional → nuvem   | Express   | Migration Expert                    | Relatório + DDL transpilado |
 | `/health`     | Verifica conectividade de todos os MCP servers      | Internal  | Sistema                             | —                          |
 | `/status`     | Lista PRDs, SPECs e Backlogs em output/             | Internal  | Sistema                             | —                          |
 | `/review`     | Lê PRD + SPEC mais recentes, permite continuar      | Internal  | Sistema                             | —                          |
@@ -2620,7 +2690,7 @@ O Data Agents oferece três interfaces de uso complementares, projetadas para pe
 
 O Chainlit é a interface mais rica do sistema. Ao iniciar, apresenta dois botões de seleção de modo:
 
-**Modo Data Agents** — Supervisor completo com os 10 agentes especialistas, todos os slash commands e MCPs de plataforma. Para cada tool call e delegação, exibe um `cl.Step()` expansível em tempo real.
+**Modo Data Agents** — Supervisor completo com os 11 agentes especialistas, todos os slash commands e MCPs de plataforma. Para cada tool call e delegação, exibe um `cl.Step()` expansível em tempo real.
 
 **Modo Dev Assistant** — Claude direto (sem Supervisor), ferramentas `Read`, `Write`, `Bash`, `Grep`, `Glob`. Mantém histórico de conversa para follow-ups. Usa `settings.default_model` (Bedrock) — custo zero pelo acordo corporativo. Ideal para desenvolvimento e debugging do próprio projeto.
 
@@ -2780,7 +2850,7 @@ A página inicial com os KPIs mais importantes de um único olhar:
 **Página 2: Agentes**
 
 Detalhe de performance por agente:
-- Cards individuais para cada um dos 10 agentes com: número de delegações recebidas, taxa de erro, custo médio por uso
+- Cards individuais para cada um dos 11 agentes com: número de delegações recebidas, taxa de erro, custo médio por uso
 - Gráfico de delegações por agente ao longo do tempo
 - Tabela de erros por categoria (auth, timeout, rate_limit, etc.) por agente
 - Histograma de duração de execução por agente
@@ -3163,7 +3233,7 @@ A versão 7.0 introduz manutenção automática de Skills, roteamento preciso de
 | Injeção automática via skill_domains    | Frontmatter skill_domains injeta índice de SKILL.md por agente automaticamente    |
 | 3 novos tipos de memória de domínio     | data_asset, platform_decision, pipeline_status com decay configurável via .env    |
 | Decay configurável por tipo             | MEMORY_DECAY_FEEDBACK_DAYS, PROGRESS_DAYS, PIPELINE_STATUS_DAYS no .env          |
-| Triggers de roteamento precisos         | "Invoque quando:" em todos os 10 agentes — Supervisor roteia corretamente         |
+| Triggers de roteamento precisos         | "Invoque quando:" em todos os 11 agentes — Supervisor roteia corretamente         |
 | 5 novos padrões de segurança git        | Bloqueia force-push, reset --hard, branch -D (case-sensitive para -D vs -d)      |
 | Checkpoint: retomada direta             | Instrução imperativa: lê arquivos, determina CONCLUÍDO vs INCOMPLETO, responde    |
 | Budget reset em novo chat (Chainlit)    | on_chat_start sempre seta needs_reconnect=True para zerar custo acumulado         |
@@ -3181,11 +3251,24 @@ A versão 7.0 introduz manutenção automática de Skills, roteamento preciso de
 | Biblioteca de Anti-Padrões Centralizada (kb/shared/anti-patterns.md) | 29 padrões catalogados: C7 CRÍTICO, H12 ALTA, M10 MÉDIA |
 | Protocolo KB-First v2 com Agreement Matrix | Confiança calibrada e proveniência obrigatória em respostas técnicas |
 | Cascade Tracking PRD→SPEC no workflow_tracker | Rastreabilidade automática de dependências entre artefatos |
-| `output_budget` no frontmatter dos 10 agentes | Controle declarativo de verbosidade sem modificar runtime |
+| `output_budget` no frontmatter dos 11 agentes | Controle declarativo de verbosidade sem modificar runtime |
 | Resolução de 3 duplicações críticas (Star Schema, Direct Lake, Orchestration) | Fonte canônica única para cada tópico |
 | Chainlit Tool Result Display: output real das tools nos steps expansíveis | Visibilidade completa da execução |
-| Correção do modelo ativo: bedrock/anthropic.claude-4-6-sonnet via LiteLLM proxy | Todos os 10 agentes usando o modelo correto |
+| Correção do modelo ativo: bedrock/anthropic.claude-4-6-sonnet via LiteLLM proxy | Todos os 11 agentes usando o modelo correto |
 | Correção de bug: AssistantMessage intermediário fechava steps prematuramente | Ordem real do stream SDK respeitada |
+
+### 25.9 O que chegou na v1.1 — Migration Expert + MCP migration_source
+
+| Mudança | Impacto |
+|---------|---------|
+| **Agente Migration Expert (Tier T1)** | Novo especialista para assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric com arquitetura Medallion |
+| **MCP customizado `migration_source`** | 15 tools read-only para discovery completo do banco de origem: DDL, views, procedures, functions, estatísticas, amostras |
+| **Registry JSON de fontes (`MIGRATION_SOURCES`)** | Mesmo padrão do `fabric-sql-mcp` — suporte a múltiplas fontes nomeadas no `.env` |
+| **Suporte a SQL Server e PostgreSQL** | pyodbc para SQL Server (ODBC Driver 17/18 autodetectado), psycopg2-binary para PostgreSQL |
+| **KB `kb/migration/index.md`** | Novo domínio de KB com 4 tabelas de mapeamento de tipos (SQL Server→Spark SQL, SQL Server→Fabric, PostgreSQL→Spark SQL, PostgreSQL→Fabric) e 10 anti-padrões M01–M10 |
+| **Skill `skills/migration/SKILL.md`** | Playbook operacional com exemplos de DDL transpilado para ambos os destinos |
+| **Slash command `/migrate`** | Acesso direto ao Migration Expert sem passar pelo Supervisor |
+| **Workflow WF-05** | Migração Relacional→Nuvem: Migration Expert → SQL → Spark → Quality + Governance |
 
 ### 26.9 O que chegou na v1.0 — DOMA + Party Mode + Workflow Context Cache
 
@@ -3207,20 +3290,20 @@ Um resumo numérico do ecossistema Data Agents v1.0:
 | **Métrica**                      | **Valor**                                                                        |
 | -------------------------------- | -------------------------------------------------------------------------------- |
 | Versão atual                     | 1.0.0                                                                            |
-| Agentes especialistas            | 10 (1 Supervisor + 1 Tier 3 + 3 Tier 1 + 5 Tier 2)                             |
-| Slash commands                   | 16 (/brief, /plan, /geral, /sql, /spark, /pipeline, /dbt, /fabric, /quality, /governance, /semantic, /party, /health, /status, /review, /memory) |
+| Agentes especialistas            | 11 (1 Supervisor + 1 Tier 3 + 4 Tier 1 + 5 Tier 2)                             |
+| Slash commands                   | 17 (/brief, /plan, /geral, /sql, /spark, /pipeline, /dbt, /fabric, /quality, /governance, /semantic, /migrate, /party, /health, /status, /review, /memory) |
 | Interfaces de usuário            | 3 (Terminal + Web UI Streamlit + Web UI Chainlit)                                |
 | Hooks de segurança e controle    | 9 (audit, cost, security/SQL, compression, workflow, session, memory, lifecycle, checkpoint) |
 | Padrões destrutivos no hook      | 22 diretos + 11 de evasão (total: 33 padrões)                                   |
 | Tipos de log                     | 5 (audit, app, sessions, workflows, compression) + config_snapshots             |
 | Tipos de memória                 | 7 (user, feedback, architecture, progress, data_asset, platform_decision, pipeline_status) |
-| Domínios de Knowledge Base       | 8 domínios · 69+ arquivos (concepts/ + patterns/)                               |
+| Domínios de Knowledge Base       | 9 domínios · 70+ arquivos (concepts/ + patterns/ + migration/)                  |
 | Anti-padrões catalogados         | 29 (kb/shared/anti-patterns.md): 7 CRÍTICOS, 12 ALTA, 10 MÉDIA                 |
 | Camadas de conhecimento          | 3 (Constituição > KBs > Skills)                                                 |
 | Regras na Constituição           | Aproximadamente 50 em 8 seções                                                  |
-| Tools MCP total                  | 65+ Databricks + 9 Genie + 28 Fabric Community + 8 Fabric SQL + 15+ RTI        |
-| Servidores MCP                   | 12 (databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, fabric_semantic, context7, tavily, github, firecrawl, postgres, memory_mcp) |
-| Subsets MCP (aliases loader.py)  | 18+ (incluindo context7_all, tavily_all, github_all, firecrawl_all, postgres_all, memory_mcp_all) |
+| Tools MCP total                  | 65+ Databricks + 9 Genie + 28 Fabric Community + 8 Fabric SQL + 15+ RTI + 15 Migration Source |
+| Servidores MCP                   | 13 (databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, fabric_semantic, context7, tavily, github, firecrawl, postgres, memory_mcp, migration_source) |
+| Subsets MCP (aliases loader.py)  | 19+ (incluindo context7_all, tavily_all, github_all, firecrawl_all, postgres_all, memory_mcp_all, migration_source_all) |
 | Skills Databricks                | 27 módulos                                                                       |
 | Skills Fabric                    | 10 módulos (SKILL.md com deployment pipelines, git integration, monitoring DMV, notebook manager, workspace manager) |
 | Skills root                      | 5 módulos (sql, spark, pipeline, data_quality, star_schema)                     |
@@ -3249,13 +3332,13 @@ A resposta, depois de oito versões iterativas, é um sim definitivo — e cada 
 
 ### 28.1 O que Foi Construído
 
-O ecossistema completo inclui **dez agentes especialistas**, cada um com o perfil técnico, ferramentas e base de conhecimento corretos para sua função. O Supervisor orquestra toda a equipe com o **protocolo DOMA** — sete passos que garantem planejamento antes de execução, validação antes de entrega, e conformidade com as regras da empresa em todo momento.
+O ecossistema completo inclui **onze agentes especialistas**, cada um com o perfil técnico, ferramentas e base de conhecimento corretos para sua função. O Supervisor orquestra toda a equipe com o **protocolo DOMA** — sete passos que garantem planejamento antes de execução, validação antes de entrega, e conformidade com as regras da empresa em todo momento.
 
 O **Party Mode** (`/party`) adiciona uma dimensão nova ao sistema: em vez de perspectivas sequenciais, agentes especialistas respondem em paralelo real via `asyncio.gather`, cada um com sua visão de domínio independente. Para decisões de arquitetura, comparações de tecnologia e revisões end-to-end, isso transforma o sistema de um oráculo serial em uma mesa redonda de especialistas.
 
 O **Workflow Context Cache** (Regra W8) elimina a ineficiência de releituras redundantes em workflows multi-agente. Antes do primeiro agente de qualquer WF-01 a WF-04, o Supervisor compila tudo que a equipe precisa saber em um único arquivo de contexto. Cada agente lê uma vez — o contexto certo, no momento certo.
 
-Doze servidores MCP — incluindo vários customizados desenvolvidos para resolver limitações dos servidores oficiais — conectam o sistema ao Databricks e ao Microsoft Fabric com profundidade genuína. O sistema não é um wrapper superficial: ele cria tabelas Delta, executa pipelines DLT, configura Genie Spaces, constrói modelos DAX e audita conformidade PII de verdade.
+Treze servidores MCP — incluindo vários customizados desenvolvidos para resolver limitações dos servidores oficiais — conectam o sistema ao Databricks, ao Microsoft Fabric e agora também a bancos relacionais legados (SQL Server e PostgreSQL) como fontes de migração. O sistema não é um wrapper superficial: ele cria tabelas Delta, executa pipelines DLT, configura Genie Spaces, constrói modelos DAX e audita conformidade PII de verdade.
 
 ### 28.2 O Valor Real
 

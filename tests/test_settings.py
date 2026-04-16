@@ -68,6 +68,9 @@ class TestPlatformCredentials:
             github_personal_access_token="",
             firecrawl_api_key="",
             postgres_url="",
+            # Migration source — sem fontes configuradas
+            migration_sources="{}",
+            migration_default_source="",
         )
         status = s.validate_platform_credentials()
         # MCPs sem credenciais obrigatórias são sempre ready — excluídos desta verificação.

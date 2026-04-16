@@ -123,6 +123,17 @@ class Settings(BaseSettings):
     # Gratuito (open source oficial da Anthropic)
     postgres_url: str = ""  # vazio = MCP postgres não será ativado
 
+    # --- Migration Source (MCP Customizado — fontes de migração relacionais) ---
+    # Registry de bancos de origem para migração (JSON). Suporta SQL Server e PostgreSQL.
+    # Formato: {"NOME": {"type": "sqlserver|postgresql", "host": "...", "port": ..., "database": "...", "user": "...", "password": "..."}}
+    # SQL Server requer ODBC Driver 17 ou 18 instalado no sistema.
+    # PostgreSQL usa psycopg2-binary (sem dependência de sistema).
+    migration_sources: str = "{}"
+    migration_default_source: str = ""
+    # Comando do servidor — instalado via pip install -e .
+    # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/migration-source-mcp
+    migration_source_command: str = "migration-source-mcp"
+
     # --- Configurações do Sistema ---
     default_model: str = "bedrock/anthropic.claude-4-6-sonnet"
     # default_model: str = "claude-opus-4-6"
@@ -363,6 +374,15 @@ class Settings(BaseSettings):
                 "fields": {"POSTGRES_URL": self.postgres_url},
                 "required": ["POSTGRES_URL"],
             },
+            # Migration Source: requer registry com ao menos uma fonte configurada
+            "migration_source": {
+                "fields": {
+                    "MIGRATION_SOURCES": (
+                        self.migration_sources if self.migration_sources not in ("{}", "") else ""
+                    ),
+                },
+                "required": ["MIGRATION_SOURCES"],
+            },
             # Memory MCP: sem credenciais → sempre "ready"
             "memory_mcp": {
                 "fields": {"_no_credentials_required": "true"},
@@ -406,7 +426,14 @@ class Settings(BaseSettings):
             )
 
         # Plataformas de dados — pelo menos uma deve estar configurada
-        data_platforms = ["databricks", "databricks_genie", "fabric", "fabric_sql", "fabric_rti"]
+        data_platforms = [
+            "databricks",
+            "databricks_genie",
+            "fabric",
+            "fabric_sql",
+            "fabric_rti",
+            "migration_source",
+        ]
         any_ready = any(status[p]["ready"] for p in data_platforms)
 
         if not any_ready:

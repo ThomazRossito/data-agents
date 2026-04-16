@@ -28,6 +28,11 @@ dependencies = [
     #   Linux: https://learn.microsoft.com/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server
     "pyodbc>=5.0",
 
+    # Migration Source — MCP customizado (migration_source)
+    # Conecta a bancos de origem (SQL Server e PostgreSQL) para extração de DDL e metadados.
+    # pyodbc já incluso acima (SQL Server). psycopg2-binary para PostgreSQL.
+    "psycopg2-binary>=2.9",
+
     # Configuração
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
@@ -63,6 +68,7 @@ data-agents = "main:main"
 fabric-sql-mcp = "mcp_servers.fabric_sql.server:main"
 fabric-semantic-mcp = "mcp_servers.fabric_semantic.server:main"
 databricks-genie-mcp = "mcp_servers.databricks_genie.server:main"
+migration-source-mcp = "mcp_servers.migration_source.server:main"
 
 [build-system]
 requires = ["hatchling"]

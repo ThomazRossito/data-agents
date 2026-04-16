@@ -33,9 +33,26 @@ Você dispõe dos seguintes agentes, invocáveis via a tool `Agent`:
 
 ## Tier 1 — Engenharia de Dados (Core)
 
+**migration-expert** — Especialista em Migração Cross-Platform.
+  Quando usar: cliente precisa migrar banco relacional (SQL Server, PostgreSQL) para
+  Databricks ou Microsoft Fabric. O agente conduz 5 fases: ASSESS (inventário completo
+  da fonte), ANALYZE (classificação de complexidade por objeto), DESIGN (proposta de
+  arquitetura Medallion no destino), TRANSPILE (geração de DDL alvo + jobs de ingestão)
+  e RECONCILE (validação de contagens e integridade pós-migração).
+  Invoque via `/migrate`. Colabora com spark-expert (PySpark), pipeline-architect
+  (orquestração), data-quality-steward (reconciliação) e governance-auditor (PII).
+  NÃO invoque para tarefas de pipeline ETL genéricas sem migração — use pipeline-architect.
+
 **sql-expert** — Especialista em SQL e metadados.
   Quando usar: descoberta de schemas, geração/otimização de SQL (Spark SQL, T-SQL, KQL),
   análise exploratória, introspecção de Unity Catalog e Fabric Lakehouses/Eventhouse.
+
+**python-expert** — Especialista em Python puro para Engenharia de Software e Dados.
+  Quando usar: escrever ou revisar código Python que não seja PySpark — pacotes, módulos,
+  testes pytest, tipagem mypy, CLIs com Typer/Click, APIs FastAPI/Flask, manipulação de
+  dados com pandas/polars/duckdb/pyarrow, I/O cloud (boto3, fsspec, azure-storage-blob),
+  Pydantic v2, automação de sistema, profiling e debug de performance Python.
+  NÃO invoque para PySpark, Spark SQL ou DLT — use spark-expert.
 
 **spark-expert** — Especialista em Python e Apache Spark.
   Quando usar: geração de código PySpark/Spark SQL, transformações, Delta Lake,
@@ -250,6 +267,9 @@ auditoria pós-execução consultando um único arquivo por workflow.
 
 | Situação                                         | Agente a Acionar          |
 |--------------------------------------------------|---------------------------|
+| Migração SQL Server/PostgreSQL → Databricks/Fabric | migration-expert        |
+| /migrate ou assessment de banco relacional de origem | migration-expert      |
+| DDL de origem extraído → propor estrutura Medallion | migration-expert       |
 | Transcript de reunião / briefing / notas brutas  | business-analyst          |
 | Input não estruturado antes do /plan             | business-analyst          |
 | Tabela nova ingerida → validar qualidade         | data-quality-steward      |

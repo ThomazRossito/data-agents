@@ -98,6 +98,7 @@ class TestLoadAllAgents:
             "governance-auditor",
             "semantic-modeler",
             "dbt-expert",
+            "migration-expert",
         ]
         for name in expected:
             assert name in agents, f"Agente '{name}' não encontrado no registry"
@@ -388,16 +389,30 @@ class TestTokenBudgetsByTier:
                 assert agent.effort == "medium"
 
     def test_no_tier_map_leaves_max_turns_none(self):
-        """Sem tier_turns_map, maxTurns deve ser None (sem limite por tier)."""
+        """Sem tier_turns_map, maxTurns deve ser None (exceto agentes com override no frontmatter)."""
+        from agents.loader import preload_registry
+
+        # Agentes com max_turns explícito no frontmatter preservam seu valor mesmo sem tier_map
+        frontmatter_overrides = {
+            name for name, meta in preload_registry().items() if meta.max_turns is not None
+        }
         agents = load_all_agents(tier_turns_map=None, inject_cache_prefix=False)
         for name, agent in agents.items():
-            assert agent.maxTurns is None, f"Agente '{name}' deveria ter maxTurns=None"
+            if name not in frontmatter_overrides:
+                assert agent.maxTurns is None, f"Agente '{name}' deveria ter maxTurns=None"
 
     def test_no_effort_map_leaves_effort_none(self):
-        """Sem tier_effort_map, effort deve ser None."""
+        """Sem tier_effort_map, effort deve ser None (exceto agentes com override no frontmatter)."""
+        from agents.loader import preload_registry
+
+        # Agentes com effort explícito no frontmatter preservam seu valor mesmo sem tier_map
+        frontmatter_overrides = {
+            name for name, meta in preload_registry().items() if meta.effort is not None
+        }
         agents = load_all_agents(tier_effort_map=None, inject_cache_prefix=False)
         for name, agent in agents.items():
-            assert agent.effort is None, f"Agente '{name}' deveria ter effort=None"
+            if name not in frontmatter_overrides:
+                assert agent.effort is None, f"Agente '{name}' deveria ter effort=None"
 
     def test_frontmatter_max_turns_overrides_tier_map(self, tmp_path):
         """max_turns no frontmatter tem prioridade sobre tier_turns_map."""
@@ -754,4 +769,67 @@ class TestCachePrefix:
         )
         assert agent.prompt.startswith("# Prefixo Custom"), (
             "Prefixo alternativo não foi usado corretamente."
+        )
+
+
+# ─── Testes do migration-expert ──────────────────────────────────────────────
+
+
+class TestMigrationExpert:
+    """Testes específicos para o migration-expert."""
+
+    def test_migration_expert_is_tier_t1(self):
+        from agents.loader import preload_registry
+
+        registry = preload_registry()
+        assert "migration-expert" in registry
+        meta = registry["migration-expert"]
+        assert meta.tier == "T1", "migration-expert deve ser Tier T1"
+
+    def test_migration_expert_has_migration_source_tools(self):
+        agents = load_all_agents()
+        agent = agents["migration-expert"]
+        tools = agent.tools or []
+        migration_tools = [t for t in tools if "migration_source" in t]
+        assert len(migration_tools) > 0, "migration-expert deve ter tools do migration_source MCP"
+
+    def test_migration_expert_has_both_platform_tools(self):
+        agents = load_all_agents()
+        agent = agents["migration-expert"]
+        tools = agent.tools or []
+        has_databricks = any("databricks" in t for t in tools)
+        has_fabric = any("fabric" in t for t in tools)
+        assert has_databricks, "migration-expert deve ter tools do Databricks (destino)"
+        assert has_fabric, "migration-expert deve ter tools do Fabric (destino)"
+
+    def test_migration_expert_has_max_turns_gte_20(self):
+        agents = load_all_agents()
+        agent = agents["migration-expert"]
+        assert (agent.maxTurns or 0) >= 20, (
+            "migration-expert deve ter maxTurns >= 20 para suportar workflows longos"
+        )
+
+    def test_migration_expert_has_migration_kb_domain(self):
+        from agents.loader import preload_registry
+
+        registry = preload_registry()
+        meta = registry["migration-expert"]
+        kb_domains = meta.kb_domains or []
+        assert "migration" in kb_domains, "migration-expert deve ter 'migration' em kb_domains"
+
+    def test_migration_expert_has_pipeline_design_kb(self):
+        from agents.loader import preload_registry
+
+        registry = preload_registry()
+        meta = registry["migration-expert"]
+        kb_domains = meta.kb_domains or []
+        assert "pipeline-design" in kb_domains, (
+            "migration-expert deve ter 'pipeline-design' em kb_domains (Medallion)"
+        )
+
+    def test_migration_expert_has_bash(self):
+        agents = load_all_agents()
+        agent = agents["migration-expert"]
+        assert "Bash" in (agent.tools or []), (
+            "migration-expert deve ter Bash para invocar ferramentas de transpilação"
         )

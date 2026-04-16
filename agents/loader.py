@@ -63,6 +63,7 @@ from mcp_servers.memory_mcp.server_config import (
     MEMORY_MCP_TOOLS,
     MEMORY_MCP_READONLY_TOOLS,
 )
+from mcp_servers.migration_source.server_config import MIGRATION_SOURCE_MCP_TOOLS
 from mcp_servers.postgres.server_config import POSTGRES_MCP_TOOLS
 from mcp_servers.tavily.server_config import TAVILY_MCP_TOOLS
 
@@ -129,6 +130,8 @@ MCP_TOOL_SETS: dict[str, list[str]] = {
     # memory_mcp: knowledge graph persistente de entidades e relações
     "memory_mcp_all": MEMORY_MCP_TOOLS,
     "memory_mcp_readonly": MEMORY_MCP_READONLY_TOOLS,
+    # migration_source: extração de DDL, objetos e stats de bancos de origem (SQL Server, PostgreSQL)
+    "migration_source_all": MIGRATION_SOURCE_MCP_TOOLS,
 }
 
 

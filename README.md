@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **10 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **11 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -80,6 +80,7 @@ python main.py
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | Não | GitHub MCP |
 | `FIRECRAWL_API_KEY` | Não | Web scraping |
 | `POSTGRES_URL` | Não | PostgreSQL MCP |
+| `MIGRATION_SOURCES` | Não | Migration Source MCP (SQL Server/PostgreSQL de origem) |
 
 > O sistema ativa automaticamente apenas as plataformas com credenciais configuradas. `context7` e `memory_mcp` são ativados sempre, sem credenciais.
 
@@ -98,6 +99,7 @@ python main.py
 | **Data Quality Steward** | `/quality` | T2 | Validação de dados, profiling, alertas, SLAs |
 | **Governance Auditor** | `/governance` | T2 | Auditoria de acessos, linhagem, PII, LGPD/GDPR |
 | **Semantic Modeler** | `/semantic` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards |
+| **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion) |
 | **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 ### Party Mode — Múltiplos Especialistas em Paralelo
@@ -128,6 +130,7 @@ O comando `/party` convoca 2 a 6 agentes simultaneamente para a mesma pergunta. 
 | `/quality <tarefa>` | Qualidade de dados direta |
 | `/governance <tarefa>` | Auditoria e governança direta |
 | `/semantic <tarefa>` | Modelagem semântica direta |
+| `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
 | `/review <artefato>` | Review de código ou pipeline |
@@ -165,6 +168,7 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente:
 | **WF-02** Star Schema | "Crie a camada Gold em Star Schema" | SQL → Spark → Quality → Semantic |
 | **WF-03** Migração Cross-Platform | "Migre do Databricks para o Fabric" | Architect → SQL → Spark → Quality + Governance |
 | **WF-04** Auditoria de Governança | "Gere um relatório de compliance" | Governance → Quality → Relatório |
+| **WF-05** Migração Relacional→Nuvem | "Migre o SQL Server para Databricks" | Migration Expert → SQL → Spark → Quality + Governance |
 
 ---
 
@@ -186,6 +190,7 @@ O sistema conecta diretamente às plataformas via Model Context Protocol (MCP):
 | `firecrawl` | Web | Scraping estruturado de páginas |
 | `postgres` | PostgreSQL | Queries readonly em bancos externos |
 | `memory_mcp` | Local | Knowledge graph persistente de entidades |
+| `migration_source` | SQL Server / PostgreSQL | Conexão direta ao banco de origem — DDL, views, procedures, functions, stats |
 
 ---
 

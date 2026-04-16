@@ -28,6 +28,7 @@ from mcp_servers.fabric_sql.server_config import get_fabric_sql_mcp_config
 from mcp_servers.firecrawl.server_config import get_firecrawl_mcp_config
 from mcp_servers.github.server_config import get_github_mcp_config
 from mcp_servers.memory_mcp.server_config import get_memory_mcp_config
+from mcp_servers.migration_source.server_config import get_migration_source_mcp_config
 from mcp_servers.postgres.server_config import get_postgres_mcp_config
 from mcp_servers.tavily.server_config import get_tavily_mcp_config
 
@@ -66,6 +67,10 @@ ALL_MCP_CONFIGS: dict = {
     # memory_mcp: knowledge graph persistente de entidades e relações (gratuito, sem credenciais)
     # Complementa o módulo memory/ existente: memory/ = memória episódica, memory_mcp = grafo de entidades
     "memory_mcp": get_memory_mcp_config,
+    # migration_source: MCP customizado para conectar a bancos de origem (SQL Server, PostgreSQL)
+    # Extrai DDL, views, procedures, functions e stats para assessment e planejamento de migração.
+    # Requer MIGRATION_SOURCES no .env com registry JSON das fontes.
+    "migration_source": get_migration_source_mcp_config,
     # Adicione novas plataformas aqui:
     # "snowflake": get_snowflake_mcp_config,
     # "bigquery":  get_bigquery_mcp_config,
