@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import socket
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -37,6 +39,8 @@ from claude_agent_sdk import (
     ClaudeAgentOptions,
     ResultMessage,
     TextBlock,
+    ToolResultBlock,
+    UserMessage,
     query as sdk_query,
 )
 from claude_agent_sdk.types import StreamEvent
@@ -188,6 +192,27 @@ def _agent_author(raw_name: str) -> str:
     return _AGENT_AUTHORS.get(raw_name, raw_name.replace("-", " ").title())
 
 
+def _format_tool_result(content: str | list | None) -> str:
+    """Formata o conteúdo retornado por uma tool call para exibição no cl.Step."""
+    _MAX_CHARS = 3000
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        if len(content) > _MAX_CHARS:
+            return content[:_MAX_CHARS] + f"\n\n*… truncado ({len(content)} chars)*"
+        return content
+    if isinstance(content, list):
+        parts = [
+            item.get("text", "") if isinstance(item, dict) and item.get("type") == "text" else ""
+            for item in content
+        ]
+        result = "\n".join(p for p in parts if p)
+        if len(result) > _MAX_CHARS:
+            return result[:_MAX_CHARS] + f"\n\n*… truncado ({len(result)} chars)*"
+        return result or ""
+    return str(content)[:_MAX_CHARS]
+
+
 def _build_dev_options(stderr_lines: list[str] | None = None) -> ClaudeAgentOptions:
     """
     ClaudeAgentOptions para o Dev Assistant.
@@ -232,33 +257,36 @@ class _StepManager:
     """
     Gerencia cl.Step() durante o loop de streaming.
 
-    cl.Step é um async context manager, mas no loop de streaming não podemos
-    usar `async with` que cruze iterações. Então gerenciamos manualmente:
-      - open(name, step_type)  → await step.send()
-      - update(output)         → step.output = ...; await step.update()
-      - close(output)          → finaliza com output e fecha
+    Dois modos de fechamento:
+      - close(output): fecha imediatamente com output fornecido (Agent tool e erros)
+      - park(tool_use_id): estaciona o step aguardando o ToolResultBlock no UserMessage
+        → quando receive_result(tool_use_id, content) for chamado, fecha com o conteúdo real
+
+    Múltiplos steps podem ficar estacionados simultaneamente (tool calls em paralelo).
     """
 
     def __init__(self) -> None:
-        self._step: cl.Step | None = None
+        self._step: cl.Step | None = None  # step "ativo" (ainda acumulando input)
         self._start: float = 0.0
+        # steps estacionados aguardando resultado: tool_use_id → (step, start_time)
+        self._parked: dict[str, tuple[cl.Step, float]] = {}
 
     async def open(self, name: str, step_type: str = "tool") -> None:
-        """Abre um novo Step. Fecha o anterior se ainda estiver aberto."""
+        """Abre um novo Step. Fecha o anterior se ainda estiver aberto (sem resultado)."""
         await self.close()
         self._step = cl.Step(name=name, type=step_type)
         self._start = time.monotonic()
         await self._step.send()
 
     async def rename(self, name: str) -> None:
-        """Atualiza o nome do Step sem fechar — usado quando o agent_name fica disponível."""
+        """Atualiza o nome do Step ativo sem fechar."""
         if self._step is None:
             return
         self._step.name = name
         await self._step.update()
 
     async def close(self, output: str = "") -> None:
-        """Fecha o Step atual com o output fornecido."""
+        """Fecha o Step ativo imediatamente (usado para Agent tool e erros)."""
         if self._step is None:
             return
         elapsed = time.monotonic() - self._start
@@ -267,8 +295,37 @@ class _StepManager:
         self._step = None
         self._start = 0.0
 
+    async def park(self, tool_use_id: str) -> None:
+        """
+        Estaciona o step ativo aguardando o resultado da tool.
+        O step permanece visível mas sem output final até receive_result() ser chamado.
+        """
+        if self._step is None:
+            return
+        self._parked[tool_use_id] = (self._step, self._start)
+        self._step = None
+        self._start = 0.0
+
+    async def receive_result(self, tool_use_id: str, content: str) -> None:
+        """Fecha um step estacionado com o conteúdo real retornado pela tool."""
+        entry = self._parked.pop(tool_use_id, None)
+        if entry is None:
+            return
+        step, start = entry
+        elapsed = time.monotonic() - start
+        step.output = content or f"Concluído em {elapsed:.1f}s"
+        await step.update()
+
+    async def close_all_parked(self) -> None:
+        """Fecha todos os steps estacionados sem resultado (fallback no fim do stream)."""
+        for tool_use_id, (step, start) in list(self._parked.items()):
+            elapsed = time.monotonic() - start
+            step.output = f"Concluído em {elapsed:.1f}s"
+            await step.update()
+        self._parked.clear()
+
     async def close_error(self, error: str) -> None:
-        """Fecha o Step com mensagem de erro."""
+        """Fecha o Step ativo com mensagem de erro."""
         if self._step is None:
             return
         self._step.output = f"❌ {error}"
@@ -341,8 +398,26 @@ async def _invalidate_supervisor_cache() -> None:
 # ── Activação dos modos ───────────────────────────────────────────────────────
 
 
+_BANNER = """\
+**DATA AGENTS**
+Sistema Multi-Agentes · Databricks + Microsoft Fabric
+Powered by Claude Agent SDK + MCP
+
+**Desenvolvido por:**
+Thomaz Antonio Rossito Neto
+Specialist Data & AI Solutions Architect | Center of Excellence CoE @CI&T
+**LinkedIn:** https://www.linkedin.com/in/thomaz-antonio-rossito-neto/
+**GitHub:** https://github.com/ThomazRossito/
+"""
+
+# Porta do dashboard de monitoramento (Streamlit — start.sh)
+_MONITOR_PORT = 8501
+
+
 async def _show_mode_selection() -> None:
-    """Apresenta os dois botões de seleção de modo."""
+    """Apresenta banner de boas-vindas e botões de seleção de modo."""
+    await cl.Message(content=_BANNER, author="Sistema").send()
+
     actions = [
         cl.Action(
             name="select_supervisor",
@@ -356,13 +431,19 @@ async def _show_mode_selection() -> None:
             payload={"value": "dev"},
             description="Claude direto com ferramentas de desenvolvimento (Read, Write, Bash...)",
         ),
+        cl.Action(
+            name="open_monitoring",
+            label="📊 Monitoramento",
+            payload={"value": "monitoring"},
+            description=f"Abre o dashboard de monitoramento (porta {_MONITOR_PORT})",
+        ),
     ]
     await cl.Message(
         content=(
-            "## 🤖 Data Agents\n\n"
             "**Selecione o modo de operação:**\n\n"
             "- **🤖 Data Agents** — Supervisor com agentes especialistas, slash commands e MCPs de plataforma\n"
-            "- **💻 Dev Assistant** — Claude direto para tarefas de desenvolvimento no projeto (Bedrock, custo zero)\n\n"
+            "- **💻 Dev Assistant** — Claude direto para tarefas de desenvolvimento no projeto (Bedrock, custo zero)\n"
+            f"- **📊 Monitoramento** — Dashboard de custos e métricas de sessão (porta {_MONITOR_PORT})\n\n"
             "*(Troque de modo a qualquer momento com `/modo`)*"
         ),
         actions=actions,
@@ -513,6 +594,7 @@ async def _handle_supervisor(user_input: str) -> None:
     # ── Estado do streaming ───────────────────────────────────────────────────
     steps = _StepManager()
     current_tool: str | None = None
+    current_tool_use_id: str | None = None  # id da tool call ativa (para park/receive_result)
     tool_input_buffer: str = ""
     current_agent: str | None = None  # nome do agente em delegação ativa
     last_agent: str | None = None  # último agente que respondeu (para author)
@@ -563,6 +645,7 @@ async def _handle_supervisor(user_input: str) -> None:
                     blk = ev.get("content_block", {})
                     if blk.get("type") == "tool_use":
                         current_tool = blk.get("name", "")
+                        current_tool_use_id = blk.get("id", "")
                         tool_input_buffer = ""
                         current_agent = None
                         tool_names.append(current_tool)
@@ -612,6 +695,7 @@ async def _handle_supervisor(user_input: str) -> None:
                 # ── Tool call finalizada ──────────────────────────────────────
                 elif evtype == "content_block_stop":
                     if current_tool == "Agent" and current_agent:
+                        # Agent tool: fecha imediatamente — resultado vem como mensagem
                         display = _agent_author(current_agent)
                         await steps.close(f"✅ {display} concluído")
                         # Após retorno de sub-agente, Supervisor pode demorar para processar
@@ -622,19 +706,35 @@ async def _handle_supervisor(user_input: str) -> None:
                             author="Sistema",
                         )
                         await _thinking_msg.send()
-                    elif current_tool:
-                        label = _tool_label(current_tool)
-                        await steps.close(f"✅ {label}")
+                    elif current_tool and current_tool_use_id:
+                        # Demais tools: estaciona aguardando ToolResultBlock no UserMessage
+                        await steps.park(current_tool_use_id)
                     else:
                         await steps.close()
 
                     current_tool = None
+                    current_tool_use_id = None
                     tool_input_buffer = ""
                     current_agent = None
 
+            # ── UserMessage: contém os resultados reais das tool calls ────────
+            elif isinstance(message, UserMessage):
+                if isinstance(message.content, list):
+                    for blk in message.content:
+                        if isinstance(blk, ToolResultBlock):
+                            content_str = _format_tool_result(blk.content)
+                            if blk.is_error:
+                                content_str = f"❌ {content_str}" if content_str else "❌ Erro"
+                            await steps.receive_result(blk.tool_use_id, content_str)
+
             # ── AssistantMessage: fallback se não houve streaming ────────────
             elif isinstance(message, AssistantMessage):
-                await steps.close()  # garante que não ficou nenhum step aberto
+                # Só fecha o step ativo se não há tool_use em andamento —
+                # o SDK emite AssistantMessage intermediários entre START e STOP da tool.
+                if current_tool is None:
+                    await steps.close()
+                # Não fecha steps estacionados — UserMessage com resultados reais
+                # pode chegar DEPOIS do AssistantMessage (ordem real do stream)
                 if _thinking_msg is not None:
                     await _thinking_msg.remove()
                     _thinking_msg = None
@@ -645,6 +745,7 @@ async def _handle_supervisor(user_input: str) -> None:
             # ── ResultMessage: métricas finais ────────────────────────────────
             elif isinstance(message, ResultMessage):
                 await steps.close()
+                await steps.close_all_parked()  # fallback final — fecha qualquer step sem resultado
                 if _thinking_msg is not None:
                     await _thinking_msg.remove()
                     _thinking_msg = None
@@ -721,6 +822,7 @@ async def _handle_dev(user_input: str) -> None:
     # ── Estado do streaming ───────────────────────────────────────────────────
     steps = _StepManager()
     current_tool: str | None = None
+    current_tool_use_id: str | None = None
     tool_input_buffer: str = ""
     streamed_text = ""
     final_text = ""
@@ -739,6 +841,7 @@ async def _handle_dev(user_input: str) -> None:
                     blk = ev.get("content_block", {})
                     if blk.get("type") == "tool_use":
                         current_tool = blk.get("name", "")
+                        current_tool_use_id = blk.get("id", "")
                         tool_input_buffer = ""
                         label = _tool_label(current_tool)
                         await steps.open(label, step_type="tool")
@@ -766,21 +869,30 @@ async def _handle_dev(user_input: str) -> None:
                             await response_msg.stream_token(token)
 
                 elif evtype == "content_block_stop":
-                    if current_tool:
-                        # Usa label enriquecido se disponível, senão label genérico
-                        try:
-                            data = json.loads(tool_input_buffer) if tool_input_buffer else {}
-                            enriched = _enrich_tool_label(current_tool, data)
-                        except (json.JSONDecodeError, TypeError):
-                            enriched = None
-                        close_label = enriched or _tool_label(current_tool)
-                        await steps.close(f"✅ {close_label}")
+                    if current_tool and current_tool_use_id:
+                        # Estaciona aguardando ToolResultBlock no UserMessage
+                        await steps.park(current_tool_use_id)
                     current_tool = None
+                    current_tool_use_id = None
                     tool_input_buffer = ""
+
+            # ── UserMessage: contém os resultados reais das tool calls ────────
+            elif isinstance(message, UserMessage):
+                if isinstance(message.content, list):
+                    for blk in message.content:
+                        if isinstance(blk, ToolResultBlock):
+                            content_str = _format_tool_result(blk.content)
+                            if blk.is_error:
+                                content_str = f"❌ {content_str}" if content_str else "❌ Erro"
+                            await steps.receive_result(blk.tool_use_id, content_str)
 
             # ── AssistantMessage: fallback ────────────────────────────────────
             elif isinstance(message, AssistantMessage):
-                await steps.close()
+                # Só fecha o step ativo se não há tool_use em andamento.
+                # O SDK emite AssistantMessage intermediários entre tool_use START e STOP —
+                # chamar close() nesses casos descartaria o step antes de park() ser chamado.
+                if current_tool is None:
+                    await steps.close()
                 for blk in message.content:
                     if isinstance(blk, TextBlock) and blk.text.strip():
                         final_text += blk.text
@@ -788,6 +900,7 @@ async def _handle_dev(user_input: str) -> None:
             # ── ResultMessage: métricas ───────────────────────────────────────
             elif isinstance(message, ResultMessage):
                 await steps.close()
+                await steps.close_all_parked()  # fallback final — fecha qualquer step sem resultado
 
                 if not streamed_text and final_text:
                     await response_msg.stream_token(final_text)
@@ -851,6 +964,88 @@ async def on_supervisor_selected(action: cl.Action) -> None:
 async def on_dev_selected(action: cl.Action) -> None:
     await action.remove()
     await _activate_dev()
+
+
+def _monitor_is_running() -> bool:
+    """Retorna True se já há algo escutando em _MONITOR_PORT."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(0.5)
+        return s.connect_ex(("127.0.0.1", _MONITOR_PORT)) == 0
+
+
+def _start_monitor() -> None:
+    """Inicia o Streamlit de monitoramento em background (processo filho independente)."""
+    subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(ROOT / "monitoring" / "app.py"),
+            "--server.port",
+            str(_MONITOR_PORT),
+            "--server.headless",
+            "true",
+            "--browser.gatherUsageStats",
+            "false",
+            "--theme.base",
+            "dark",
+        ],
+        cwd=str(ROOT),
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        # Desvincula do processo pai — sobrevive ao encerramento do Chainlit
+        start_new_session=True,
+    )
+
+
+@cl.action_callback("open_monitoring")
+async def on_monitoring_selected(action: cl.Action) -> None:
+    await action.remove()
+
+    url = f"http://localhost:{_MONITOR_PORT}"
+
+    if _monitor_is_running():
+        await cl.Message(
+            content=f"📊 **Dashboard de Monitoramento**\n\nJá está rodando → [{url}]({url})",
+            author="Sistema",
+        ).send()
+        return
+
+    # Inicia o Streamlit em background
+    await cl.Message(
+        content="⏳ Iniciando dashboard de monitoramento...",
+        author="Sistema",
+    ).send()
+
+    try:
+        _start_monitor()
+    except Exception as exc:
+        await cl.Message(
+            content=f"❌ Não foi possível iniciar o monitoramento: `{exc}`",
+            author="Sistema",
+        ).send()
+        return
+
+    # Aguarda o Streamlit subir (até 15s)
+    for _ in range(30):
+        await asyncio.sleep(0.5)
+        if _monitor_is_running():
+            break
+
+    if _monitor_is_running():
+        await cl.Message(
+            content=f"✅ **Dashboard de Monitoramento** iniciado → [{url}]({url})",
+            author="Sistema",
+        ).send()
+    else:
+        await cl.Message(
+            content=(
+                f"⚠️ O serviço foi iniciado mas ainda não respondeu na porta {_MONITOR_PORT}. "
+                f"Aguarde alguns segundos e acesse [{url}]({url})"
+            ),
+            author="Sistema",
+        ).send()
 
 
 @cl.on_message
