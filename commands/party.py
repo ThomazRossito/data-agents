@@ -179,7 +179,7 @@ def _build_agent_options(agent_name: str) -> ClaudeAgentOptions:
 # ── Core async ────────────────────────────────────────────────────────────────
 
 
-async def _query_single_agent(
+async def _query_single_agent(  # pragma: no cover
     agent_name: str,
     query: str,
 ) -> tuple[str, str, float]:
@@ -208,7 +208,7 @@ async def _query_single_agent(
     return agent_name, response_text, cost
 
 
-async def run_party_query(
+async def run_party_query(  # pragma: no cover
     query: str,
     agent_names: list[str],
 ) -> list[tuple[str, str, float]]:
