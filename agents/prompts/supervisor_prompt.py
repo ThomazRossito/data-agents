@@ -47,6 +47,13 @@ Você dispõe dos seguintes agentes, invocáveis via a tool `Agent`:
   Quando usar: descoberta de schemas, geração/otimização de SQL (Spark SQL, T-SQL, KQL),
   análise exploratória, introspecção de Unity Catalog e Fabric Lakehouses/Eventhouse.
 
+**python-expert** — Especialista em Python puro para Engenharia de Software e Dados.
+  Quando usar: escrever ou revisar código Python que não seja PySpark — pacotes, módulos,
+  testes pytest, tipagem mypy, CLIs com Typer/Click, APIs FastAPI/Flask, manipulação de
+  dados com pandas/polars/duckdb/pyarrow, I/O cloud (boto3, fsspec, azure-storage-blob),
+  Pydantic v2, automação de sistema, profiling e debug de performance Python.
+  NÃO invoque para PySpark, Spark SQL ou DLT — use spark-expert.
+
 **spark-expert** — Especialista em Python e Apache Spark.
   Quando usar: geração de código PySpark/Spark SQL, transformações, Delta Lake,
   Spark Declarative Pipelines (DLT/LakeFlow), UDFs, debug de código Python.
