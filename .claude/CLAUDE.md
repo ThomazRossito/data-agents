@@ -1,7 +1,7 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 8 agentes especialistas
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 12 agentes especialistas
 em Engenharia, Qualidade, Governança e Análise de Dados.
 
 ---
@@ -38,7 +38,9 @@ Usuário → main.py / ui/chat.py / ui/chainlit_app.py
         ├─► business-analyst   [T3] — intake de requisitos, /brief
         ├─► sql-expert         [T1] — SQL, schemas, catálogos
         ├─► spark-expert       [T1] — PySpark, DLT, Delta Lake
+        ├─► python-expert      [T1] — Python puro: pacotes, APIs, CLIs, testes
         ├─► pipeline-architect [T1] — ETL/ELT cross-platform
+        ├─► migration-expert   [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
         ├─► dbt-expert         [T2] — dbt Core: models, testes, snapshots
         ├─► data-quality-steward [T2] — validação, profiling, SLA
         ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
@@ -75,6 +77,7 @@ mcp_servers/
   firecrawl/      ← Web scraping estruturado (free: 500 créditos/mês)
   postgres/       ← Queries readonly em PostgreSQL (free, open source)
   memory_mcp/     ← Knowledge graph de entidades (free, sem credenciais)
+  migration_source/ ← MCP customizado: DDL/schema extraction de SQL Server/PostgreSQL
   _template/      ← Template para novos MCPs
 
 config/
@@ -217,6 +220,9 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | `postgres_all` | query (SELECT readonly) |
 | `memory_mcp_all` | Knowledge graph: leitura + escrita |
 | `memory_mcp_readonly` | Knowledge graph: só leitura |
+| `fabric_semantic_all` | Fabric Semantic Models: introspecção TMDL, DAX, RLS |
+| `fabric_semantic_readonly` | Fabric Semantic Models: só leitura |
+| `migration_source_all` | SQL Server/PostgreSQL: DDL, views, procedures, stats |
 
 ---
 
@@ -232,6 +238,8 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | data-quality-steward | databricks, fabric, fabric_community, fabric_rti, postgres |
 | governance-auditor | databricks, fabric, fabric_community, tavily, postgres, memory_mcp |
 | semantic-modeler | databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7 |
+| migration-expert | migration_source, databricks, fabric, fabric_sql, context7 |
+| python-expert | context7 |
 | skill-updater | context7, tavily, firecrawl |
 | geral | *(nenhum — resposta direta sem MCP)* |
 
@@ -244,15 +252,17 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 
 | Hook | Tipo | O que faz |
 |------|------|-----------|
-| `audit_hook.py` | PostToolUse | Loga todas as tool calls no JSONL de auditoria |
-| `cost_guard_hook.py` | PostToolUse | Detecta operações geradoras de custo e loga |
-| `security_hook.py` | PreToolUse (Bash) | Bloqueia comandos destrutivos (rm -rf, DROP, etc.) |
-| `cost_guard_hook.py` | PreToolUse (all) | Detecta SELECT * sem WHERE/LIMIT |
+| `security_hook.py` | PreToolUse (Bash) | Bloqueia 22 padrões destrutivos (rm -rf, DROP, git reset --hard, etc.) |
+| `security_hook.py` | PreToolUse (all) | Detecta SELECT * sem WHERE/LIMIT |
+| `audit_hook.py` | PostToolUse | Loga todas as tool calls no JSONL de auditoria (6 categorias de erro) |
+| `workflow_tracker.py` | PostToolUse | Rastreia delegações de agentes e Clarity Checkpoint |
+| `cost_guard_hook.py` | PostToolUse | Classifica operações HIGH/MEDIUM/LOW e alerta após 5 HIGH |
 | `output_compressor_hook.py` | PostToolUse | Comprime outputs verbosos antes de enviar ao modelo |
+| `session_logger.py` | PostToolUse | Registra métricas finais de custo/turns/duração por sessão |
 | `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente |
 | `context_budget_hook.py` | PostToolUse | Monitora tokens acumulados; avisa a 80% e 95% do limite |
-| `workflow_tracker.py` | PostToolUse | Rastreia delegações de agentes e Clarity Checkpoint |
-| `session_lifecycle.py` | — | Flush automático da memória no final da sessão |
+| `checkpoint.py` | — | Save/restore do estado da sessão para retomada |
+| `session_lifecycle.py` | SessionStart/End | Injeção de memórias, config snapshot e flush ao encerrar |
 
 ---
 
@@ -290,6 +300,11 @@ MEMORY_CAPTURE_ENABLED=true
 | `/quality <tarefa>` | data-quality-steward | Qualidade de dados direta |
 | `/governance <tarefa>` | governance-auditor | Governança/auditoria direta |
 | `/semantic <tarefa>` | semantic-modeler | Modelagem semântica direta |
+| `/migrate <fonte> para <destino>` | migration-expert | Assessment e migração de banco relacional para Databricks/Fabric |
+| `/python <tarefa>` | python-expert | Python puro: pacotes, testes, APIs, CLIs, automação |
+| `/skill [domínio]` | skill-updater | Atualiza Skills com documentação recente via context7/tavily |
+| `/genie <tarefa>` | semantic-modeler | Criar/atualizar Genie Spaces no Databricks |
+| `/dashboard <tarefa>` | semantic-modeler | Criar/publicar AI/BI Dashboards |
 | `/review <artefato>` | Supervisor | Review de código/pipeline |
 | `/health` | — | Status das plataformas configuradas |
 | `/status` | — | Estado da sessão atual |

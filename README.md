@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **11 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **12 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -100,6 +100,7 @@ python main.py
 | **Governance Auditor** | `/governance` | T2 | Auditoria de acessos, linhagem, PII, LGPD/GDPR |
 | **Semantic Modeler** | `/semantic` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards |
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion) |
+| **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
 | **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 ### Party Mode — Múltiplos Especialistas em Paralelo
@@ -131,6 +132,10 @@ O comando `/party` convoca 2 a 6 agentes simultaneamente para a mesma pergunta. 
 | `/governance <tarefa>` | Auditoria e governança direta |
 | `/semantic <tarefa>` | Modelagem semântica direta |
 | `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
+| `/python <tarefa>` | Python puro direto para o python-expert |
+| `/skill [domínio]` | Atualiza Skills com documentação recente (context7/tavily/firecrawl) |
+| `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
+| `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
 | `/review <artefato>` | Review de código ou pipeline |
@@ -200,14 +205,17 @@ Hooks automáticos protegem todas as operações:
 
 | Hook | Proteção |
 |------|----------|
-| `security_hook` | Bloqueia 22 padrões destrutivos (DROP, rm -rf, git reset --hard, etc.) |
+| `security_hook` | Bloqueia 22 padrões destrutivos (DROP, rm -rf, git reset --hard, force push, etc.) |
 | `check_sql_cost` | Bloqueia `SELECT *` sem `WHERE` ou `LIMIT` |
-| `audit_hook` | Registra todas as chamadas de ferramentas em JSONL |
-| `cost_guard_hook` | Classifica operações por custo (HIGH/MEDIUM/LOW) e alerta |
+| `audit_hook` | Registra todas as chamadas de ferramentas em JSONL (6 categorias de erro) |
+| `cost_guard_hook` | Classifica operações por custo (HIGH/MEDIUM/LOW) e alerta após 5 HIGH |
 | `output_compressor` | Trunca outputs verbosos para não desperdiçar contexto |
 | `context_budget_hook` | Alerta a 80% e 95% do limite de contexto por agente |
 | `workflow_tracker` | Rastreia delegações, Clarity Checkpoint e cascade PRD→SPEC |
 | `memory_hook` | Captura contexto da sessão para memória persistente |
+| `session_logger` | Registra métricas finais de custo/turns/duração por sessão |
+| `checkpoint` | Save/restore automático do estado da sessão |
+| `session_lifecycle` | Injeção de memórias no início, config snapshot ao encerrar |
 
 ---
 
