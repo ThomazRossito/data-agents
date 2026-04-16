@@ -4,7 +4,7 @@
 > Em vez de delegações isoladas, o Supervisor orquestra **workflows** onde a saída
 > de um agente alimenta automaticamente o próximo.
 >
-> **Inspiração:** BMAD Party Mode — "multiple agents working in concert on a shared
+> **Inspiração:** DOMA Party Mode — "multiple agents working in concert on a shared
 > objective, with defined handoff points."
 
 ---
@@ -148,6 +148,7 @@ Restrições constitucionais: [regras relevantes de kb/constitution.md]
 | W5 | Agentes em etapas **independentes** podem ser executados em paralelo (ex: WF-03 etapa 4). |
 | W6 | O Supervisor **nunca** pula etapas do workflow. A ordem de handoff é determinística. |
 | W7 | Resultados de cada etapa são salvos em `output/` para rastreabilidade. |
+| W8 | **Workflow Context Cache**: antes do primeiro agente, o Supervisor compila `output/workflow-context/{wf_id}-context.md` com spec + regras constitucionais + sequência de handoff. Todos os agentes do workflow lêem este arquivo. |
 
 ### 3.2 Formato de Handoff
 

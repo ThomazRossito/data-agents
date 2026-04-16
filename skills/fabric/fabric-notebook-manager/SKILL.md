@@ -1,3 +1,9 @@
+---
+updated_at: "2026-04-16"
+source: firecrawl + knowledge-base
+status: current
+---
+
 # SKILL: fabric-notebook-manager
 
 > **Fonte:** Microsoft Fabric REST API (api.fabric.microsoft.com/v1)
@@ -37,6 +43,121 @@ em operacoes atomicas reutilizaveis. Cada operacao cuida internamente de:
 
 ---
 
+## Criacao de Notebooks via API
+
+Alem de editar notebooks existentes, e possivel criar notebooks diretamente via API usando
+`createItem` com o payload de definition incluido na requisicao.
+
+**Endpoint:**
+
+```
+POST /v1/workspaces/{workspaceId}/items
+```
+
+**Request body (criar notebook com definition inline):**
+
+```json
+{
+  "displayName": "meu_notebook_pipeline",
+  "type": "Notebook",
+  "definition": {
+    "format": "ipynb",
+    "parts": [
+      {
+        "path": "artifact/notebook-content.py",
+        "payload": "<base64-encoded-ipynb-json>",
+        "payloadType": "InlineBase64"
+      }
+    ]
+  }
+}
+```
+
+> **Nota sobre o `path`:** O campo `path` no payload de Notebook usa
+> `"artifact/notebook-content.py"` (prefixo `artifact/`). Ao fazer `getDefinition`
+> a API retorna o mesmo path. Mantenha consistencia ao reconstruir o payload para
+> `updateDefinition`.
+
+> **Nota sobre o `format`:** A partir de 2024, o parametro `format=ipynb` pode ser
+> passado como query string no `getDefinition` para garantir retorno no formato
+> Jupyter Notebook padrao: `POST /getDefinition?format=ipynb`
+
+**Exemplo Python -- criar notebook:**
+
+```python
+import base64
+import json
+import requests
+from azure.identity import DefaultAzureCredential
+
+def create_notebook(workspace_id: str, display_name: str, cells: list[dict]) -> str:
+    """
+    Cria um novo notebook Fabric com as celulas fornecidas.
+    Retorna o item_id do notebook criado.
+    """
+    credential = DefaultAzureCredential()
+    token = credential.get_token("https://api.fabric.microsoft.com/.default").token
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    # Montar o .ipynb
+    notebook_json = {
+        "nbformat": 4,
+        "nbformat_minor": 5,
+        "metadata": {
+            "language_info": {"name": "python"},
+            "kernel_info": {"name": "synapse_pyspark"},
+            "kernelspec": {
+                "display_name": "Synapse PySpark",
+                "language": "Python",
+                "name": "synapse_pyspark"
+            }
+        },
+        "cells": [_make_cell(c["source"], c.get("cell_type", "code")) for c in cells]
+    }
+
+    payload_b64 = base64.b64encode(
+        json.dumps(notebook_json, ensure_ascii=False).encode("utf-8")
+    ).decode("utf-8")
+
+    body = {
+        "displayName": display_name,
+        "type": "Notebook",
+        "definition": {
+            "format": "ipynb",
+            "parts": [
+                {
+                    "path": "artifact/notebook-content.py",
+                    "payload": payload_b64,
+                    "payloadType": "InlineBase64"
+                }
+            ]
+        }
+    }
+
+    resp = requests.post(
+        f"https://api.fabric.microsoft.com/v1/workspaces/{workspace_id}/items",
+        headers=headers,
+        json=body
+    )
+
+    if resp.status_code == 202:
+        # LRO -- aguardar
+        operation_url = resp.headers["Location"]
+        wait_for_lro(operation_url, headers)
+        # Recuperar o item criado
+        result_resp = requests.get(resp.headers.get("Location"), headers=headers)
+        result_resp.raise_for_status()
+        return result_resp.json().get("resourceLocation", "")
+
+    resp.raise_for_status()
+    return resp.json().get("id", "")
+```
+
+---
+
 ## Quick Start
 
 Exemplo mais comum -- adicionar uma celula de codigo PySpark ao final de um notebook:
@@ -56,6 +177,130 @@ add_cell(
 
 ---
 
+## Execucao de Notebooks via API (Run On-Demand)
+
+Para executar um notebook programaticamente (disparar uma run sem Scheduled Job):
+
+**Endpoint:**
+
+```
+POST /v1/workspaces/{workspaceId}/items/{itemId}/jobs/instances?jobType=RunNotebook
+```
+
+**Request body (opcional -- parametros do notebook):**
+
+```json
+{
+  "executionData": {
+    "parameters": {
+      "param_date": {
+        "value": "2026-04-16",
+        "type": "string"
+      },
+      "param_env": {
+        "value": "production",
+        "type": "string"
+      }
+    }
+  }
+}
+```
+
+**Resposta (202 -- job iniciado):**
+
+O header `Location` contem a URL para acompanhar o status da execucao:
+
+```
+Location: https://api.fabric.microsoft.com/v1/workspaces/{workspaceId}/items/{itemId}/jobs/instances/{jobInstanceId}
+```
+
+**Exemplo Python -- disparar e aguardar notebook:**
+
+```python
+import time
+import requests
+from azure.identity import DefaultAzureCredential
+
+def run_notebook(
+    workspace_id: str,
+    item_id: str,
+    parameters: dict | None = None,
+    timeout: int = 600
+) -> dict:
+    """
+    Dispara a execucao de um notebook e aguarda conclusao.
+    Retorna o resultado do job instance.
+
+    parameters: dict no formato {"nome_param": {"value": ..., "type": "string|int|bool|float"}}
+    """
+    credential = DefaultAzureCredential()
+    token = credential.get_token("https://api.fabric.microsoft.com/.default").token
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Content-Type": "application/json"
+    }
+
+    body = {}
+    if parameters:
+        body["executionData"] = {"parameters": parameters}
+
+    url = (
+        f"https://api.fabric.microsoft.com/v1/workspaces/{workspace_id}"
+        f"/items/{item_id}/jobs/instances?jobType=RunNotebook"
+    )
+    resp = requests.post(url, headers=headers, json=body)
+
+    if resp.status_code not in (200, 202):
+        resp.raise_for_status()
+
+    job_url = resp.headers.get("Location")
+    if not job_url:
+        return resp.json()
+
+    # Polling do status do job
+    start = time.time()
+    while time.time() - start < timeout:
+        job_resp = requests.get(job_url, headers=headers)
+        job_resp.raise_for_status()
+        job_data = job_resp.json()
+        status = job_data.get("status", "")
+
+        if status == "Completed":
+            return job_data
+        elif status in ("Failed", "Cancelled", "Deduped"):
+            raise RuntimeError(
+                f"Notebook run falhou com status '{status}': "
+                f"{job_data.get('failureReason', {}).get('message', 'sem detalhes')}"
+            )
+
+        retry_after = int(job_resp.headers.get("Retry-After", 10))
+        time.sleep(retry_after)
+
+    raise TimeoutError(f"Notebook run nao concluiu em {timeout} segundos")
+
+
+# Exemplo de uso:
+result = run_notebook(
+    workspace_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+    item_id="11111111-2222-3333-4444-555555555555",
+    parameters={
+        "param_date": {"value": "2026-04-16", "type": "string"},
+        "param_env": {"value": "production", "type": "string"}
+    }
+)
+print(result["status"])  # "Completed"
+```
+
+**Status possiveis do job:**
+- `NotStarted` -- aguardando alocacao de recursos
+- `InProgress` -- em execucao
+- `Completed` -- concluido com sucesso
+- `Failed` -- falhou (verificar `failureReason`)
+- `Cancelled` -- cancelado pelo usuario ou sistema
+- `Deduped` -- job duplicado descartado
+
+---
+
 ## Common Patterns
 
 ### 1. `list_cells` -- Listar celulas do notebook
@@ -70,7 +315,7 @@ Leitura somente. Executa apenas `getDefinition` + decode (sem escrita).
 | `item_id`      | str    | Sim         | ID do notebook (ou notebook_name)  |
 
 **Fluxo interno:**
-1. `GET /v1/workspaces/{workspaceId}/items/{itemId}/getDefinition`
+1. `POST /v1/workspaces/{workspaceId}/items/{itemId}/getDefinition?format=ipynb`
 2. Decodifica `definition.parts[].payload` de base64 para JSON
 3. Retorna lista de celulas com indice, tipo e preview do conteudo
 
@@ -274,3 +519,18 @@ replace_notebook_content(
 | **Conflito de edicao concorrente (409)** | Outro usuario ou processo editou o notebook entre `getDefinition` e `updateDefinition`. Re-execute a operacao (retry automatico com backoff). |
 | **Token expirado (401)** | Renove o Bearer token via Azure Identity / MSAL. Nunca hardcode tokens -- use Azure Key Vault ou Managed Identity. |
 | **Timeout no LRO** | O padrao e 120 segundos de polling. Para notebooks grandes (>50 celulas), aumente o timeout para 300 segundos. |
+| **Path incorreto no payload (400)** | Certifique-se de usar `"artifact/notebook-content.py"` como `path` (com prefixo `artifact/`). O path sem prefixo pode causar erro na API. |
+| **Notebook run nao aceita parametros (400)** | Parametros devem incluir o campo `type` explicitamente: `{"value": "x", "type": "string"}`. Tipos validos: `string`, `int`, `bool`, `float`. |
+
+---
+
+## Changelog
+
+### 2026-04-16 (refresh)
+- Adicionada secao **Criacao de Notebooks via API** com `createItem` + definition inline
+- Adicionada secao **Execucao de Notebooks via API (Run On-Demand)** com `jobs/instances?jobType=RunNotebook`, polling de status e parametrizacao
+- Atualizado endpoint de `getDefinition` com parametro `?format=ipynb` (recomendado desde 2024)
+- Corrigido `path` do payload para `"artifact/notebook-content.py"` (com prefixo `artifact/`)
+- Adicionados dois novos itens em Common Issues: path incorreto e parametros de run
+- Adicionado frontmatter com `updated_at`, `source` e `status`
+- Adicionado `Changelog` como secao permanente

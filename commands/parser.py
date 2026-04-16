@@ -5,14 +5,14 @@ Implementa:
   - Registry extensível de comandos com metadata
   - Parsing robusto com validação de argumentos
   - Help automático baseado no registry
-  - Integração com BMAD Method (Express, Full, Auto)
+  - Integração com DOMA (Data Orchestration Method for Agents) — modos Express, Full, Auto
 
 Uso:
     from commands.parser import parse_command, get_help_text
 
     result = parse_command("/sql SELECT * FROM tabela")
     if result:
-        print(result.agent, result.bmad_prompt)
+        print(result.agent, result.doma_prompt)
 """
 
 from dataclasses import dataclass
@@ -28,11 +28,11 @@ class CommandResult:
     agent: str | None
     """Nome do agente alvo (ex: 'sql-expert'). None para comandos internos."""
 
-    bmad_prompt: str
-    """Prompt BMAD formatado para enviar ao Supervisor."""
+    doma_prompt: str
+    """Prompt DOMA formatado para enviar ao Supervisor."""
 
-    bmad_mode: str
-    """Modo BMAD: 'express', 'full', 'auto' ou 'internal'."""
+    doma_mode: str
+    """Modo DOMA: 'express', 'full', 'auto' ou 'internal'."""
 
     display_message: str
     """Mensagem para exibir no console (Rich markup)."""
@@ -48,8 +48,8 @@ class CommandDefinition:
     agent: str | None
     """Agente alvo. None para comandos internos."""
 
-    bmad_mode: str
-    """Modo BMAD: 'express', 'full', 'auto' ou 'internal'."""
+    doma_mode: str
+    """Modo DOMA: 'express', 'full', 'auto' ou 'internal'."""
 
     description: str
     """Descrição para o help."""
@@ -58,7 +58,7 @@ class CommandDefinition:
     """Skills que o agente deve ler antes de executar."""
 
     prompt_template: str
-    """Template do prompt BMAD. {task} será substituído pela tarefa do usuário."""
+    """Template do prompt DOMA. {task} será substituído pela tarefa do usuário."""
 
     display_template: str
     """Template da mensagem de console. {agent} será substituído."""
@@ -70,14 +70,14 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
     "brief": CommandDefinition(
         name="brief",
         agent="business-analyst",
-        bmad_mode="full",
+        doma_mode="full",
         description=(
             "Processa transcript de reunião ou briefing e gera backlog estruturado (P0/P1/P2). "
             "Use antes do /plan quando o input for um documento bruto de negócio."
         ),
         skills=["templates/backlog.md"],
         prompt_template=(
-            "[BMAD INTAKE] Delegue IMEDIATAMENTE para business-analyst. "
+            "[DOMA INTAKE] Delegue IMEDIATAMENTE para business-analyst. "
             "NÃO crie PRD, NÃO peça aprovação neste momento. "
             "O agente deve: "
             "(1) Ler o template em `templates/backlog.md` para entender o formato de saída. "
@@ -92,62 +92,62 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
             "leia o arquivo com Read() antes de processar. "
             "Documento: {task}"
         ),
-        display_template="[bold blue]📋 [BMAD Intake] Processando documento com: {agent}[/bold blue]",
+        display_template="[bold blue]📋 [DOMA Intake] Processando documento com: {agent}[/bold blue]",
     ),
     "sql": CommandDefinition(
         name="sql",
         agent="sql-expert",
-        bmad_mode="express",
-        description="Envia tarefa SQL diretamente para o SQL Expert (BMAD Express).",
+        doma_mode="express",
+        description="Envia tarefa SQL diretamente para o SQL Expert (DOMA Express).",
         skills=["skills/sql_generation.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para sql-expert. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para sql-expert. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler as skills relevantes do seu Mapa de Skills "
             "antes de gerar código. Tarefa: {task}"
         ),
-        display_template="[bold yellow]🚀 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
     "spark": CommandDefinition(
         name="spark",
         agent="spark-expert",
-        bmad_mode="express",
-        description="Envia tarefa PySpark diretamente para o Spark Expert (BMAD Express).",
+        doma_mode="express",
+        description="Envia tarefa PySpark diretamente para o Spark Expert (DOMA Express).",
         skills=["skills/databricks/databricks-spark-declarative-pipelines/SKILL.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para spark-expert. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para spark-expert. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler as skills relevantes do seu Mapa de Skills "
             "antes de gerar código. Tarefa: {task}"
         ),
-        display_template="[bold yellow]🚀 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
     "pipeline": CommandDefinition(
         name="pipeline",
         agent="pipeline-architect",
-        bmad_mode="express",
-        description="Envia tarefa de pipeline para o Pipeline Architect (BMAD Express).",
+        doma_mode="express",
+        description="Envia tarefa de pipeline para o Pipeline Architect (DOMA Express).",
         skills=["skills/pipeline_design.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para pipeline-architect. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para pipeline-architect. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler as skills relevantes do seu Mapa de Skills "
             "antes de gerar código. Tarefa: {task}"
         ),
-        display_template="[bold yellow]🚀 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
     "fabric": CommandDefinition(
         name="fabric",
         agent="pipeline-architect",
-        bmad_mode="express",
-        description="Envia tarefa Fabric para o agente correto (BMAD Express). Roteia automaticamente para semantic-modeler quando a tarefa envolve Semantic Model, Direct Lake, DAX ou Power BI.",
+        doma_mode="express",
+        description="Envia tarefa Fabric para o agente correto (DOMA Express). Roteia automaticamente para semantic-modeler quando a tarefa envolve Semantic Model, Direct Lake, DAX ou Power BI.",
         skills=[
             "skills/fabric/fabric-medallion/SKILL.md",
             "skills/fabric/fabric-direct-lake/SKILL.md",
             "skills/fabric/fabric-data-factory/SKILL.md",
         ],
         prompt_template=(
-            "[BMAD EXPRESS — FABRIC] Avalie a tarefa abaixo e delegue IMEDIATAMENTE ao agente correto. "
+            "[DOMA EXPRESS — FABRIC] Avalie a tarefa abaixo e delegue IMEDIATAMENTE ao agente correto. "
             "NÃO crie PRD, NÃO peça aprovação. "
             "\n\n⛔ RESTRIÇÃO ABSOLUTA DE PLATAFORMA:\n"
             "Este comando é exclusivo para Microsoft Fabric. "
@@ -166,16 +166,16 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
             "DELEGAR para pipeline-architect ou sql-expert conforme a natureza da tarefa.\n"
             "\nTarefa: {task}"
         ),
-        display_template="[bold yellow]🚀 [BMAD Express] Direcionando para: {agent} (Fabric)[/bold yellow]",
+        display_template="[bold yellow]🚀 [DOMA Express] Direcionando para: {agent} (Fabric)[/bold yellow]",
     ),
     "plan": CommandDefinition(
         name="plan",
         agent=None,
-        bmad_mode="full",
-        description="Inicia o fluxo BMAD completo com PRD e aprovação.",
+        doma_mode="full",
+        description="Inicia o fluxo DOMA completo com PRD e aprovação.",
         skills=[],
         prompt_template=(
-            "Como Product Manager/Arquiteto (BMAD Passo 1), você deve criar um PRD completo para a tarefa abaixo. "
+            "Como Product Manager/Arquiteto (DOMA Passo 1), você deve criar um PRD completo para a tarefa abaixo. "
             "ANTES de escrever qualquer linha do PRD, use a ferramenta Read para ler os skills relevantes: "
             "(1) Identifique o tipo de tarefa (SDP, Structured Streaming, Jobs, Fabric Lakehouse, RTI, etc). "
             "(2) Consulte o Mapa de Skills no seu system prompt para decidir quais SKILL.md ler. "
@@ -192,12 +192,12 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
             "`output/specs/spec_<nome_descritivo>.md`. "
             "Tarefa: {task}"
         ),
-        display_template="[bold purple]🗺️ [BMAD Agile] Iniciando Context Engineering — lendo skills relevantes...[/bold purple]",
+        display_template="[bold purple]🗺️ [DOMA Agile] Iniciando Context Engineering — lendo skills relevantes...[/bold purple]",
     ),
     "health": CommandDefinition(
         name="health",
         agent=None,
-        bmad_mode="internal",
+        doma_mode="internal",
         description="Verifica a conectividade com as plataformas configuradas.",
         skills=[],
         prompt_template=(
@@ -213,7 +213,7 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
     "status": CommandDefinition(
         name="status",
         agent=None,
-        bmad_mode="internal",
+        doma_mode="internal",
         description="Lista PRDs gerados e status da sessão atual.",
         skills=[],
         prompt_template=(
@@ -228,7 +228,7 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
     "review": CommandDefinition(
         name="review",
         agent=None,
-        bmad_mode="internal",
+        doma_mode="internal",
         description="Revisita um PRD existente sem recriar do zero.",
         skills=[],
         prompt_template=(
@@ -244,64 +244,77 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
     "dbt": CommandDefinition(
         name="dbt",
         agent="dbt-expert",
-        bmad_mode="express",
-        description="Envia tarefa dbt diretamente para o dbt Expert (BMAD Express). Use para models, testes, snapshots, seeds, documentação e boas práticas de projeto dbt.",
+        doma_mode="express",
+        description="Envia tarefa dbt diretamente para o dbt Expert (DOMA Express). Use para models, testes, snapshots, seeds, documentação e boas práticas de projeto dbt.",
         skills=["kb/sql-patterns/index.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para dbt-expert. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para dbt-expert. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler `kb/sql-patterns/index.md` antes de executar "
             "e a buscar documentação atualizada via context7 se necessário. "
             "Tarefa: {task}"
         ),
-        display_template="[bold yellow]🛠️ [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]🛠️ [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
     "quality": CommandDefinition(
         name="quality",
         agent="data-quality-steward",
-        bmad_mode="express",
-        description="Envia tarefa de qualidade de dados para o Data Quality Steward (BMAD Express).",
+        doma_mode="express",
+        description="Envia tarefa de qualidade de dados para o Data Quality Steward (DOMA Express).",
         skills=["kb/data-quality/index.md", "skills/data_quality.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para data-quality-steward. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para data-quality-steward. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler `kb/data-quality/index.md` antes de executar. "
             "Tarefa: {task}"
         ),
-        display_template="[bold yellow]🔍 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]🔍 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
     "governance": CommandDefinition(
         name="governance",
         agent="governance-auditor",
-        bmad_mode="express",
-        description="Envia tarefa de governança para o Governance Auditor (BMAD Express).",
+        doma_mode="express",
+        description="Envia tarefa de governança para o Governance Auditor (DOMA Express).",
         skills=["kb/governance/index.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para governance-auditor. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para governance-auditor. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler `kb/governance/index.md` antes de executar. "
             "Tarefa: {task}"
         ),
-        display_template="[bold yellow]🔐 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]🔐 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
     "semantic": CommandDefinition(
         name="semantic",
         agent="semantic-modeler",
-        bmad_mode="express",
-        description="Envia tarefa de modelagem semântica para o Semantic Modeler (BMAD Express).",
+        doma_mode="express",
+        description="Envia tarefa de modelagem semântica para o Semantic Modeler (DOMA Express).",
         skills=["kb/semantic-modeling/index.md", "skills/fabric/fabric-direct-lake/SKILL.md"],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para semantic-modeler. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para semantic-modeler. "
             "Não crie PRD, não peça aprovação. "
             "Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. "
             "Tarefa: {task}"
         ),
-        display_template="[bold yellow]📊 [BMAD Express] Direcionando para: {agent}[/bold yellow]",
+        display_template="[bold yellow]📊 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
+    ),
+    "party": CommandDefinition(
+        name="party",
+        agent=None,
+        doma_mode="internal",
+        description=(
+            "Convoca múltiplos agentes especialistas em paralelo para perspectivas independentes. "
+            "Grupos: padrão (sql+spark+pipeline) | --quality | --arch | --full. "
+            "Ou especifique agentes: /party sql-expert spark-expert <query>."
+        ),
+        skills=[],
+        prompt_template="{task}",
+        display_template="[bold magenta]🎉 [DOMA Party Mode] Convocando agentes em paralelo...[/bold magenta]",
     ),
     "memory": CommandDefinition(
         name="memory",
         agent=None,
-        bmad_mode="internal",
+        doma_mode="internal",
         description=(
             "Gerencia o sistema de memória persistente. "
             "Subcomandos: status, flush, compile, lint, search <query>."
@@ -313,7 +326,7 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
     "geral": CommandDefinition(
         name="geral",
         agent="geral",
-        bmad_mode="express",
+        doma_mode="express",
         description=(
             "Pergunta conversacional respondida pelo Claude Haiku. "
             "Ideal para dúvidas técnicas, conceitos, explicações e perguntas gerais de dados. "
@@ -321,7 +334,7 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         ),
         skills=[],
         prompt_template=(
-            "[BMAD EXPRESS] Delegue IMEDIATAMENTE para geral. "
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para geral. "
             "NÃO leia arquivos, NÃO use ferramentas, NÃO consulte KBs. "
             "O agente responde do próprio conhecimento. Não crie PRD, não peça aprovação. "
             "Pergunta: {task}"
@@ -357,8 +370,8 @@ def parse_command(user_input: str) -> CommandResult | None:
     return CommandResult(
         command=f"/{command_name}",
         agent=definition.agent,
-        bmad_prompt=definition.prompt_template.format(task=task),
-        bmad_mode=definition.bmad_mode,
+        doma_prompt=definition.prompt_template.format(task=task),
+        doma_mode=definition.doma_mode,
         display_message=definition.display_template.format(agent=definition.agent or "supervisor"),
     )
 
@@ -377,7 +390,7 @@ def get_help_text() -> str:
             "express": "[yellow]Express[/yellow]",
             "full": "[purple]Full[/purple]",
             "internal": "[cyan]Internal[/cyan]",
-        }.get(definition.bmad_mode, definition.bmad_mode)
+        }.get(definition.doma_mode, definition.doma_mode)
 
         lines.append(
             f"  [bold green]/{name:<12}[/bold green] {mode_badge:<20} {definition.description}"

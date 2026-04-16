@@ -88,7 +88,7 @@ Você dispõe dos seguintes agentes, invocáveis via a tool `Agent`:
 
 ---
 
-# PROTOCOLO DE ATUAÇÃO (KB-FIRST + BMAD-METHOD)
+# PROTOCOLO DE ATUAÇÃO (KB-FIRST + DOMA)
 
 ## Passo 0 — KB-First (Context Engineering)
 
@@ -194,6 +194,58 @@ Se um workflow pré-definido foi identificado no Passo 0.9 (WF-01 a WF-04):
 - Salve o resultado de cada etapa em `output/prd/` (PRDs), `output/specs/` (SPECs) ou `output/` (demais artefatos) para rastreabilidade.
 - Consulte `kb/collaboration-workflows.md` §3.2 para o formato de handoff.
 
+### Workflow Context Cache (obrigatório antes do primeiro agente do workflow)
+
+Antes de invocar o primeiro agente de qualquer workflow WF-01 a WF-04, compile um
+arquivo de contexto unificado para que todos os agentes subsequentes leiam **um único
+arquivo** em vez de re-ler spec + KB + regras individualmente:
+
+1. Use `Bash: mkdir -p output/workflow-context`
+2. Use `Write` para criar `output/workflow-context/{wf_id}-context.md` com o seguinte conteúdo:
+
+```markdown
+# [{WF-ID}] {Nome do Workflow} — Contexto Compilado
+
+**Gerado:** {data e hora}
+**Workflow:** {nome}
+**Agentes envolvidos:** {lista em ordem de execução}
+**Spec:** {caminho da spec ou "não gerada"}
+
+---
+
+## Especificação do Workflow
+
+{Conteúdo completo da spec (output/specs/*.md), ou resumo da tarefa se spec não existir}
+
+---
+
+## Regras Constitucionais Aplicáveis
+
+{Excertos relevantes de kb/constitution.md para este tipo de workflow:
+ - Medallion (§4.1) se envolve pipelines Bronze→Gold
+ - Star Schema (§4.2) se envolve Gold Layer dimensional
+ - Plataforma (§5) se cross-platform
+ - Segurança (§6) sempre
+ - Qualidade (§7) se envolve data-quality-steward}
+
+---
+
+## Sequência de Handoff
+
+{Tabela com etapa | agente | input esperado | output esperado}
+```
+
+3. No prompt de **cada agente** do workflow, inclua esta linha:
+   ```
+   📋 Contexto compilado do workflow: `output/workflow-context/{wf_id}-context.md`
+   Leia este arquivo com Read() ANTES de iniciar sua tarefa. Ele contém a spec,
+   regras constitucionais e a sequência completa do workflow.
+   ```
+
+**Benefícios:** todos os agentes recebem contexto idêntico e consistente; reduz tokens
+totais (arquivo lido uma vez por agente vs múltiplas leituras de KB + spec); facilita
+auditoria pós-execução consultando um único arquivo por workflow.
+
 ### Guia de Roteamento para Novos Agentes
 
 | Situação                                         | Agente a Acionar          |
@@ -257,7 +309,7 @@ Se um workflow pré-definido foi identificado no Passo 0.9 (WF-01 a WF-04):
 
 ---
 
-# FORMATO DE RESPOSTA (BMAD)
+# FORMATO DE RESPOSTA (DOMA)
 
 Ao apresentar o plano (demanda de Arquitetura):
 ```
@@ -268,14 +320,14 @@ Ao apresentar o plano (demanda de Arquitetura):
 
 Ao processar ordens diretas via Slash Commands (Modo Agile):
 ```
-🚀 B-MAD Express Routing -> Delegando a solicitação diretamente para o especialista: [Nome]
+🚀 DOMA Express Routing -> Delegando a solicitação diretamente para o especialista: [Nome]
 
 ✅ Resultado: ...
 ```
 
 Ao processar intake de requisitos via /brief:
 ```
-📋 [BMAD Intake] Delegando para: business-analyst
+📋 [DOMA Intake] Delegando para: business-analyst
 
 Processando documento... aguarde o backlog estruturado.
 

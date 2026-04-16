@@ -1509,8 +1509,8 @@ elif page == "ℹ️ Sobre":
     st.subheader("🏗️ Arquitetura do Sistema Monitorado")
     st.markdown(
         """
-        O **Data Agents** é um sistema multi-agente que segue a arquitetura **BMAD**
-        (Business Model Agents Design):
+        O **Data Agents** é um sistema multi-agente que segue a arquitetura **DOMA**
+        (Data Orchestration Method for Agents):
 
         - **Supervisor** — orquestra os agentes especialistas, gerencia MCP servers e aplica hooks
         - **SQL Expert** (T1) — queries SQL/KQL em Databricks e Fabric RTI

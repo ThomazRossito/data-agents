@@ -97,7 +97,7 @@ async def log_cost_generating_operations(
 def get_session_cost_summary() -> dict[str, Any]:
     """
     Retorna resumo de custos da sessão atual.
-    Útil para o comando /status ou para o template de síntese do BMAD.
+    Útil para o comando /status ou para o template de síntese do DOMA.
     """
     summary: dict[str, Any] = {"total_operations": 0, "by_tier": {}, "by_tool": {}}
 

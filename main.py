@@ -56,6 +56,7 @@ from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
 from agents.loader import inject_memory_context
 from commands.geral import run_geral_query
+from commands.party import run_party_query, parse_party_args
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
@@ -147,6 +148,7 @@ def print_banner() -> None:
         "[bold]/pipeline[/bold] | [bold]/fabric[/bold] | [bold]/semantic[/bold] | "
         "[bold]/quality[/bold] | [bold]/governance[/bold] | "
         "[bold]/health[/bold] | [bold]/status[/bold] | [bold]/review[/bold] | "
+        "[bold magenta]/party[/bold magenta] [magenta](multi-agente paralelo)[/magenta] | "
         "[bold cyan]/geral[/bold cyan] [cyan](Haiku)[/cyan] | "
         "[bold cyan]/memory[/bold cyan] [cyan](memória persistente)[/cyan][/dim]\n"
     )
@@ -460,6 +462,75 @@ async def _stream_geral(user_message: str, session_type: str = "geral") -> dict[
     return metrics
 
 
+async def _stream_party(user_input: str) -> dict[str, float]:
+    """
+    DOMA Party Mode — spawna múltiplos agentes em paralelo e exibe perspectivas independentes.
+
+    Cada agente recebe a mesma query e responde com seu próprio contexto e expertise,
+    sem influência dos demais. O resultado é apresentado com cabeçalho por agente.
+
+    Args:
+        user_input: Input completo do usuário incluindo /party e flags.
+
+    Returns:
+        Dict com métricas consolidadas: {"cost": float}.
+    """
+    agent_names, query = parse_party_args(user_input)
+
+    if not query.strip():
+        console.print(
+            "[yellow]Party Mode: forneça uma query após o comando.\n"
+            "Exemplos:\n"
+            "  /party qual a diferença entre Delta Lake e Parquet?\n"
+            "  /party --quality como validar dados incrementais?\n"
+            "  /party --arch descreva a arquitetura Medallion[/yellow]\n"
+        )
+        return {"cost": 0.0}
+
+    console.print(
+        f"[bold magenta]🎉 [DOMA Party Mode][/bold magenta] "
+        f"Convocando: [yellow]{', '.join(agent_names)}[/yellow]"
+    )
+    console.print(f"[dim]Query: {query[:120]}{'...' if len(query) > 120 else ''}[/dim]\n")
+
+    # Spinner global enquanto todos os agentes processam em paralelo
+    spinner = Spinner("dots", text=Text("Agentes processando em paralelo...", style="dim"))
+    live = Live(spinner, console=console, refresh_per_second=10, transient=True)
+    live.start()
+
+    try:
+        results = await run_party_query(query, agent_names)
+    finally:
+        if live.is_started:
+            live.stop()
+
+    # Exibe cada resposta com cabeçalho do agente
+    total_cost = 0.0
+    agent_icons = {
+        "sql-expert": "🗄️",
+        "spark-expert": "⚡",
+        "pipeline-architect": "🏗️",
+        "data-quality-steward": "🔍",
+        "governance-auditor": "🔐",
+        "semantic-modeler": "📊",
+    }
+
+    for name, text, cost in results:
+        icon = agent_icons.get(name, "🤖")
+        console.print(f"[bold yellow]{icon} {name}:[/bold yellow]")
+        if text.strip():
+            console.print(Markdown(text))
+        else:
+            console.print("[dim]_Agente não retornou resposta._[/dim]")
+        console.print()
+        total_cost += cost
+
+    console.print(
+        f"[dim]💰 Party Mode — {len(results)} agentes | Custo total: ${total_cost:.5f}[/dim]\n"
+    )
+    return {"cost": total_cost}
+
+
 async def run_interactive() -> None:
     """Loop interativo com histórico de sessão mantido entre mensagens."""
 
@@ -667,19 +738,19 @@ async def run_interactive() -> None:
 
                     console.print()
 
-                    # --- BMAD-METHOD: Slash Commands Parsing ---
+                    # --- DOMA: Slash Commands Parsing ---
                     command_result = parse_command(user_input)
 
                     if command_result:
-                        bmad_prompt = command_result.bmad_prompt
+                        doma_prompt = command_result.doma_prompt
                         _session_type = command_result.command.lstrip("/")
                         console.print(command_result.display_message)
                         logger.info(
                             f"Slash command: {command_result.command} "
-                            f"(mode={command_result.bmad_mode}, agent={command_result.agent})"
+                            f"(mode={command_result.doma_mode}, agent={command_result.agent})"
                         )
                     else:
-                        bmad_prompt = user_input
+                        doma_prompt = user_input
                         _session_type = "interactive"
 
                     # --- /memory → Gerenciamento local de memória, sem Supervisor ---
@@ -694,8 +765,15 @@ async def run_interactive() -> None:
                         _session_state["total_cost"] += result_metrics.get("cost", 0)
                         continue
 
-                    # Ativa thinking apenas para BMAD Full (/plan) — planejamento complexo
-                    if command_result and command_result.bmad_mode == "full":
+                    # --- /party → DOMA Party Mode: múltiplos agentes em paralelo ---
+                    if command_result and command_result.command == "/party":
+                        result_metrics = await _stream_party(user_input)
+                        _session_state["last_prompt"] = user_input
+                        _session_state["total_cost"] += result_metrics.get("cost", 0)
+                        continue
+
+                    # Ativa thinking apenas para DOMA Full (/plan) — planejamento complexo
+                    if command_result and command_result.doma_mode == "full":
                         options.thinking = {"type": "enabled", "budget_tokens": 8000}
                     else:
                         options.thinking = {"type": "disabled"}
@@ -704,7 +782,7 @@ async def run_interactive() -> None:
                     if settings.memory_enabled and settings.memory_retrieval_enabled:
                         try:
                             enriched_prompt = inject_memory_context(
-                                query=bmad_prompt,
+                                query=doma_prompt,
                                 system_prompt=options.system_prompt or "",
                             )
                             if enriched_prompt != (options.system_prompt or ""):
@@ -714,13 +792,13 @@ async def run_interactive() -> None:
                             logger.debug(f"Memory retrieval ignorado: {e}")
 
                     # --- Enviar para o Supervisor e processar com feedback visual ---
-                    await client.query(bmad_prompt)
+                    await client.query(doma_prompt)
                     result_metrics = await _stream_response(
-                        client, prompt=bmad_prompt, session_type=_session_type
+                        client, prompt=doma_prompt, session_type=_session_type
                     )
 
                     # Atualizar estado da sessão para checkpoint
-                    _session_state["last_prompt"] = bmad_prompt
+                    _session_state["last_prompt"] = doma_prompt
                     _session_state["total_cost"] += result_metrics.get("cost", 0)
                     _session_state["total_turns"] += result_metrics.get("turns", 0)
 

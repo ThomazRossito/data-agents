@@ -286,7 +286,7 @@ MEMORY_CAPTURE_ENABLED=true
 | `/pipeline <tarefa>` | pipeline-architect | Pipeline ETL direto |
 | `/dbt <tarefa>` | dbt-expert | dbt Core direto: models, testes, snapshots, docs |
 | `/fabric <tarefa>` | pipeline-architect | Foco em Fabric |
-| `/plan <objetivo>` | Supervisor + BMAD Full | Planejamento com thinking habilitado (8k tokens) |
+| `/plan <objetivo>` | Supervisor + DOMA Full | Planejamento com thinking habilitado (8k tokens) |
 | `/quality <tarefa>` | data-quality-steward | Qualidade de dados direta |
 | `/governance <tarefa>` | governance-auditor | Governança/auditoria direta |
 | `/semantic <tarefa>` | semantic-modeler | Modelagem semântica direta |
@@ -294,6 +294,7 @@ MEMORY_CAPTURE_ENABLED=true
 | `/health` | — | Status das plataformas configuradas |
 | `/status` | — | Estado da sessão atual |
 | `/memory <query>` | — | Consulta memória persistente |
+| `/party <query>` | — | Multi-agente paralelo: perspectivas independentes (flags: --quality, --arch, --full) |
 | `/geral <pergunta>` | — | Resposta direta sem Supervisor (zero agentes, ~95% mais barato) |
 
 ---

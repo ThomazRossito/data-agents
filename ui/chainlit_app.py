@@ -71,7 +71,7 @@ Plataformas alvo: Databricks (Unity Catalog, DLT, LakeFlow) + Microsoft Fabric.
 - agents/supervisor.py — orquestra agentes + MCP + hooks
 - mcp_servers/         — configuração dos MCP servers por plataforma
 - config/settings.py   — Pydantic BaseSettings + credenciais
-- commands/parser.py   — registry de slash commands BMAD
+- commands/parser.py   — registry de slash commands DOMA
 - hooks/               — PreToolUse / PostToolUse hooks
 - kb/                  — Knowledge Bases por domínio
 - tests/               — pytest (mínimo 80% cobertura)
@@ -486,7 +486,7 @@ async def _activate_supervisor() -> None:
                 "✅ **Modo: Data Agents** ativado.\n\n"
                 f"{_commands_help_text()}\n\n"
                 "---\n"
-                "💡 **Dica:** Use `/plan <objetivo>` para o fluxo completo BMAD com PRD e aprovação.\n"
+                "💡 **Dica:** Use `/plan <objetivo>` para o fluxo completo DOMA com PRD e aprovação.\n"
                 f"Digite `/modo` a qualquer momento para trocar de modo.{warm_note}"
             )
         ).send()
@@ -577,17 +577,17 @@ async def _handle_supervisor(user_input: str) -> None:
 
     # Parse de slash command
     command_result = parse_command(user_input)
-    prompt = command_result.bmad_prompt if command_result else user_input
+    prompt = command_result.doma_prompt if command_result else user_input
 
-    # Ajusta thinking: ativo apenas para BMAD Full (/plan, /brief)
-    enable_thinking = command_result is not None and command_result.bmad_mode == "full"
+    # Ajusta thinking: ativo apenas para DOMA Full (/plan, /brief)
+    enable_thinking = command_result is not None and command_result.doma_mode == "full"
     options.thinking = (
         {"type": "enabled", "budget_tokens": 8000} if enable_thinking else {"type": "disabled"}
     )
 
-    # Badge de modo BMAD
+    # Badge de modo DOMA
     if command_result:
-        mode_badge = "🗺️ BMAD Full" if enable_thinking else "🚀 BMAD Express"
+        mode_badge = "🗺️ DOMA Full" if enable_thinking else "🚀 DOMA Express"
         agent_label = f" → `{command_result.agent}`" if command_result.agent else ""
         await cl.Message(content=f"*{mode_badge}{agent_label}*", author="Sistema").send()
 

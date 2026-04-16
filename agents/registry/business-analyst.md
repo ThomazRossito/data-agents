@@ -130,7 +130,7 @@ Próximos passos:
 - Identificar domínios técnicos de dados (Databricks, Fabric, pipelines, modelos).
 - Priorizar itens de backlog com critérios claros e justificados.
 - Detectar lacunas e perguntas em aberto que bloqueariam a execução.
-- Gerar backlog estruturado no formato compatível com o fluxo BMAD `/plan`.
+- Gerar backlog estruturado no formato compatível com o fluxo DOMA `/plan`.
 
 ---
 

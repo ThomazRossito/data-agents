@@ -894,14 +894,14 @@ st.session_state.messages.append({"role": "user", "content": final_input})
 with st.chat_message("user"):
     st.markdown(final_input)
 
-# Determina modo BMAD e monta prompt
+# Determina modo DOMA e monta prompt
 command_result = parse_command(final_input)
-enable_thinking = command_result is not None and command_result.bmad_mode == "full"
-bmad_prompt = command_result.bmad_prompt if command_result else final_input
+enable_thinking = command_result is not None and command_result.doma_mode == "full"
+doma_prompt = command_result.doma_prompt if command_result else final_input
 
 # Badge de modo
 if command_result:
-    mode_label = "🗺️ BMAD Full (planejamento)" if enable_thinking else "🚀 BMAD Express"
+    mode_label = "🗺️ DOMA Full (planejamento)" if enable_thinking else "🚀 DOMA Express"
     agent_label = f"→ `{command_result.agent}`" if command_result.agent else ""
     st.caption(f"{mode_label} {agent_label}")
 
@@ -935,7 +935,7 @@ with st.chat_message("assistant"):
     if is_geral:
         # Bypass do Supervisor — chama Haiku diretamente (~$0.002 vs ~$0.15 com Supervisor)
         with st.spinner("💬 Haiku pensando..."):
-            result = _run_geral(bmad_prompt)
+            result = _run_geral(doma_prompt)
 
         if result["error"]:
             response_text = f"❌ **Erro:** {result['error']}"
@@ -951,7 +951,7 @@ with st.chat_message("assistant"):
         # _run_agent() retorna imediatamente; a fila de tokens é consumida enquanto
         # o status box mostra os eventos de progresso (agentes + tools).
         result, token_queue = _run_agent(
-            bmad_prompt, enable_thinking=enable_thinking, session_type=_session_type
+            doma_prompt, enable_thinking=enable_thinking, session_type=_session_type
         )
 
         # st.status() com progresso dos agentes (roda em paralelo ao stream de texto)

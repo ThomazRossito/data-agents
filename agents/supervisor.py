@@ -18,7 +18,7 @@ Arquitetura de Agentes:
   seguindo o template em agents/registry/_template.md.
 
 Modos de thinking:
-  - BMAD Full (/plan): thinking enabled com budget de 8000 tokens — para planejamento complexo
+  - DOMA Full (/plan): thinking enabled com budget de 8000 tokens — para planejamento complexo
   - Demais modos: thinking disabled — economiza custo/latência em tarefas pontuais
 """
 
@@ -56,13 +56,13 @@ def build_supervisor_options(
         platforms: Plataformas MCP a ativar. None = detecta por credenciais disponíveis.
                    Opções: "databricks", "fabric", "fabric_rti"
         enable_thinking: Se True, ativa thinking com budget de 8000 tokens.
-                         Use apenas para BMAD Full (/plan) — tarefas de planejamento complexo.
+                         Use apenas para DOMA Full (/plan) — tarefas de planejamento complexo.
                          False por padrão para economizar custo e latência.
 
     Returns:
         ClaudeAgentOptions configurado e pronto para uso com query() ou ClaudeSDKClient.
     """
-    # Thinking: ativo apenas quando explicitamente solicitado (modo BMAD Full)
+    # Thinking: ativo apenas quando explicitamente solicitado (modo DOMA Full)
     # Typed as Any because the SDK union (ThinkingConfigEnabled | ThinkingConfigDisabled | ...)
     # is not directly importable here without creating a hard dependency on SDK internals.
     thinking_config: Any = (

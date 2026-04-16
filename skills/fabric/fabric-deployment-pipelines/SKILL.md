@@ -1,7 +1,12 @@
+---
+updated_at: 2026-04-16
+source: firecrawl + skill-cross-reference
+---
+
 # SKILL: fabric-deployment-pipelines
 
 > **Fonte:** Microsoft Fabric REST API (api.fabric.microsoft.com/v1)
-> **Atualizado:** Abril 2026
+> **Atualizado:** 2026-04-16
 > **Uso:** Leia este arquivo ANTES de gerenciar pipelines de deploy Fabric via REST API.
 
 ---
@@ -30,6 +35,33 @@ Esta skill encapsula o ciclo completo de CI/CD:
 - Atribuicoes de papel para gerenciar acesso ao pipeline
 
 **Resultado:** Deploy CI/CD completo em 1-2 chamadas encapsuladas (criar pipeline + deploy).
+
+---
+
+## Deployment Pipelines vs Git Integration — Quando Usar Cada Um
+
+> Esta decisao e recorrente. Use a tabela abaixo antes de escolher a abordagem.
+
+| Criterio | Deployment Pipelines | Git Integration |
+|----------|---------------------|-----------------|
+| **Objetivo principal** | Promover conteudo entre ambientes (Dev→Test→Prod) | Versionar conteudo no Git (GitHub/ADO) |
+| **Controle de versao** | Nao (sem historico Git) | Sim (commits, branches, PRs) |
+| **Rastreabilidade de mudancas** | Limitada (historico de deploys interno) | Completa (Git log, diff, blame) |
+| **Deploy entre workspaces** | Sim (nativo) | Nao (exige automacao extra) |
+| **Resolucao de conflito** | PreferRemote / PreferWorkspace | PreferRemote / PreferWorkspace |
+| **Automacao CI/CD** | Sim (REST API, LRO) | Sim (REST API, LRO) |
+| **Deployment Rules** | Sim (regras por item/stage) | Nao (Git nao tem conceito equivalente) |
+| **Rollback** | Via historico de operacoes + re-deploy | Via `git revert` + `updateFromGit` |
+| **Requer Git configurado** | Nao | Sim |
+| **Ideal para** | Equipes com workspaces Dev/Test/Prod separados | Equipes com fluxo de PR e code review |
+
+**Regra do projeto:** Use Deployment Pipelines quando o fluxo e workspace-to-workspace.
+Use Git Integration quando o fluxo e workspace-to-repo (code review, auditoria, backup).
+
+**A partir de 2025H2 (integracao combinada):** Deployment Pipelines podem gerar commits
+automaticos em ADO/GitHub ao promover entre stages (dev->test->prod). Para habilitar, configure
+Git Integration no workspace de destino antes de executar o deploy. O commit e gerado com a
+nota do deploy como mensagem.
 
 ---
 
@@ -193,6 +225,25 @@ result = deploy_stage_content(
 )
 ```
 
+**Exemplo - Deploy com resolucao de conflito:**
+
+```python
+from deployment_pipelines import deploy_stage_content
+
+result = deploy_stage_content(
+    pipeline="MyPipeline",
+    source_stage="Dev",
+    target_stage="Stage",
+    options={
+        "conflictResolution": {
+            "conflictResolutionPolicy": "PreferRemote"
+        },
+        "allowCrossRegionDeployment": False
+    },
+    note="Deploy com sobrescrita de conflitos"
+)
+```
+
 ---
 
 ### 4. `list_deployment_pipeline_operations` -- Monitorar historico
@@ -255,6 +306,224 @@ add_deployment_pipeline_role_assignment(
 
 ---
 
+## Deployment Rules
+
+Deployment Rules permitem sobrescrever configuracoes de items especificos no estagios destino
+sem alterar o artefato no estagios origem. Sao configuradas por item e por stage via UI ou REST.
+
+### Casos de Uso Tipicos
+
+- Apontar DataSource de conexao para ambiente correto (Dev DB -> Prod DB)
+- Alterar parametros de Lakehouse/Warehouse entre ambientes
+- Sobrescrever workspace IDs referenciados em Semantic Models
+
+### Como Funcionam
+
+1. Item e deployado normalmente do estagio origem para destino
+2. Deployment Rule e aplicada **pos-deploy** no estagios destino
+3. Item no destino reflete a regra; item na origem permanece inalterado
+
+### Tipos de Regras Suportadas
+
+| Tipo de Item | Configuracao Disponivel |
+|---|---|
+| Semantic Model | Data source connection (servidor, banco, credencial) |
+| Report | Semantic model vinculado (trocar modelo por ambiente) |
+| Dataflow Gen2 | Connection string e parametros |
+| Data Pipeline | Linked service e parametros |
+
+### Boas Praticas de Deployment Rules
+
+- Configure Rules antes do primeiro deploy entre ambientes.
+- Nao dependa de nomes de workspace nos parametros — use IDs.
+- Para Semantic Models: use `DirectQuery` parametrizado ou `connection strings` que podem ser
+  sobrescritas por Rule, nunca hardcode de server/database no modelo.
+- Documente as Rules no campo `note` do deploy para auditoria.
+
+> As Deployment Rules sao configuradas via UI do Fabric (menu de cada stage) ou via REST API.
+> Nao existe endpoint direto para criar Rules programaticamente na v1 da API; use a UI para
+> configuracao inicial e REST API para execucao dos deploys.
+
+---
+
+## Deployment Notes — Boas Praticas
+
+O campo `note` no payload de deploy e armazenado no historico de operacoes e serve como
+auditoria de cada promocao. Use-o consistentemente.
+
+### Formato Recomendado
+
+```
+[AMBIENTE] [TIPO] [VERSAO/SPRINT] — [DESCRICAO BREVE]
+```
+
+**Exemplos:**
+
+```
+DEV->TEST Sprint-23 — Novos relatorios de qualidade de dados
+TEST->PROD v2.4.1 — Deploy apos aprovacao QA em 2026-04-15
+DEV->TEST Hotfix — Correcao urgente no pipeline de ingestao
+```
+
+### Por que importa
+
+- O campo `note` aparece no historico de operacoes (`GET /operations`)
+- E a unica descricao disponivel para auditores revisando `list_deployment_pipeline_operations`
+- A partir de 2025H2, se Git Integration estiver configurada no workspace destino, a `note`
+  vira a mensagem do commit automatico gerado pelo deploy
+
+---
+
+## Rollback via Historico de Operacoes
+
+Nao existe endpoint nativo de "rollback" nos Deployment Pipelines. O padrao do projeto e:
+
+### Estrategia 1 — Re-deploy de versao anterior (preferencial)
+
+1. Identifique o `operationId` do deploy que estava funcionando via `list_deployment_pipeline_operations`
+2. Obtenha os `itemsCount` e detalhes do deploy anterior via `GET /operations/{operationId}`
+3. No estagio origem (Dev/Test), restaure os items para a versao anterior (via Git Integration + `updateFromGit`)
+4. Execute novo deploy do estagio origem para o destino
+
+### Estrategia 2 — Rollback via Git Integration
+
+Se Git Integration estiver configurada nos workspaces:
+
+```python
+from git_integration import update_from_git
+from deployment_pipelines import deploy_stage_content
+
+# 1. Revert no workspace Dev para commit anterior via Git
+# (executado fora do SDK — git revert + push)
+
+# 2. Sincronizar workspace Dev com o commit revertido
+update_from_git(
+    workspace="dev-analytics",
+    conflict_resolution_policy="PreferRemote"  # Git e a fonte de verdade
+)
+
+# 3. Re-promover versao anterior para Prod
+deploy_stage_content(
+    pipeline="MyPipeline",
+    source_stage="Dev",
+    target_stage="Prod",
+    note="ROLLBACK para v2.3.0 — revert de incidente 2026-04-16"
+)
+```
+
+### Consultar Historico para Auditoria
+
+```python
+from deployment_pipelines import list_deployment_pipeline_operations
+
+# Ver ultimos 10 deploys
+ops = list_deployment_pipeline_operations(pipeline="DataLake-Pipeline")
+for op in ops[:10]:
+    print(f"ID: {op['id']}")
+    print(f"  Status:    {op['status']}")
+    print(f"  Iniciado:  {op['createdTime']}")
+    print(f"  Items:     {op['itemsCount']}")
+    print(f"  Nota:      {op.get('note', '(sem nota)')}")
+    print()
+```
+
+---
+
+## Automacao via PowerShell
+
+Para automacao em pipelines CI/CD (Azure DevOps, GitHub Actions), use o modulo
+`MicrosoftFabric` do PowerShell ou chamadas REST diretas com `az` CLI.
+
+### Instalar modulo PowerShell
+
+```powershell
+Install-Module -Name MicrosoftFabric -Force -AllowClobber
+Import-Module MicrosoftFabric
+```
+
+### Autenticar com Service Principal
+
+```powershell
+$tenantId     = $env:AZURE_TENANT_ID
+$clientId     = $env:AZURE_CLIENT_ID
+$clientSecret = $env:AZURE_CLIENT_SECRET
+
+$token = (Get-AzAccessToken -ResourceUrl "https://api.fabric.microsoft.com" `
+    -TenantId $tenantId).Token
+
+$headers = @{
+    "Authorization" = "Bearer $token"
+    "Content-Type"  = "application/json"
+}
+```
+
+### Executar deploy em pipeline CI/CD
+
+```powershell
+# Obter pipeline ID
+$pipelines = Invoke-RestMethod `
+    -Uri "https://api.fabric.microsoft.com/v1/deploymentPipelines" `
+    -Headers $headers -Method GET
+
+$pipelineId = ($pipelines.value | Where-Object { $_.displayName -eq "DataLake-Pipeline" }).id
+
+# Obter stage IDs
+$pipeline = Invoke-RestMethod `
+    -Uri "https://api.fabric.microsoft.com/v1/deploymentPipelines/$pipelineId" `
+    -Headers $headers -Method GET
+
+$devStageId  = ($pipeline.stages | Where-Object { $_.displayName -eq "Dev" }).id
+$testStageId = ($pipeline.stages | Where-Object { $_.displayName -eq "Test" }).id
+
+# Iniciar deploy (LRO)
+$body = @{
+    sourceStageId = $devStageId
+    targetStageId = $testStageId
+    note          = "CI/CD automatizado - branch: $env:GITHUB_REF_NAME"
+} | ConvertTo-Json
+
+$response = Invoke-RestMethod `
+    -Uri "https://api.fabric.microsoft.com/v1/deploymentPipelines/$pipelineId/deploy" `
+    -Headers $headers -Method POST -Body $body
+
+$operationId = $response.id
+
+# Polling LRO
+do {
+    Start-Sleep -Seconds 10
+    $status = Invoke-RestMethod `
+        -Uri "https://api.fabric.microsoft.com/v1/deploymentPipelines/$pipelineId/operations/$operationId" `
+        -Headers $headers -Method GET
+    Write-Host "Status: $($status.status)"
+} while ($status.status -eq "Running" -or $status.status -eq "NotStarted")
+
+if ($status.status -ne "Succeeded") {
+    Write-Error "Deploy falhou: $($status.status)"
+    exit 1
+}
+Write-Host "Deploy concluido com sucesso"
+```
+
+### GitHub Actions — Exemplo de Step
+
+```yaml
+- name: Deploy Dev to Test (Fabric)
+  env:
+    AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+    AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+    AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+    PIPELINE_NAME: "DataLake-Pipeline"
+  shell: pwsh
+  run: |
+    # Autenticar e executar deploy
+    ./scripts/fabric-deploy.ps1 `
+      -SourceStage "Dev" `
+      -TargetStage "Test" `
+      -Note "CI deploy - PR #${{ github.event.number }}"
+```
+
+---
+
 ## Reference Files
 
 - [deployment-operations.md](deployment-operations.md) -- Payloads REST, estrategias de conflito, opcoes de deployment, exemplos cURL
@@ -273,3 +542,20 @@ add_deployment_pipeline_role_assignment(
 | **Status 202 (LRO iniciada)** | Deploy aceitado. Polling comeca automaticamente; aguarde ate conclusao. |
 | **Permissao insuficiente (403)** | Usuario nao tem Admin no pipeline. Peca ao proprietario para atribuir papel. |
 | **Token expirado (401)** | Renove token via MSAL. Configure Azure Identity ou Key Vault. |
+| **Deployment Rule nao aplicada** | Rules sao configuradas via UI. Confirme que Rule esta ativa no stage destino antes do deploy. |
+| **Commit automatico nao gerado (2025H2+)** | Git Integration deve estar configurada no workspace destino antes do deploy. Verifique `git/connection`. |
+| **allowCrossRegionDeployment negado** | Por padrao, deploys cross-region sao bloqueados. Habilite explicitamente em `options`. |
+
+---
+
+## Notas de Versao (2025H2 / 2026-04)
+
+- **Integracao com Git (2025H2):** Pipelines de deployment agora podem gerar commits automaticos
+  em ADO/GitHub ao promover entre stages. Requer Git Integration configurada no workspace destino.
+  O campo `note` do deploy vira mensagem do commit.
+- **Conflict Resolution no payload:** O campo `options.conflictResolution.conflictResolutionPolicy`
+  agora e suportado diretamente no payload de deploy (anteriormente apenas via UI).
+- **Paginacao em `/operations`:** O endpoint `GET /operations` suporta `$top` e `$skip`
+  para pipelines com historico extenso.
+- **allowCrossRegionDeployment:** Flag agora documentada oficialmente; necessaria para
+  workspaces em regioes Azure distintas.
