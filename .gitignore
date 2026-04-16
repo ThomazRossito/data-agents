@@ -36,6 +36,8 @@ logs/
 # OUTPUT & ARTEFATOS GERADOS
 # =============================================================================
 output/
+!output/workflow-context/
+!output/workflow-context/.gitkeep
 memory/
 
 # =============================================================================
