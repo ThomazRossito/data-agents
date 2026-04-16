@@ -121,7 +121,11 @@ class TestLoadAllAgents:
 
     def test_all_agents_have_model(self):
         agents = load_all_agents()
-        valid_models = {"claude-sonnet-4-6", "claude-opus-4-6"}
+        valid_models = {
+            "claude-sonnet-4-6",
+            "claude-opus-4-6",
+            "bedrock/anthropic.claude-4-6-sonnet",  # modelo do proxy Flow LiteLLM (produção)
+        }
         for name, agent in agents.items():
             assert agent.model in valid_models, f"Agente '{name}' com model inválido: {agent.model}"
 
@@ -172,7 +176,8 @@ class TestSparkExpert:
     def test_spark_expert_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["spark-expert"]
-        assert "sonnet" in agent.model.lower()
+        # Aceita bedrock/anthropic.claude-4-6-sonnet (proxy Flow) ou claude-sonnet-4-6 (local)
+        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower()
 
 
 class TestPipelineArchitect:
@@ -190,7 +195,8 @@ class TestPipelineArchitect:
     def test_pipeline_architect_model_is_opus(self):
         agents = load_all_agents()
         agent = agents["pipeline-architect"]
-        assert "opus" in agent.model.lower()
+        # Aceita bedrock/anthropic.claude-4-6-sonnet (proxy Flow) ou claude-opus-4-6 (local)
+        assert "opus" in agent.model.lower() or "bedrock" in agent.model.lower()
 
 
 # ─── Testes dos Agentes T2 (Especializados) ──────────────────────────────────
@@ -264,7 +270,7 @@ class TestDbtExpert:
     def test_dbt_expert_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["dbt-expert"]
-        assert "sonnet" in agent.model.lower()
+        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower()
 
     def test_dbt_expert_has_no_platform_mcp_tools(self):
         """dbt-expert não executa queries em Databricks/Fabric diretamente."""
@@ -316,7 +322,7 @@ class TestSemanticModeler:
     def test_semantic_modeler_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["semantic-modeler"]
-        assert "sonnet" in agent.model.lower()
+        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower()
 
 
 # ─── Testes de Arquivos de Registry ──────────────────────────────────────────
@@ -455,16 +461,28 @@ class TestModelRoutingByTier:
     def test_load_without_tier_map_uses_frontmatter_model(self):
         """Sem tier_model_map, cada agente usa o model do seu frontmatter."""
         agents = load_all_agents(tier_model_map=None)
-        # sql-expert declara model: claude-sonnet-4-6 no frontmatter
-        assert "sonnet" in agents["sql-expert"].model.lower()
-        # pipeline-architect declara model: claude-opus-4-6 no frontmatter
-        assert "opus" in agents["pipeline-architect"].model.lower()
+        # sql-expert é T1 — frontmatter pode declarar sonnet ou bedrock (proxy Flow)
+        assert (
+            "sonnet" in agents["sql-expert"].model.lower()
+            or "bedrock" in agents["sql-expert"].model.lower()
+        )
+        # pipeline-architect é T1 — frontmatter pode declarar opus ou bedrock (proxy Flow)
+        assert (
+            "opus" in agents["pipeline-architect"].model.lower()
+            or "bedrock" in agents["pipeline-architect"].model.lower()
+        )
 
     def test_load_with_empty_tier_map_uses_frontmatter_model(self):
         """Com tier_model_map vazio, comportamento idêntico a None."""
         agents = load_all_agents(tier_model_map={})
-        assert "sonnet" in agents["sql-expert"].model.lower()
-        assert "opus" in agents["pipeline-architect"].model.lower()
+        assert (
+            "sonnet" in agents["sql-expert"].model.lower()
+            or "bedrock" in agents["sql-expert"].model.lower()
+        )
+        assert (
+            "opus" in agents["pipeline-architect"].model.lower()
+            or "bedrock" in agents["pipeline-architect"].model.lower()
+        )
 
     def test_load_with_tier_map_overrides_model(self):
         """Com tier_model_map populado, o modelo do tier sobrescreve o do frontmatter."""

@@ -1,8 +1,7 @@
 ---
 name: sql-expert
 description: "Especialista em SQL e metadados de dados. Use para: descoberta de schemas e tabelas em Databricks ou Fabric, geração e otimização de queries SQL (Spark SQL, T-SQL, KQL), análise exploratória via SQL, introspecção de catálogos Unity Catalog e Fabric Lakehouses, queries KQL em Fabric Real-Time Intelligence (Eventhouse). Invoque quando: a tarefa envolver SQL puro, exploração de catálogos, schema discovery ou queries KQL — sem necessidade de transformações PySpark."
-# model: bedrock/anthropic.claude-4-6-sonnet
-model: claude-sonnet-4-6
+model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, databricks_readonly, mcp__databricks__execute_sql, mcp__databricks__execute_sql_multi, mcp__databricks__get_best_warehouse, mcp__databricks__get_table_stats_and_schema, databricks_genie_readonly, fabric_readonly, fabric_sql_readonly, fabric_rti_readonly, context7_all, postgres_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres]
 kb_domains: [sql-patterns, databricks, fabric]

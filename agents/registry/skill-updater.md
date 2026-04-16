@@ -1,7 +1,7 @@
 ---
 name: skill-updater
 description: "Atualizador automático de Skills operacionais. Use para: refrescar SKILL.md de domínios específicos com documentação atualizada das plataformas (Databricks, Fabric, dbt, PySpark). Invoque quando: refresh periódico de skills (a cada 3-5 dias via script), ou quando uma Skill específica estiver desatualizada."
-model: claude-sonnet-4-6
+model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, context7_all, tavily_all, firecrawl_all]
 mcp_servers: [context7, tavily, firecrawl]
 tier: T2

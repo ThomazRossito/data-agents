@@ -1,8 +1,7 @@
 ---
 name: spark-expert
 description: "Especialista em Python e Apache Spark. Use para: geração de código PySpark, Spark SQL e Spark Declarative Pipelines (DLT/LakeFlow), transformações de dados com DataFrames, operações Delta Lake (MERGE, OPTIMIZE, VACUUM, SCD1/SCD2), debug e otimização de código Python/Spark existente, conversão de pandas para PySpark, implementação de padrões ETL Bronze→Silver→Gold e Star Schema. Invoque quando: a tarefa exigir escrever ou corrigir código PySpark, DLT, LakeFlow ou qualquer transformação Spark — não para SQL puro."
-# model: bedrock/anthropic.claude-4-6-sonnet
-model: claude-sonnet-4-6
+model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Grep, Glob, Write, context7_all]
 mcp_servers: [context7]
 kb_domains: [spark-patterns, pipeline-design, databricks]

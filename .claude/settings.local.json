@@ -30,7 +30,31 @@
       "Bash(grep -l \"output_budget\" agents/registry/*.md)",
       "Bash(grep -l \"Agreement Matrix\" agents/registry/*.md)",
       "Bash(grep -l \"KB-First — 4 Etapas \\(v2\\)\" agents/registry/*.md)",
-      "Bash(grep -r \"kb/\" /Users/thomaz_rossito/Projects/data-agents/agents/registry/*.md)"
+      "Bash(grep -r \"kb/\" /Users/thomaz_rossito/Projects/data-agents/agents/registry/*.md)",
+      "Bash(grep -r \"kb_domains:\" agents/registry/*.md)",
+      "Bash(grep -n \"kb_domains\\\\|skill_domains\" agents/registry/*.md)",
+      "Bash(grep *)",
+      "Bash(xmllint --noout /Users/thomaz_rossito/Projects/data-agents/img/readme/architecture_v7.svg)",
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -c \"import cairosvg\")",
+      "Bash(rsvg-convert -w 1400 /Users/thomaz_rossito/Projects/data-agents/img/readme/banner.svg -o /Users/thomaz_rossito/Projects/data-agents/img/readme/banner.png)",
+      "Bash(rsvg-convert -w 1400 /Users/thomaz_rossito/Projects/data-agents/img/readme/architecture_v7.svg -o /Users/thomaz_rossito/Projects/data-agents/img/readme/architecture_v7.png)",
+      "Bash(mkdir -p /Users/thomaz_rossito/Projects/data-agents/img/readme/badges)",
+      "Bash(curl -sL \"https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/125134719\" -o db_spark.png)",
+      "Bash(curl -sL \"https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/169321258\" -o db_genai.png)",
+      "Bash(curl -sL \"https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/167127257\" -o db_analyst.png)",
+      "Bash(curl -sL \"https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/125134780\" -o db_de_associate.png)",
+      "Bash(curl -sL \"https://images.credly.com/images/70eb1e3f-d4de-4377-a062-b20fb29594ea/azure-data-fundamentals-600x600.png\" -o ms_dp900.png)",
+      "Bash(curl -sL \"https://files.manuscdn.com/user_upload_by_module/session_file/310419663028569643/ftqfVZsrmaGyfUha.png\" -o ms_dp700.png)",
+      "Bash(git add *)",
+      "Bash(git rm *)",
+      "Bash(ruff format *)",
+      "Bash(sed -i '' -e '$a\\\\' ui/chainlit_app.py)",
+      "Bash(git restore *)",
+      "Bash(git commit *)",
+      "Bash(/usr/bin/python -mpre_commit --version)",
+      "Bash(python3 -mpre_commit --version)",
+      "Bash(pip3 install *)"
     ]
   }
 }

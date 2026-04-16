@@ -20,11 +20,11 @@ Repositorio: [github.com/ThomazRossito/data-agents](https://github.com/ThomazRos
 
 ### Certificacoes Databricks
 
-<img src="https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/125134719" alt="Databricks Certified Spark Developer" width="120"/> <img src="https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/169321258" alt="Databricks Certified Generative AI Engineer Associate" width="120"/> <img src="https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/167127257" alt="Databricks Certified Data Analyst Associate" width="120"/> <img src="https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/125134780" alt="Databricks Certified Data Engineer Associate" width="120"/> <img src="https://api.accredible.com/v1/frontend/credential_website_embed_image/badge/157011932" alt="Databricks Certified Data Engineer Professional" width="120"/>
+<img src="img/readme/badges/db_spark.png" alt="Databricks Certified Spark Developer" width="120"/> <img src="img/readme/badges/db_genai.png" alt="Databricks Certified Generative AI Engineer Associate" width="120"/> <img src="img/readme/badges/db_analyst.png" alt="Databricks Certified Data Analyst Associate" width="120"/> <img src="img/readme/badges/db_de_associate.png" alt="Databricks Certified Data Engineer Associate" width="120"/> <img src="img/readme/badges/db_de_professional.png" alt="Databricks Certified Data Engineer Professional" width="120"/>
 
 ### Certificacoes Microsoft
 
-<a href="https://www.credly.com/badges/052e5133-0c67-4ab7-bb3a-c99efa7b4406/public_url" target="_blank"><img src="https://images.credly.com/images/70eb1e3f-d4de-4377-a062-b20fb29594ea/azure-data-fundamentals-600x600.png" alt="DP-900" width="120"/></a> <a href="https://learn.microsoft.com/pt-br/users/thomazantoniorossitoneto/credentials/certification/fabric-data-engineer-associate" target="_blank"><img src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663028569643/ftqfVZsrmaGyfUha.png" alt="DP-700" width="120"/></a>
+<a href="https://www.credly.com/badges/052e5133-0c67-4ab7-bb3a-c99efa7b4406/public_url" target="_blank"><img src="img/readme/badges/ms_dp900.png" alt="DP-900" width="120"/></a> <a href="https://learn.microsoft.com/pt-br/users/thomazantoniorossitoneto/credentials/certification/fabric-data-engineer-associate" target="_blank"><img src="img/readme/badges/ms_dp700.png" alt="DP-700" width="120"/></a>
 
 ---
 
@@ -63,7 +63,7 @@ Repositorio: [github.com/ThomazRossito/data-agents](https://github.com/ThomazRos
 
 ## Prefacio
 
-Este documento nao e apenas um manual tecnico. E o registro completo de uma jornada de engenharia — da ideia inicial de "e se eu pudesse ter uma equipe de IA especializada no meu ambiente de dados?" ate um sistema de producao com oito agentes autonomos, nove camadas de seguranca, memoria persistente entre sessoes e integracao direta com Databricks e Microsoft Fabric.
+Este documento nao e apenas um manual tecnico. E o registro completo de uma jornada de engenharia — da ideia inicial de "e se eu pudesse ter uma equipe de IA especializada no meu ambiente de dados?" ate um sistema de producao com dez agentes autonomos, nove camadas de seguranca, memoria persistente entre sessoes e integracao direta com Databricks e Microsoft Fabric.
 
 O projeto Data Agents nasceu de uma frustracao real: ferramentas de IA generativas sao excelentes para responder perguntas, mas sua utilidade cai drasticamente quando precisamos que elas ajam — que executem um pipeline, criem uma tabela Delta, auditorizem um lakehouse, ou gerem um modelo semantico DAX. A distancia entre "escrever o codigo" e "executar o codigo no lugar certo" era o problema a resolver.
 
@@ -164,6 +164,22 @@ A versao 7.0 e a versao mais completa do projeto, acumulando os avancos das vers
 
 **Melhorias de UX:** Budget resetado automaticamente em novo chat, indicador visual de processamento no Chainlit, checkpoint com instrucao de retomada direta.
 
+### 1.6 Versao 8.0: A Grande Reestruturacao do Conhecimento
+
+A versao 8.0 representa o maior salto na organizacao interna do conhecimento desde a criacao do sistema. As principais mudancas sao:
+
+**KB Modular (concepts/ + patterns/):** Todos os 8 dominios de Knowledge Base foram reestruturados. Os arquivos monoliticos foram divididos em dois tipos claros: `concepts/` para definicoes e teoria (<=150 linhas), e `patterns/` para padroes de implementacao com codigo (<=200 linhas). Isso elimina confusao entre "o que e X" e "como implementar X", e permite que os agentes leiam apenas o arquivo relevante para sua tarefa.
+
+**Biblioteca de Anti-Padroes Centralizada (`kb/shared/anti-patterns.md`):** Substitui definicoes espalhadas por multiplos arquivos. Catalogo unificado com 7 anti-padroes CRITICOS (C), 12 de severidade ALTA (H) e 10 de severidade MEDIA (M), incluindo: SELECT * sem WHERE, DROP sem backup, PII sem mascaramento, Python UDFs em producao, Direct Lake com DAX volatil sem cache, e snapshots dbt sem `unique_key`.
+
+**Protocolo KB-First v2 com Agreement Matrix:** Todos os agentes agora calculam uma pontuacao de confianca explicita antes de responder. A Agreement Matrix cruza informacao da KB com confirmacao do MCP: KB + MCP = ALTA (0.95), KB sem MCP = MEDIA (0.75), MCP sem KB = 0.85. Cada resposta tecnica inclui um bloco de proveniencia obrigatorio.
+
+**Cascade Tracking PRD->SPEC:** O `workflow_tracker.py` agora detecta modificacoes em PRDs (`output/*/prd/*.md`) e automaticamente emite eventos `spec_needs_review` para todos os SPECs no mesmo contexto, garantindo que nunca haja PRD modificado sem revisao dos SPECs dependentes.
+
+**`output_budget` por Agente:** Todos os 10 agentes declaram no frontmatter um orcamento de linhas de saida (`output_budget`). Tier 1: 150-400 linhas; Tier 2: 80-250 linhas; Tier 3: 30-100 linhas. Isso controla verbosidade sem modificar o runtime.
+
+**Chainlit Tool Result Display:** O `ui/chainlit_app.py` agora exibe o conteudo real retornado por cada tool call nos steps expansiveis. Anteriormente mostrava apenas "Concluido em X.Xs". A implementacao captura `UserMessage` com `ToolResultBlock` do SDK e fecha o step com o output real (truncado em 3.000 chars se necessario).
+
 ---
 
 ## 2. Conceitos Fundamentais (Glossario)
@@ -231,7 +247,7 @@ Arquivos Markdown que contem as regras de negocio e padroes arquiteturais da emp
 
 **Skills**
 
-Manuais operacionais detalhados que ensinam como usar uma tecnologia especifica. Enquanto a KB diz "toda tabela Gold deve ter particionamento por data", a Skill ensina como criar esse particionamento em Delta Lake com a sintaxe correta do PySpark. O projeto possui 27 Skills para Databricks e 5 para Fabric.
+Manuais operacionais detalhados que ensinam como usar uma tecnologia especifica. Enquanto a KB diz "toda tabela Gold deve ter particionamento por data", a Skill ensina como criar esse particionamento em Delta Lake com a sintaxe correta do PySpark. O projeto possui 27 Skills para Databricks e 10 para Fabric.
 
 **Constituicao**
 
@@ -289,7 +305,7 @@ Sistema que permite ao agente lembrar informacoes relevantes entre sessoes difer
 ## 3. Arquitetura Geral do Sistema
 
 <p align="center">
-  <img src="img/readme/architecture_v7.svg" alt="Arquitetura Multi-Agent System Data Agents v7.0" width="100%">
+  <img src="./img/readme/architecture_v7.png" alt="Arquitetura Multi-Agent System Data Agents v8.0" width="100%">
 </p>
 
 ### 3.1 A Visao Geral: Uma Empresa em Miniatura
@@ -500,6 +516,8 @@ O Pipeline Architect e o agente com as permissoes mais amplas do sistema, e por 
 
 **Roteamento inteligente do /fabric:** O comando `/fabric` tem logica de roteamento interno. Se o prompt mencionar "semantic model", "DAX", "Power BI", "Direct Lake" ou "Metric Views", o comando redireciona automaticamente para o Semantic Modeler em vez do Pipeline Architect. Isso garante que tarefas de modelagem semantica sempre cheguem ao especialista correto, mesmo que o usuario use o comando generico `/fabric`.
 
+**output_budget (v8.0):** Todos os agentes declaram no frontmatter YAML um campo `output_budget` que expressa o orcamento de linhas de resposta esperado. Exemplos: `"150-400 linhas"` (T1), `"80-250 linhas"` (T2), `"30-100 linhas"` (T3). O agente usa isso como orientacao interna para calibrar verbosidade — respostas longas para tarefas tecnicas complexas, curtas para perguntas conceituais.
+
 ### 4.4 Tier 2 — Qualidade, Governanca e Analise
 
 O Tier 2 cobre as camadas que transformam dados tecnicamente corretos em dados confiaveis, governados e analiticos.
@@ -622,15 +640,36 @@ Definem o que os agentes devem sempre fazer ao trabalhar com Databricks e Fabric
 
 Essa e uma decisao de design deliberada com tres beneficios. Primeiro, qualquer membro do time pode ler, entender e propor mudancas na Constituicao sem saber Python. Segundo, a Constituicao pode ser versionada com Git e o historico de mudancas e legivel por humanos. Terceiro, o proprio modelo de IA pode referenciar e raciocinar sobre a Constituicao durante o planejamento — "esta tarefa viola a regra SEC-3 porque..." — o que nao seria possivel se as regras fossem logica Python.
 
-### 5.3 A Filosofia KB-First
+### 5.3 A Filosofia KB-First e o Protocolo v2
 
-A regra de ouro do sistema e simples e radical: **a IA nunca adivinha, ela le o manual**.
+O principio KB-First e simples: **nenhum agente age sem primeiro consultar suas Knowledge Bases**. Mas a v8.0 vai alem — introduz o **Protocolo KB-First v2** com Agreement Matrix e pontuacao explicita de confianca.
 
-Antes de comecar a trabalhar, cada agente e forcado a ler as Knowledge Bases de seus dominios declarados. O campo `kb_domains` no frontmatter YAML de cada agente define quais KBs ele precisa. O `loader.py` carrega automaticamente apenas as KBs relevantes — lazy loading para nao sobrecarregar o contexto do modelo.
+A regra de ouro permanece: a IA nunca adivinha, ela le o manual. Antes de comecar a trabalhar, cada agente e forcado a ler as Knowledge Bases de seus dominios declarados. O campo `kb_domains` no frontmatter YAML de cada agente define quais KBs ele precisa. O `loader.py` carrega automaticamente apenas as KBs relevantes — lazy loading para nao sobrecarregar o contexto do modelo.
 
 O proposito e garantir que o codigo gerado reflete as decisoes de arquitetura da sua empresa, nao apenas as melhores praticas genericas do modelo pre-treinado. Se sua empresa definiu na KB que toda tabela Silver deve ter uma coluna `_audit_created_at` do tipo `TIMESTAMP`, o agente vai incluir essa coluna em todo codigo que gerar, porque le essa regra na KB antes de comecar.
 
 Quando `INJECT_KB_INDEX=true` (padrao), o `loader.py` vai alem: injeta automaticamente o conteudo completo dos arquivos `index.md` de cada KB declarada no prompt do agente. Isso significa que o agente nao precisa fazer chamadas adicionais para ler a KB — o resumo dos padroes ja esta no seu contexto desde o inicio.
+
+**As 4 etapas do Protocolo KB-First v2:**
+
+1. **Consultar KB** — Ler `kb/{dominio}/index.md` -> identificar arquivos relevantes -> ler os arquivos de concepts/ e/ou patterns/
+2. **Consultar MCP** (quando disponivel) — verificar estado atual na plataforma
+3. **Calcular confianca** via Agreement Matrix:
+
+| KB tem padrao | MCP confirma | Confianca |
+|---------------|--------------|-----------|
+| Sim | Sim | ALTA — 0.95 |
+| Sim | Silencioso | MEDIA — 0.75 |
+| Nao | Sim | 0.85 |
+
+Modificadores: +0.20 match exato na KB, +0.15 MCP confirma, -0.15 versao desatualizada, -0.10 informacao obsoleta.
+
+Limiares de decisao: CRITICO >= 0.95 | IMPORTANTE >= 0.90 | PADRAO >= 0.85 | ADVISORY >= 0.75
+
+4. **Incluir proveniencia** ao final de respostas tecnicas:
+```
+KB: kb/{dominio}/concepts/{arquivo}.md | Confianca: ALTA (0.92) | MCP: confirmado
+```
 
 ### 5.4 O Clarity Checkpoint em Detalhe
 
@@ -1206,6 +1245,8 @@ Eventos rastreados:
 
 Esses dados alimentam a pagina "Workflows" do Dashboard com KPIs de pass rate do Clarity Checkpoint, frequencia de uso de cada workflow, e distribuicao de delegacoes por agente.
 
+**Cascade Tracking PRD->SPEC (v8.0):** Alem de rastrear delegacoes, o workflow_tracker agora detecta modificacoes em PRDs. Quando um arquivo correspondendo ao padrao `output/*/prd/*.md` e modificado, o hook emite automaticamente eventos `prd_modified` e `spec_needs_review` para todos os SPECs do mesmo contexto (`output/*/specs/*.md`). Isso garante que nenhuma modificacao de PRD passe despercebida — o `get_workflow_summary()` retorna listas `prd_modifications`, `specs_needing_review` e `cascade_events`.
+
 #### cost_guard_hook.py — O Vigilante de Custos
 
 O `cost_guard_hook.py` classifica cada ferramenta em tres niveis de custo (LOW, MEDIUM, HIGH) baseado no tipo de operacao e plataforma. Ferramentas de execucao em clusters grandes sao HIGH. Ferramentas de leitura simples sao LOW.
@@ -1333,6 +1374,38 @@ Cobre as convencoes especificas do workspace Databricks da organizacao: naming c
 **fabric/**
 Cobre as convencoes especificas do workspace Fabric: nomenclatura de Lakehouses, estrutura de Workspaces, configuracoes de Data Factory pipelines, uso do RTI (Eventhouse, Eventstreams, Activator), e as convencoes de Direct Lake. Agentes que recebem esta KB: todos os agentes Fabric.
 
+#### 9.3.1 Estrutura Interna: concepts/ + patterns/
+
+A partir da v8.0, cada dominio de KB foi reestruturado internamente. Os arquivos monoliticos foram substituidos por dois subdiretórios:
+
+```
+kb/{dominio}/
+  index.md          <- indice injetado automaticamente nos agentes
+  concepts/         <- definicoes, teoria, regras conceituais (<=150 linhas)
+    *.md
+  patterns/         <- padroes de implementacao com codigo (<=200 linhas)
+    *.md
+```
+
+**Por que essa separacao?** Um agente executando uma query SQL precisa de "como otimizar JOINs" (patterns/), nao de "o que e um indice" (concepts/). A separacao reduz o contexto injetado e aumenta a precisao da resposta.
+
+**Resolucao de Duplicacoes:** Tres topicos existiam em multiplos dominios com definicoes conflitantes:
+- **Star Schema**: canonico em `kb/sql-patterns/concepts/star-schema-source-of-truth.md`; cross-reference em `kb/pipeline-design/patterns/star-schema-cross-reference.md`
+- **Direct Lake**: canonico em `kb/semantic-modeling/concepts/direct-lake-canonical.md` (absorve o antigo `kb/fabric/direct-lake-rules.md`)
+- **Orchestration**: dividido em `kb/pipeline-design/patterns/orchestration-databricks.md`, `orchestration-fabric.md`, e `orchestration-cross-platform.md`
+
+#### 9.3.2 Biblioteca de Anti-Padroes Centralizada
+
+`kb/shared/anti-patterns.md` e um novo arquivo transversal — nao pertence a nenhum dominio especifico, mas e referenciavel por todos os agentes.
+
+| Severidade | Exemplos |
+|-----------|----------|
+| **CRITICO** | SELECT * sem WHERE/LIMIT em prod, DROP sem backup, PII sem mascaramento, secrets em codigo, TRUNCATE sem checkpoint, escrita direta em prod |
+| **ALTA** | Cross join implicito, full table scan em tabela particionada, pipeline sem testes, Python UDFs em PySpark, DAX volatil sem cache no Direct Lake |
+| **MEDIA** | Naming inconsistente, schema sem comentarios, snapshot dbt sem `unique_key`, MERGE sem WHEN NOT MATCHED BY SOURCE |
+
+Cada anti-padrao e referenciado cruzado com as KBs originais e as regras da Constituicao.
+
 ### 9.4 Camada 3: Skills Operacionais
 
 As Skills sao manuais tecnicos detalhados que ensinam os agentes a usar ferramentas especificas. A diferenca entre uma KB e uma Skill: a KB diz *o que* deve ser feito, a Skill ensina *como* fazer com a sintaxe correta de uma tecnologia.
@@ -1456,7 +1529,7 @@ O template preenchido e salvo em `output/specs/spec_<nome>.md` e serve como cont
 
 O MCP (Model Context Protocol) e o que transforma o Data Agents de um chatbot sofisticado em um sistema capaz de agir no mundo real. Sem MCP, os agentes poderiam apenas escrever codigo e sugerir acoes. Com MCP, eles executam essas acoes diretamente.
 
-O projeto possui 6 conexoes MCP, cobrindo dois ecossistemas de dados diferentes — Databricks e Microsoft Fabric — com profundidade e integracao genuina em cada um.
+O projeto possui 12 conexoes MCP ativas, cobrindo dois ecossistemas de dados diferentes — Databricks e Microsoft Fabric — alem de MCP servers externos para busca web, documentacao, repositorios de codigo e grafos de conhecimento, com profundidade e integracao genuina em cada um.
 
 ### 11.1 Como o MCP Funciona na Pratica
 
@@ -2500,9 +2573,34 @@ O CD usa **Databricks Asset Bundles** (DAB) via Databricks CLI v2 (versao Go) pa
 
 ## 21. Interfaces do Usuario (Terminal e Web UI)
 
-O Data Agents oferece duas interfaces de uso complementares, projetadas para perfis de usuario diferentes. O Terminal e para usuarios tecnicos que preferem o controle direto do shell. A Web UI e para usuarios que preferem uma interface visual e para situacoes onde voce quer compartilhar o acesso com colegas nao-tecnicos.
+O Data Agents oferece tres interfaces de uso complementares, projetadas para perfis de usuario diferentes. O Terminal e para usuarios tecnicos que preferem o controle direto do shell. A Web UI Streamlit e para usuarios que preferem uma interface visual classica. A Web UI Chainlit e a interface mais rica, com exibicao em tempo real de tool calls e suporte a dois modos de operacao.
 
-### 21.1 Interface Web (ui/chat.py)
+### 21.1 Interface Web Chainlit (Recomendada — v6.0+)
+
+```bash
+./start_chainlit.sh
+# chainlit run ui/chainlit_app.py --port 8503
+```
+
+O Chainlit e a interface mais rica do sistema. Ao iniciar, apresenta dois botoes de selecao de modo:
+
+**Modo Data Agents** — Supervisor completo com os 10 agentes especialistas, todos os slash commands e MCPs de plataforma. Para cada tool call e delegacao, exibe um `cl.Step()` expansivel em tempo real.
+
+**Modo Dev Assistant** — Claude direto (sem Supervisor), ferramentas `Read`, `Write`, `Bash`, `Grep`, `Glob`. Mantem historico de conversa para follow-ups. Usa `settings.default_model` (Bedrock) — custo zero pelo acordo corporativo. Ideal para desenvolvimento e debugging do proprio projeto.
+
+#### Exibicao de Tool Calls (v8.0)
+
+Um dos diferenciais visuais do Chainlit e a exibicao expansivel dos resultados de tool calls. Ao clicar em "Used lendo arquivo ^", por exemplo, o conteudo real retornado pela ferramenta e exibido — nao apenas "Concluido em X.Xs".
+
+**Como funciona tecnicamente:** O SDK emite `UserMessage` com `ToolResultBlock` contendo o output real de cada tool. O `_StepManager` estaciona o step com `park(tool_use_id)` ao detectar `content_block_stop`, e fecha com o conteudo real quando o `UserMessage` correspondente chega (`receive_result(tool_use_id, content)`). O conteudo e truncado em 3.000 chars para nao sobrecarregar a UI.
+
+#### Cache de Supervisor
+
+O `ClaudeSDKClient` do Supervisor e mantido em cache de modulo (`_supervisor_cache`). Isso significa que os MCP servers (~3-5s de cold start na primeira vez) sao reutilizados entre sessoes do browser — reload da pagina nao recria as conexoes.
+
+Troque de modo a qualquer momento com `/modo`.
+
+### 21.2 Interface Web (ui/chat.py)
 
 A Web UI e uma aplicacao Streamlit que roda localmente na **porta 8502** e oferece uma experiencia de chat com o mesmo conjunto de agentes e MCP servers do modo terminal.
 
@@ -2551,7 +2649,7 @@ O `ClaudeSDKClient` e identico ao usado em `run_interactive()` do `main.py`. Iss
 
 **Nova Conversa:** Botao que desconecta o `ClaudeSDKClient` atual, limpa o historico e reconecta. Equivale ao comando `limpar` do terminal. O estado de checkpoint e preservado.
 
-### 21.2 Interface Terminal (main.py)
+### 21.3 Interface Terminal (main.py)
 
 O modo terminal e o modo original do projeto, ideal para usuarios tecnicos que preferem o controle completo do shell. Oferece todas as funcionalidades do sistema sem overhead de interface grafica.
 
@@ -2573,7 +2671,7 @@ python main.py "/sql SELECT COUNT(*) FROM prod.gold.pedidos WHERE data_pedido = 
 RESULT=$(python main.py "/sql ..." 2>/dev/null)
 ```
 
-### 21.3 Iniciando o Sistema: start.sh
+### 21.4 Iniciando o Sistema: start.sh
 
 O script `start.sh` e a forma recomendada de iniciar o sistema para uso regular. Ele sobe a Web UI e o Dashboard de Monitoramento simultaneamente com um unico comando.
 
@@ -2706,7 +2804,7 @@ Informacoes do projeto:
 - Informacoes do autor
 - Licenca
 - Link para o repositorio GitHub
-- Diagrama de arquitetura (a imagem `architecture_v6.svg`)
+- Diagrama de arquitetura (a imagem `architecture_v7.png`)
 
 ### 22.4 Funcionalidades Transversais
 
@@ -3037,15 +3135,31 @@ A versao 7.0 introduz manutencao automatica de Skills, roteamento preciso de age
 | MemoryStore aceita str ou Path          | Corrige TypeError em testes com tmpdir (str) como data_dir                        |
 | 702 testes unitarios passando           | Cobertura abrangente com pytest                                                   |
 
+### 25.8 Melhorias da v8.0
+
+**A Grande Reestruturacao do Conhecimento**
+
+| Mudanca | Impacto |
+|---------|---------|
+| KB Modular: monolitico -> concepts/ + patterns/ (8 dominios, 69+ arquivos) | Precisao de contexto injetado nos agentes |
+| Biblioteca de Anti-Padroes Centralizada (kb/shared/anti-patterns.md) | 29 padroes catalogados: C7 CRITICO, H12 ALTA, M10 MEDIA |
+| Protocolo KB-First v2 com Agreement Matrix | Confianca calibrada e proveniencia obrigatoria em respostas tecnicas |
+| Cascade Tracking PRD->SPEC no workflow_tracker | Rastreabilidade automatica de dependencias entre artefatos |
+| `output_budget` no frontmatter dos 10 agentes | Controle declarativo de verbosidade sem modificar runtime |
+| Resolucao de 3 duplicacoes criticas (Star Schema, Direct Lake, Orchestration) | Fonte canonica unica para cada topico |
+| Chainlit Tool Result Display: output real das tools nos steps expansiveis | Visibilidade completa da execucao — igual a experiencia de apresentacoes profissionais |
+| Correcao do modelo ativo: bedrock/anthropic.claude-4-6-sonnet via LiteLLM proxy | Todos os 10 agentes usando o modelo correto do ambiente corporativo |
+| Correcao de bug: AssistantMessage intermediario fechava steps prematuramente | Ordem real do stream SDK respeitada |
+
 ---
 
 ## 26. Metricas do Projeto
 
-Um resumo numerico do ecossistema Data Agents v7.0:
+Um resumo numerico do ecossistema Data Agents v8.0:
 
 | **Metrica**                      | **Valor**                                                                        |
 | -------------------------------- | -------------------------------------------------------------------------------- |
-| Versao atual                     | 7.0.0                                                                            |
+| Versao atual                     | 8.0.0                                                                            |
 | Agentes especialistas            | 10 (1 Supervisor + 1 Tier 3 + 3 Tier 1 + 5 Tier 2)                             |
 | Slash commands                   | 15 (/brief, /plan, /geral, /sql, /spark, /pipeline, /dbt, /fabric, /quality, /governance, /semantic, /health, /status, /review, /help) |
 | Interfaces de usuario            | 3 (Terminal + Web UI Streamlit + Web UI Chainlit)                                |
@@ -3053,7 +3167,8 @@ Um resumo numerico do ecossistema Data Agents v7.0:
 | Padroes destrutivos no hook      | 22 diretos + 11 de evasao (total: 33 padroes)                                   |
 | Tipos de log                     | 5 (audit, app, sessions, workflows, compression) + config_snapshots             |
 | Tipos de memoria                 | 7 (user, feedback, architecture, progress, data_asset, platform_decision, pipeline_status) |
-| Dominios de Knowledge Base       | 8 (sql, spark, pipeline, data-quality, governance, semantic, databricks, fabric) |
+| Dominios de Knowledge Base       | 8 dominios · 69+ arquivos (concepts/ + patterns/)                               |
+| Anti-padroes catalogados         | 29 (kb/shared/anti-patterns.md): 7 CRITICOS, 12 ALTA, 10 MEDIA                 |
 | Camadas de conhecimento          | 3 (Constituicao > KBs > Skills)                                                 |
 | Regras na Constituicao           | Aproximadamente 50 em 8 secoes                                                  |
 | Tools MCP total                  | 65+ Databricks + 9 Genie + 28 Fabric Community + 8 Fabric SQL + 15+ RTI        |

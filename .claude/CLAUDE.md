@@ -33,15 +33,18 @@ make health-fabric
 ## Arquitetura de Alto Nível
 
 ```
-Usuário → main.py / ui/chat.py
+Usuário → main.py / ui/chat.py / ui/chainlit_app.py
   └─► Supervisor (claude-opus-4-6, sem MCP direto)
         ├─► business-analyst   [T3] — intake de requisitos, /brief
         ├─► sql-expert         [T1] — SQL, schemas, catálogos
         ├─► spark-expert       [T1] — PySpark, DLT, Delta Lake
         ├─► pipeline-architect [T1] — ETL/ELT cross-platform
+        ├─► dbt-expert         [T2] — dbt Core: models, testes, snapshots
         ├─► data-quality-steward [T2] — validação, profiling, SLA
         ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
-        └─► semantic-modeler     [T2] — modelos semânticos, DAX, Genie
+        ├─► semantic-modeler     [T2] — modelos semânticos, DAX, Genie
+        ├─► skill-updater        [T2] — refresh de Skills operacionais
+        └─► geral                [T3] — perguntas conceituais, zero MCP
 ```
 
 **Regra central:** O Supervisor **nunca** executa código, acessa MCP ou gera SQL/PySpark.
@@ -225,10 +228,12 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | spark-expert | context7 |
 | sql-expert | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres |
 | pipeline-architect | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, github, firecrawl, memory_mcp |
+| dbt-expert | context7, postgres |
 | data-quality-steward | databricks, fabric, fabric_community, fabric_rti, postgres |
 | governance-auditor | databricks, fabric, fabric_community, tavily, postgres, memory_mcp |
 | semantic-modeler | databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7 |
-| dbt-expert | context7, postgres |
+| skill-updater | context7, tavily, firecrawl |
+| geral | *(nenhum — resposta direta sem MCP)* |
 
 > MCPs sem credenciais (context7, memory_mcp) são ativados automaticamente.
 > Os demais requerem variáveis de ambiente configuradas no `.env`.
