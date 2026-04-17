@@ -43,15 +43,21 @@ PARTY_GROUPS: dict[str, list[str]] = {
     "quality": ["data-quality-steward", "governance-auditor", "semantic-modeler"],
     # Foco em arquitetura e design
     "arch": ["pipeline-architect", "spark-expert", "sql-expert"],
-    # Rodada completa — Tier 1 + principais Tier 2
+    # Rodada completa — todos os Tier 1 + principais Tier 2
     "full": [
         "sql-expert",
         "spark-expert",
         "pipeline-architect",
+        "python-expert",
+        "migration-expert",
         "data-quality-steward",
         "governance-auditor",
         "semantic-modeler",
     ],
+    # Foco em engenharia Python e pipelines
+    "engineering": ["python-expert", "spark-expert", "pipeline-architect"],
+    # Foco em migração e compatibilidade
+    "migration": ["migration-expert", "sql-expert", "spark-expert"],
 }
 
 # ── System prompts por agente ──────────────────────────────────────────────────
@@ -101,6 +107,22 @@ AGENT_PERSONAS: dict[str, str] = {
         "Seu foco: Fabric Direct Lake, DAX, Metric Views Databricks, "
         "Genie Spaces (Conversational BI), AI/BI Dashboards. "
         "Responda com perspectiva de consumo analítico e valor de negócio dos dados. "
+        "Seja direto, técnico e objetivo. "
+        "Responda em português brasileiro."
+    ),
+    "python-expert": (
+        "Você é um especialista sênior em Python. "
+        "Seu foco: Python idiomático com type hints, PEP 8, pytest, FastAPI, pandas/polars, "
+        "automação de pipelines, CLIs com Click/Typer, empacotamento e publicação de pacotes. "
+        "Responda com perspectiva de engenharia de software Python de alta qualidade. "
+        "Seja direto, técnico e objetivo. Use code blocks quando exemplificar. "
+        "Responda em português brasileiro."
+    ),
+    "migration-expert": (
+        "Você é um especialista sênior em migração de bancos de dados relacionais para nuvem. "
+        "Seu foco: migração de SQL Server e PostgreSQL para Databricks (Medallion) e Microsoft Fabric, "
+        "mapeamento de tipos, assessment de complexidade, estratégias de cutover e validação. "
+        "Responda com perspectiva de arquitetura de migração e riscos de compatibilidade. "
         "Seja direto, técnico e objetivo. "
         "Responda em português brasileiro."
     ),
@@ -162,16 +184,39 @@ def parse_party_args(user_input: str) -> tuple[list[str], str]:
     return PARTY_GROUPS["default"], rest
 
 
+# Mapa de tier por agente para uso no Party Mode (sem MCPs — respostas conceituais)
+_AGENT_TIERS: dict[str, str] = {
+    "sql-expert": "T1",
+    "spark-expert": "T1",
+    "pipeline-architect": "T1",
+    "python-expert": "T1",
+    "migration-expert": "T1",
+    "dbt-expert": "T2",
+    "data-quality-steward": "T2",
+    "governance-auditor": "T2",
+    "semantic-modeler": "T2",
+    "business-analyst": "T3",
+    "geral": "T3",
+}
+
+# Número de turns padrão por tier para Party Mode (respostas diretas, sem MCPs)
+_PARTY_MAX_TURNS: dict[str, int] = {"T1": 3, "T2": 2, "T3": 1}
+
+
 def _build_agent_options(agent_name: str) -> ClaudeAgentOptions:
-    """Constrói ClaudeAgentOptions mínimo para um agente do Party Mode."""
+    """Constrói ClaudeAgentOptions para um agente do Party Mode."""
     persona = AGENT_PERSONAS.get(agent_name, _DEFAULT_PERSONA)
+    tier = _AGENT_TIERS.get(agent_name, "T2")
+    # Respeita override de turns por tier; Party Mode não usa MCPs (respostas conceituais)
+    tier_turns = settings.tier_turns_map.get(tier) if settings.tier_turns_map else None
+    max_turns = tier_turns if tier_turns is not None else _PARTY_MAX_TURNS.get(tier, 2)
     return ClaudeAgentOptions(
         model=settings.default_model,
         system_prompt=persona,
         allowed_tools=[],
         agents=None,
         mcp_servers={},
-        max_turns=1,
+        max_turns=max_turns,
         permission_mode="bypassPermissions",
     )
 

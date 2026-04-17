@@ -221,6 +221,37 @@ class Settings(BaseSettings):
     # Override via .env: MEMORY_KEEP_COMPILED_DAYS=30
     memory_keep_compiled_days: int = 30
 
+    # --- Memory Extraction Model ---
+    # Modelo usado pelo extractor e retrieval para chamadas laterais (sem SDK).
+    # Padrão: Sonnet para balancear qualidade e custo.
+    # Override via .env: MEMORY_EXTRACTOR_MODEL=claude-haiku-4-5-20251001
+    memory_extractor_model: str = "claude-sonnet-4-6"
+    memory_extractor_max_tokens: int = 2048
+    memory_retrieval_model: str = "claude-sonnet-4-6"
+    memory_retrieval_max_tokens: int = 1024
+    # Número máximo de memórias recuperadas por query (retrieval semântico).
+    # Override via .env: MEMORY_RETRIEVAL_MAX=10
+    memory_retrieval_max: int = 10
+
+    # --- Output Compressor Limits ---
+    # Limites de truncagem do output_compressor_hook.py.
+    # Reduzir MAX_OUTPUT_CHARS economiza tokens de contexto em troca de menos detalhe.
+    # Override via .env: COMPRESSOR_MAX_SQL_ROWS=50
+    compressor_max_sql_rows: int = 50
+    compressor_max_list_items: int = 30
+    compressor_max_file_lines: int = 200
+    compressor_max_bash_lines: int = 100
+    compressor_max_output_chars: int = 8_000
+
+    # --- Context Budget Thresholds ---
+    # Limite de tokens de input por sessão (context window do Claude: 200K tokens).
+    # 180K é o teto conservador para deixar margem para a resposta final.
+    # Override via .env: CONTEXT_BUDGET_INPUT_LIMIT=180000
+    context_budget_input_limit: int = 180_000
+    # Limiares: 80% → WARNING, 95% → ERROR + salva checkpoint.
+    context_budget_warn_threshold: float = 0.80
+    context_budget_critical_threshold: float = 0.95
+
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
     # --- Campos internos (não carregados do .env) ---

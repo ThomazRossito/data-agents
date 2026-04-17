@@ -22,23 +22,25 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from config.settings import settings
+
 logger = logging.getLogger("data_agents.hooks.context_budget")
-
-# Contexto de tokens acumulado da sessão
-_session_input_tokens: int = 0
-_session_output_tokens: int = 0
-
-# Limite máximo de tokens de input por sessão (contexto do Claude: 200K tokens)
-# Usamos 180K como teto conservador para deixar margem para a resposta final.
-_INPUT_TOKEN_LIMIT = 180_000
-
-# Limiares de alerta: 80% → WARNING, 95% → ERROR
-_WARN_THRESHOLD = 0.80
-_CRITICAL_THRESHOLD = 0.95
 
 # Tokens aproximados: estimativa grosseira se os metadados não estiverem disponíveis
 # 1 token ≈ 4 chars em inglês / ~3.5 chars em português
 _CHARS_PER_TOKEN = 4
+
+# Rastreia se o checkpoint crítico já foi salvo na sessão atual (evita saves repetidos)
+_critical_checkpoint_saved: bool = False
+
+# Contadores por sessão — isolados por reset explícito (reset_context_budget)
+_session_input_tokens: int = 0
+_session_output_tokens: int = 0
+
+# Aliases de módulo para compatibilidade com testes e importações externas
+_INPUT_TOKEN_LIMIT: int = settings.context_budget_input_limit
+_WARN_THRESHOLD: float = settings.context_budget_warn_threshold
+_CRITICAL_THRESHOLD: float = settings.context_budget_critical_threshold
 
 
 async def track_context_budget(
@@ -58,10 +60,14 @@ async def track_context_budget(
     Returns:
         {} (hook não modifica o output).
     """
-    global _session_input_tokens, _session_output_tokens
+    global _session_input_tokens, _session_output_tokens, _critical_checkpoint_saved
 
     if not input_data or not isinstance(input_data, dict):
         return {}
+
+    input_token_limit = settings.context_budget_input_limit
+    warn_threshold = settings.context_budget_warn_threshold
+    critical_threshold = settings.context_budget_critical_threshold
 
     tool_input = input_data.get("tool_input")
     tool_output = input_data.get("tool_output")
@@ -74,27 +80,42 @@ async def track_context_budget(
     _session_input_tokens += input_tokens
     _session_output_tokens += output_tokens
 
-    usage_ratio = _session_input_tokens / _INPUT_TOKEN_LIMIT
+    usage_ratio = _session_input_tokens / input_token_limit
 
-    if usage_ratio >= _CRITICAL_THRESHOLD:
+    if usage_ratio >= critical_threshold:
         logger.error(
-            f"🚨 CONTEXT CRÍTICO: {_session_input_tokens:,}/{_INPUT_TOKEN_LIMIT:,} tokens "
+            f"🚨 CONTEXT CRÍTICO: {_session_input_tokens:,}/{input_token_limit:,} tokens "
             f"({usage_ratio:.0%}) — sessão próxima ao limite. "
             f"Considere iniciar nova sessão ou usar /memory flush para compactar contexto."
         )
-    elif usage_ratio >= _WARN_THRESHOLD:
+        # Salva checkpoint uma única vez ao atingir o limiar crítico
+        if not _critical_checkpoint_saved:
+            _critical_checkpoint_saved = True
+            _save_emergency_checkpoint()
+    elif usage_ratio >= warn_threshold:
         logger.warning(
-            f"⚠️  CONTEXT ALTO: {_session_input_tokens:,}/{_INPUT_TOKEN_LIMIT:,} tokens "
-            f"({usage_ratio:.0%}) — {_INPUT_TOKEN_LIMIT - _session_input_tokens:,} tokens restantes."
+            f"⚠️  CONTEXT ALTO: {_session_input_tokens:,}/{input_token_limit:,} tokens "
+            f"({usage_ratio:.0%}) — {input_token_limit - _session_input_tokens:,} tokens restantes."
         )
     else:
         logger.debug(
             f"Context budget: {_session_input_tokens:,} input + "
             f"{_session_output_tokens:,} output tokens acumulados "
-            f"({usage_ratio:.1%} do limite de {_INPUT_TOKEN_LIMIT:,})"
+            f"({usage_ratio:.1%} do limite de {input_token_limit:,})"
         )
 
     return {}
+
+
+def _save_emergency_checkpoint() -> None:
+    """Tenta salvar um checkpoint de emergência ao atingir 95% do context budget."""
+    try:
+        from hooks.checkpoint import save_checkpoint
+
+        save_checkpoint(reason="context_budget_critical")
+        logger.warning("💾 Checkpoint de emergência salvo (context budget crítico).")
+    except Exception as e:
+        logger.warning(f"Checkpoint de emergência não disponível: {e}")
 
 
 def _extract_token_counts(
@@ -144,10 +165,11 @@ def get_context_usage() -> dict[str, Any]:
     Returns:
         Dict com tokens usados, limite, razão de uso e status.
     """
-    ratio = _session_input_tokens / _INPUT_TOKEN_LIMIT
-    if ratio >= _CRITICAL_THRESHOLD:
+    input_token_limit = settings.context_budget_input_limit
+    ratio = _session_input_tokens / input_token_limit
+    if ratio >= settings.context_budget_critical_threshold:
         status = "critical"
-    elif ratio >= _WARN_THRESHOLD:
+    elif ratio >= settings.context_budget_warn_threshold:
         status = "warning"
     else:
         status = "ok"
@@ -156,9 +178,9 @@ def get_context_usage() -> dict[str, Any]:
         "input_tokens": _session_input_tokens,
         "output_tokens": _session_output_tokens,
         "total_tokens": _session_input_tokens + _session_output_tokens,
-        "limit": _INPUT_TOKEN_LIMIT,
+        "limit": input_token_limit,
         "usage_ratio": ratio,
-        "remaining_tokens": max(0, _INPUT_TOKEN_LIMIT - _session_input_tokens),
+        "remaining_tokens": max(0, input_token_limit - _session_input_tokens),
         "status": status,
     }
 
@@ -169,7 +191,8 @@ def reset_context_budget() -> None:
 
     Chamado no início de cada nova sessão ou após /memory flush.
     """
-    global _session_input_tokens, _session_output_tokens
+    global _session_input_tokens, _session_output_tokens, _critical_checkpoint_saved
     _session_input_tokens = 0
     _session_output_tokens = 0
+    _critical_checkpoint_saved = False
     logger.debug("Context budget resetado.")

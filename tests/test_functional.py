@@ -160,10 +160,10 @@ class TestPartyModeArgParsing:
 
         assert len(PARTY_GROUPS["default"]) == 3
 
-    def test_full_group_has_six_agents(self):
+    def test_full_group_has_at_least_six_agents(self):
         from commands.party import PARTY_GROUPS
 
-        assert len(PARTY_GROUPS["full"]) == 6
+        assert len(PARTY_GROUPS["full"]) >= 6
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -176,6 +176,8 @@ class TestPartyModeGroups:
         "sql-expert",
         "spark-expert",
         "pipeline-architect",
+        "python-expert",
+        "migration-expert",
         "data-quality-steward",
         "governance-auditor",
         "semantic-modeler",

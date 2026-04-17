@@ -298,6 +298,97 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         ),
         display_template="[bold yellow]📊 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
     ),
+    "python": CommandDefinition(
+        name="python",
+        agent="python-expert",
+        doma_mode="express",
+        description=(
+            "Envia tarefa Python diretamente para o Python Expert (DOMA Express). "
+            "Use para: pacotes, automação, APIs REST, CLIs, testes pytest, pandas/polars, FastAPI."
+        ),
+        skills=["kb/python/index.md"],
+        prompt_template=(
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para python-expert. "
+            "Não crie PRD, não peça aprovação. "
+            "Instrua o agente a buscar documentação atualizada via context7 se necessário "
+            "e a seguir PEP 8, type hints e mínimo de dependências externas. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]🐍 [DOMA Express] Direcionando para: {agent}[/bold yellow]",
+    ),
+    "migrate": CommandDefinition(
+        name="migrate",
+        agent="migration-expert",
+        doma_mode="full",
+        description=(
+            "Inicia assessment e migração de SQL Server ou PostgreSQL para Databricks/Fabric. "
+            "Gera PRD de migração com mapeamento de tipos, Medallion e estratégia de cutover. "
+            "Exemplos: /migrate sql-server para databricks | /migrate postgres para fabric"
+        ),
+        skills=["kb/migration/index.md"],
+        prompt_template=(
+            "[DOMA MIGRATE] Delegue IMEDIATAMENTE para migration-expert. "
+            "Não gere SQL diretamente. O agente deve: "
+            "(1) Ler `kb/migration/index.md` para regras de mapeamento de tipos e anti-padrões. "
+            "(2) Conectar ao banco de origem via migration_source MCP para extrair DDL e estatísticas. "
+            "(3) Gerar assessment de complexidade (LOW/MEDIUM/HIGH) por objeto. "
+            "(4) Propor arquitetura Medallion Bronze→Silver→Gold no destino. "
+            "(5) Salvar o plano de migração em `output/migration/migration_plan_<nome>.md`. "
+            "(6) Apresentar resumo e aguardar aprovação antes de gerar scripts. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]🚚 [DOMA Migrate] Iniciando assessment com: {agent}[/bold yellow]",
+    ),
+    "skill": CommandDefinition(
+        name="skill",
+        agent="skill-updater",
+        doma_mode="express",
+        description=(
+            "Atualiza Skills com documentação recente via context7/tavily/firecrawl. "
+            "Exemplos: /skill databricks | /skill fabric | /skill dbt | /skill (atualiza todos)"
+        ),
+        skills=[],
+        prompt_template=(
+            "[DOMA EXPRESS] Delegue IMEDIATAMENTE para skill-updater. "
+            "Não crie PRD, não peça aprovação. "
+            "O agente deve buscar a documentação mais recente para o domínio solicitado "
+            "e atualizar ou criar os arquivos SKILL.md correspondentes. "
+            "Domínio/tarefa: {task}"
+        ),
+        display_template="[bold yellow]🔄 [DOMA Express] Atualizando Skills com: {agent}[/bold yellow]",
+    ),
+    "genie": CommandDefinition(
+        name="genie",
+        agent="semantic-modeler",
+        doma_mode="express",
+        description="Cria ou atualiza Genie Spaces no Databricks para Conversational BI (DOMA Express).",
+        skills=["kb/semantic-modeling/index.md"],
+        prompt_template=(
+            "[DOMA EXPRESS — GENIE] Delegue IMEDIATAMENTE para semantic-modeler. "
+            "Não crie PRD, não peça aprovação. "
+            "O agente deve usar as ferramentas Databricks Genie (mcp__databricks_genie__*) "
+            "para criar ou atualizar o Genie Space conforme solicitado. "
+            "Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]🧞 [DOMA Express] Criando Genie Space com: {agent}[/bold yellow]",
+    ),
+    "dashboard": CommandDefinition(
+        name="dashboard",
+        agent="semantic-modeler",
+        doma_mode="express",
+        description="Cria ou publica AI/BI Dashboards no Databricks (DOMA Express).",
+        skills=["kb/semantic-modeling/index.md"],
+        prompt_template=(
+            "[DOMA EXPRESS — DASHBOARD] Delegue IMEDIATAMENTE para semantic-modeler. "
+            "Não crie PRD, não peça aprovação. "
+            "O agente deve usar as ferramentas Databricks AI/BI Dashboard "
+            "para criar ou publicar o dashboard conforme solicitado. "
+            "Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. "
+            "Tarefa: {task}"
+        ),
+        display_template="[bold yellow]📈 [DOMA Express] Criando Dashboard com: {agent}[/bold yellow]",
+    ),
     "party": CommandDefinition(
         name="party",
         agent=None,

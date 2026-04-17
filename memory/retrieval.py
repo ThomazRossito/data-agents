@@ -30,9 +30,7 @@ from config.settings import settings
 
 logger = logging.getLogger("data_agents.memory.retrieval")
 
-# Modelo para retrieval lateral (Sonnet é o sweet spot custo/qualidade)
-_RETRIEVAL_MODEL = "claude-sonnet-4-6"
-_RETRIEVAL_MAX_TOKENS = 1024
+# Modelo e limites lidos de settings para permitir override via .env
 
 _RETRIEVAL_SYSTEM_PROMPT = """\
 Você é um sistema de retrieval de memórias. Sua tarefa é selecionar as memórias mais
@@ -61,7 +59,7 @@ Exemplo: ["abc123", "def456"]
 def retrieve_relevant_memories(
     query: str,
     store: MemoryStore,
-    max_memories: int = 10,
+    max_memories: int | None = None,
     include_types: list[MemoryType] | None = None,
 ) -> list[Memory]:
     """
@@ -76,6 +74,9 @@ def retrieve_relevant_memories(
     Returns:
         Lista de Memory objects relevantes, com conteúdo completo.
     """
+    if max_memories is None:
+        max_memories = settings.memory_retrieval_max
+
     # 1. Carregar index
     index_path = store.data_dir / "index.md"
     if not index_path.exists():
@@ -128,8 +129,8 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
 
     payload = json.dumps(
         {
-            "model": _RETRIEVAL_MODEL,
-            "max_tokens": _RETRIEVAL_MAX_TOKENS,
+            "model": settings.memory_retrieval_model,
+            "max_tokens": settings.memory_retrieval_max_tokens,
             "system": _RETRIEVAL_SYSTEM_PROMPT,
             "messages": [{"role": "user", "content": user_message}],
         }

@@ -27,8 +27,17 @@ from config.settings import settings
 
 logger = logging.getLogger("data_agents.memory.extractor")
 
-_EXTRACTOR_MODEL = "claude-sonnet-4-6"
-_EXTRACTOR_MAX_TOKENS = 2048
+# Confidence por tipo de memória: USER/ARCHITECTURE têm alta confiança por serem
+# declarativos; PROGRESS/PIPELINE_STATUS são mais transitórios e menos confiáveis.
+_TYPE_CONFIDENCE: dict[str, float] = {
+    "user": 0.95,
+    "architecture": 0.95,
+    "data_asset": 0.90,
+    "feedback": 0.90,
+    "platform_decision": 0.85,
+    "progress": 0.75,
+    "pipeline_status": 0.70,
+}
 
 _EXTRACTOR_SYSTEM_PROMPT = """\
 Você é um sistema de extração de memórias. Sua tarefa é analisar uma conversa entre
@@ -133,8 +142,8 @@ def extract_memories_from_conversation(
 
     payload = json.dumps(
         {
-            "model": _EXTRACTOR_MODEL,
-            "max_tokens": _EXTRACTOR_MAX_TOKENS,
+            "model": settings.memory_extractor_model,
+            "max_tokens": settings.memory_extractor_max_tokens,
             "system": _EXTRACTOR_SYSTEM_PROMPT,
             "messages": [{"role": "user", "content": user_message}],
         }
@@ -194,12 +203,18 @@ def extract_memories_from_conversation(
                 logger.warning(f"Tipo de memória inválido ignorado: {mem_type_str}")
                 continue
 
+            base_confidence = _TYPE_CONFIDENCE.get(mem_type_str, 0.80)
+            # Penaliza levemente memórias com conteúdo muito curto (< 30 chars)
+            content = ext.get("content", "")
+            if len(content) < 30:
+                base_confidence = max(0.50, base_confidence - 0.15)
+
             mem = Memory(
                 type=mem_type,
-                content=ext.get("content", ""),
+                content=content,
                 summary=ext.get("summary", ""),
                 tags=ext.get("tags", []),
-                confidence=1.0,
+                confidence=base_confidence,
                 created_at=now,
                 updated_at=now,
                 source_session=session_id,

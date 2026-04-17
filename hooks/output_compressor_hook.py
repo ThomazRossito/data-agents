@@ -25,6 +25,8 @@ import os
 from datetime import datetime, timezone
 from typing import Any
 
+from config.settings import settings
+
 logger = logging.getLogger("data_agents.output_compressor")
 
 COMPRESSION_LOG_PATH: str = os.path.join(
@@ -40,25 +42,23 @@ CHARS_PER_TOKEN: float = 4.0
 AVG_INPUT_PRICE_PER_TOKEN: float = 9.0 / 1_000_000  # ~$9/1M tokens (média opus+sonnet)
 
 
-# ─── Limites de compressão (configuráveis) ────────────────────────
+def _limits() -> tuple[int, int, int, int, int]:
+    """Retorna limites de compressão lidos de settings (permite override via .env)."""
+    return (
+        settings.compressor_max_sql_rows,
+        settings.compressor_max_list_items,
+        settings.compressor_max_file_lines,
+        settings.compressor_max_bash_lines,
+        settings.compressor_max_output_chars,
+    )
 
-MAX_SQL_ROWS: int = 50
-"""Máximo de linhas de resultado SQL/KQL enviadas ao modelo.
-SQL queries em produção podem retornar milhares de linhas — o modelo
-não precisa de todas elas para raciocinar sobre a estrutura dos dados."""
 
-MAX_LIST_ITEMS: int = 30
-"""Máximo de itens em operações de listagem (tabelas, schemas, jobs, etc.)."""
-
-MAX_FILE_LINES: int = 200
-"""Máximo de linhas de arquivo lido via Read/Grep."""
-
-MAX_BASH_LINES: int = 100
-"""Máximo de linhas de stdout/stderr de comandos Bash."""
-
-MAX_OUTPUT_CHARS: int = 8_000
-"""Limite de segurança geral em caracteres — aplicado como último recurso
-para tools não categorizadas com output muito grande."""
+# Aliases de módulo para compatibilidade com testes e importações externas
+MAX_SQL_ROWS: int = settings.compressor_max_sql_rows
+MAX_LIST_ITEMS: int = settings.compressor_max_list_items
+MAX_FILE_LINES: int = settings.compressor_max_file_lines
+MAX_BASH_LINES: int = settings.compressor_max_bash_lines
+MAX_OUTPUT_CHARS: int = settings.compressor_max_output_chars
 
 
 # ─── Classificação de tools por tipo de saída ─────────────────────
@@ -157,17 +157,19 @@ def _compress_sql_result(output: str, tool_name: str) -> str | None:
         data = json.loads(output)
 
         # Formato: lista direta de rows → [{"col": "val"}, ...]
+        max_sql = _limits()[0]
+
         if isinstance(data, list):
             total = len(data)
-            if total <= MAX_SQL_ROWS:
+            if total <= max_sql:
                 return None
 
             header = (
                 f"[OUTPUT COMPRIMIDO] {total} linhas retornadas — "
-                f"exibindo as primeiras {MAX_SQL_ROWS}. "
+                f"exibindo as primeiras {max_sql}. "
                 f"Refine com WHERE + LIMIT para resultados completos.\n\n"
             )
-            return header + json.dumps(data[:MAX_SQL_ROWS], ensure_ascii=False, indent=2)
+            return header + json.dumps(data[:max_sql], ensure_ascii=False, indent=2)
 
         # Formato: dict com lista interna → {"rows": [...], "schema": {...}}
         if isinstance(data, dict):
@@ -181,14 +183,14 @@ def _compress_sql_result(output: str, tool_name: str) -> str | None:
 
             if rows is not None:
                 total = len(rows)
-                if total <= MAX_SQL_ROWS:
+                if total <= max_sql:
                     return None
 
                 data_copy = dict(data)
-                data_copy[rows_key] = rows[:MAX_SQL_ROWS]
+                data_copy[rows_key] = rows[:max_sql]
                 header = (
                     f"[OUTPUT COMPRIMIDO] {total} linhas retornadas — "
-                    f"exibindo as primeiras {MAX_SQL_ROWS}. "
+                    f"exibindo as primeiras {max_sql}. "
                     f"Refine com WHERE + LIMIT para resultados completos.\n\n"
                 )
                 return header + json.dumps(data_copy, ensure_ascii=False, indent=2)
@@ -197,12 +199,13 @@ def _compress_sql_result(output: str, tool_name: str) -> str | None:
         pass
 
     # ── Fallback: trunca por linhas de texto (markdown table, CSV, etc.) ──
+    max_sql = _limits()[0]
     lines = output.splitlines()
-    if len(lines) <= MAX_SQL_ROWS:
+    if len(lines) <= max_sql:
         return None
 
-    truncated = lines[:MAX_SQL_ROWS]
-    omitted = len(lines) - MAX_SQL_ROWS
+    truncated = lines[:max_sql]
+    omitted = len(lines) - max_sql
     truncated.append(
         f"[OUTPUT COMPRIMIDO — {omitted} linhas omitidas] "
         f"Refine a query com WHERE/LIMIT para ver todos os dados."
@@ -237,34 +240,37 @@ def _compress_list_result(output: str, tool_name: str) -> str | None:
                     items_key = k
                     break
 
+        max_list = _limits()[1]
+
         if items is not None:
             total = len(items)
-            if total <= MAX_LIST_ITEMS:
+            if total <= max_list:
                 return None
 
             header = (
                 f"[OUTPUT COMPRIMIDO — {tool_label}] "
-                f"Total: {total} itens. Exibindo os primeiros {MAX_LIST_ITEMS}.\n\n"
+                f"Total: {total} itens. Exibindo os primeiros {max_list}.\n\n"
             )
 
             if isinstance(data, list):
-                return header + json.dumps(items[:MAX_LIST_ITEMS], ensure_ascii=False, indent=2)
+                return header + json.dumps(items[:max_list], ensure_ascii=False, indent=2)
 
             # Reconstrói dict com lista truncada
             data_copy = dict(data)
-            data_copy[items_key] = items[:MAX_LIST_ITEMS]
+            data_copy[items_key] = items[:max_list]
             return header + json.dumps(data_copy, ensure_ascii=False, indent=2)
 
     except (json.JSONDecodeError, ValueError):
         pass
 
     # ── Fallback: trunca por linhas ───────────────────────────────
+    max_list = _limits()[1]
     lines = output.splitlines()
-    if len(lines) <= MAX_LIST_ITEMS:
+    if len(lines) <= max_list:
         return None
 
-    truncated = lines[:MAX_LIST_ITEMS]
-    omitted = len(lines) - MAX_LIST_ITEMS
+    truncated = lines[:max_list]
+    omitted = len(lines) - max_list
     truncated.append(f"[OUTPUT COMPRIMIDO — {tool_label}] ... {omitted} itens omitidos.")
     return "\n".join(truncated)
 
@@ -292,11 +298,12 @@ def _compress_by_chars(output: str) -> str | None:
     Aplicado a tools não categorizadas com output muito grande.
     Retorna None se dentro do limite.
     """
-    if len(output) <= MAX_OUTPUT_CHARS:
+    max_chars = _limits()[4]
+    if len(output) <= max_chars:
         return None
 
-    truncated = output[:MAX_OUTPUT_CHARS]
-    omitted = len(output) - MAX_OUTPUT_CHARS
+    truncated = output[:max_chars]
+    omitted = len(output) - max_chars
     return (
         truncated + f"\n\n[OUTPUT COMPRIMIDO] ... {omitted} caracteres omitidos "
         f"(total original: {len(output)} chars)."
@@ -389,10 +396,10 @@ async def compress_tool_output(
             compressed = _compress_list_result(output, tool_name)
 
         elif tool_name in _FILE_TOOLS:
-            compressed = _compress_by_lines(output, MAX_FILE_LINES, "Read/Grep")
+            compressed = _compress_by_lines(output, _limits()[2], "Read/Grep")
 
         elif tool_name in _BASH_TOOLS:
-            compressed = _compress_by_lines(output, MAX_BASH_LINES, "Bash")
+            compressed = _compress_by_lines(output, _limits()[3], "Bash")
 
         # Fallback de segurança para qualquer tool não categorizada
         if compressed is None:
