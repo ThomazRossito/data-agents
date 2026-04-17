@@ -2,8 +2,13 @@
 # start_chainlit.sh — Inicia a interface Chainlit do Data Agents (porta 8503)
 #
 # Uso:
-#   ./start_chainlit.sh              # porta padrão 8503
+#   ./start_chainlit.sh               # Chainlit + Business Monitor (padrão)
+#   ./start_chainlit.sh --no-monitor  # Chainlit sem o Business Monitor
 #   CHAINLIT_PORT=8504 ./start_chainlit.sh
+#
+# Para parar o Business Monitor sem encerrar o chat:
+#   /monitor stop   (no chat)
+#   /monitor off    (pausa os ciclos, daemon continua vivo)
 #
 # O Streamlit (start.sh) continua funcionando normalmente na porta 8502.
 # Este script é adicional e independente.
@@ -14,6 +19,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 PORT="${CHAINLIT_PORT:-8503}"
+BIZ_MONITOR=true   # padrão: sempre ativo
+
+for arg in "$@"; do
+  case "$arg" in
+    --no-monitor) BIZ_MONITOR=false ;;
+  esac
+done
 
 # ── Carrega .env — garante que as variáveis corretas sobrescrevem o shell ──────
 # Crítico: sem isso, variáveis exportadas por start.sh (ex: ANTHROPIC_BASE_URL
@@ -48,6 +60,35 @@ echo "   Modo 2 — Dev Assistant: Claude + ferramentas de desenvolvimento"
 echo ""
 echo "   Streamlit continua disponível em: http://localhost:8502 (start.sh)"
 echo ""
+
+# ── Business Monitor daemon ───────────────────────────────────────────────────
+PID_FILE="$SCRIPT_DIR/config/monitor_daemon.pid"
+
+if [[ "$BIZ_MONITOR" == true ]]; then
+  # Mata instância anterior se ainda estiver rodando
+  if [[ -f "$PID_FILE" ]]; then
+    OLD_PID=$(cat "$PID_FILE")
+    if kill -0 "$OLD_PID" 2>/dev/null; then
+      echo "   ♻️  Encerrando monitor anterior (PID $OLD_PID)..."
+      kill "$OLD_PID" 2>/dev/null || true
+      sleep 1
+    fi
+  fi
+
+  mkdir -p logs
+  python scripts/monitor_daemon.py > logs/biz_monitor.log 2>&1 &
+  BIZ_MONITOR_PID=$!
+  echo "$BIZ_MONITOR_PID" > "$PID_FILE"
+
+  echo "   📡 Business Monitor   : ativo (ciclos 08h–23h)"
+  echo "   PID                   : $BIZ_MONITOR_PID"
+  echo "   Logs                  : logs/biz_monitor.log"
+  echo "   Para parar no chat    : /monitor stop"
+  echo ""
+else
+  echo "   ⏸️  Business Monitor   : desativado (use sem --no-monitor para ativar)"
+  echo ""
+fi
 
 chainlit run ui/chainlit_app.py \
     --port "$PORT" \

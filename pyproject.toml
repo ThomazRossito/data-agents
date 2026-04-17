@@ -44,6 +44,10 @@ dependencies = [
     # PDF: abrir o HTML no browser e usar Cmd+P → Salvar como PDF
     "markdown2>=2.4",
 
+    # Business Monitor — scheduler autônomo (monitor_daemon.py)
+    "apscheduler>=3.10",
+    "pyyaml>=6.0",
+
 ]
 
 [project.optional-dependencies]

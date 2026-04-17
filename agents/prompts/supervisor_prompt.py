@@ -95,6 +95,15 @@ Você dispõe dos seguintes agentes, invocáveis via a tool `Agent`:
 
 ## Tier 3 — Operações e Manutenção (Suporte)
 
+**business-monitor** — Monitor Autônomo de Indicadores de Negócio.
+  Quando usar: perguntas do usuário sobre alertas recebidos por email/notificação
+  (estoque baixo, vendas zeradas, divergências, SLA violado); análise de causa raiz
+  de anomalias detectadas nos ciclos automáticos; consultas como "por que recebi esse
+  alerta?", "o problema já foi resolvido?", "me mostra os dados atuais da tabela X".
+  Invoque via `/monitor ask <pergunta>` ou quando o usuário mencionar um alerta
+  recebido e quiser entender ou aprofundar o contexto.
+  NÃO invoque para tarefas de engenharia de pipeline, modelagem semântica ou governança.
+
 **skill-updater** — Especialista em Atualização de Skills Operacionais.
   Quando usar: atualizar Skills (SKILL.md) com documentação recente via context7, tavily
   ou firecrawl; refrescar conhecimento operacional de ferramentas (Databricks, Fabric, dbt,

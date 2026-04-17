@@ -432,6 +432,19 @@ COMMAND_REGISTRY: dict[str, CommandDefinition] = {
         ),
         display_template="[bold cyan]💬 [Geral] Respondendo com Claude Haiku...[/bold cyan]",
     ),
+    "monitor": CommandDefinition(
+        name="monitor",
+        agent="business-monitor",
+        doma_mode="internal",
+        description=(
+            "Controla o Business Monitor autônomo. "
+            "Subcomandos: on | off | status | run | ask <pergunta>. "
+            "Exemplos: /monitor status | /monitor off | /monitor ask por que o estoque do SKU-001 foi alertado?"
+        ),
+        skills=[],
+        prompt_template="{task}",
+        display_template="[bold green]📡 [Monitor] Business Monitor — {agent}[/bold green]",
+    ),
     "workflow": CommandDefinition(
         name="workflow",
         agent=None,

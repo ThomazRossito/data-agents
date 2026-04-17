@@ -1,0 +1,176 @@
+# ══════════════════════════════════════════════════════════════════════
+# monitor_manifest.yaml — Regras de Monitoramento de Negócio
+#
+# Cada monitor define uma verificação autônoma que o business-monitor
+# executa em ciclos programados. O SQL em `check_sql` deve retornar
+# LINHAS apenas quando há problema (0 linhas = OK, ≥1 linha = alerta).
+#
+# Plataformas suportadas: databricks | fabric_sql
+# Severidades: CRITICA | ALTA | MEDIA | BAIXA
+# ══════════════════════════════════════════════════════════════════════
+
+global:
+  interval_minutes: 3           # intervalo padrão entre ciclos
+  start_hour: 8                 # início do monitoramento (hora local)
+  end_hour: 23                  # fim do monitoramento (hora local)
+  sample_limit: 10              # máximo de registros na amostra do alerta
+  alert_cooldown_minutes: 60    # tempo mínimo entre alertas do mesmo monitor
+
+monitors:
+
+  # ── ESTOQUE ───────────────────────────────────────────────────────
+  - name: "Estoque Crítico"
+    platform: databricks
+    # Substitua pelo catálogo/schema/tabela real do seu ambiente
+    table: "demo_dab.bronze.controle_estoque"
+    check_sql: |
+     SELECT
+        sku,
+        nome_produto,
+        estoque_atual,
+        estoque_minimo
+      FROM demo_dab.bronze.controle_estoque
+      WHERE estoque_atual < (estoque_minimo )
+      LIMIT 100
+    severity: CRITICA
+    message_template: "{count} produto(s) com estoque abaixo do mínimo esperado!"
+    active: true
+
+  - name: "Estoque Zerado"
+    platform: databricks
+    table: "demo_dab.bronze.controle_estoque"
+    check_sql: |
+      SELECT
+        sku,
+        nome_produto,
+        estoque_atual
+      FROM demo_dab.bronze.controle_estoque
+      WHERE estoque_atual = 0
+      LIMIT 100
+    severity: CRITICA
+    message_template: "{count} produto(s) com estoque ZERADO."
+    active: true
+    interval_minutes: 3        # verifica mais frequentemente
+
+  # # ── VENDAS ────────────────────────────────────────────────────────
+  # - name: "Vendas Zeradas após 10h"
+  #   platform: fabric_sql
+  #   # Substitua pelo schema/tabela real do seu Fabric SQL Endpoint
+  #   table: "sales.dbo.daily_sales"
+  #   check_sql: |
+  #     SELECT
+  #       CAST(GETDATE() AS DATE) AS data_ref,
+  #       ISNULL(SUM(valor_venda), 0) AS total_vendas,
+  #       COUNT(*) AS qtd_pedidos
+  #     FROM sales.dbo.daily_sales
+  #     WHERE CAST(data_venda AS DATE) = CAST(GETDATE() AS DATE)
+  #     HAVING ISNULL(SUM(valor_venda), 0) = 0
+  #        AND DATEPART(HOUR, GETDATE()) >= 10
+  #   severity: ALTA
+  #   message_template: "Nenhuma venda registrada hoje após as 10h."
+  #   active: true
+
+  # - name: "Queda Brusca de Vendas"
+  #   platform: fabric_sql
+  #   table: "sales.dbo.daily_sales"
+  #   check_sql: |
+  #     WITH hoje AS (
+  #       SELECT ISNULL(SUM(valor_venda), 0) AS total
+  #       FROM sales.dbo.daily_sales
+  #       WHERE CAST(data_venda AS DATE) = CAST(GETDATE() AS DATE)
+  #     ),
+  #     media_7d AS (
+  #       SELECT AVG(total_dia) AS media
+  #       FROM (
+  #         SELECT CAST(data_venda AS DATE) AS dia, SUM(valor_venda) AS total_dia
+  #         FROM sales.dbo.daily_sales
+  #         WHERE data_venda >= DATEADD(DAY, -8, GETDATE())
+  #           AND CAST(data_venda AS DATE) < CAST(GETDATE() AS DATE)
+  #         GROUP BY CAST(data_venda AS DATE)
+  #       ) t
+  #     )
+  #     SELECT
+  #       hoje.total AS vendas_hoje,
+  #       media_7d.media AS media_7_dias,
+  #       ROUND((hoje.total / NULLIF(media_7d.media, 0)) * 100, 1) AS pct_da_media
+  #     FROM hoje, media_7d
+  #     WHERE hoje.total < (media_7d.media * 0.5)   -- abaixo de 50% da média
+  #       AND DATEPART(HOUR, GETDATE()) >= 14         -- só verifica depois das 14h
+  #       AND media_7d.media > 0
+  #   severity: ALTA
+  #   message_template: "Vendas de hoje ({vendas_hoje}) estão abaixo de 50% da média dos últimos 7 dias ({media_7_dias})."
+  #   active: true
+  #   interval_minutes: 60
+
+  # # ── QUALIDADE / INTEGRIDADE ───────────────────────────────────────
+  # - name: "Divergência NF x Pedido"
+  #   platform: databricks
+  #   table: "catalog.gold.notas_fiscais"
+  #   check_sql: |
+  #     SELECT
+  #       chave_nf,
+  #       numero_pedido,
+  #       valor_nf,
+  #       valor_pedido,
+  #       ABS(valor_nf - valor_pedido) AS divergencia
+  #     FROM catalog.gold.notas_fiscais
+  #     WHERE ABS(valor_nf - valor_pedido) > 0.01
+  #       AND data_emissao >= CURRENT_DATE - INTERVAL 1 DAY
+  #     ORDER BY divergencia DESC
+  #     LIMIT 10
+  #   severity: ALTA
+  #   message_template: "{count} nota(s) fiscal(is) com divergência de valor em relação ao pedido."
+  #   active: true
+
+  # - name: "Pedidos sem Atualização (SLA)"
+  #   platform: fabric_sql
+  #   table: "operations.dbo.pedidos"
+  #   check_sql: |
+  #     SELECT
+  #       id_pedido,
+  #       status,
+  #       data_criacao,
+  #       DATEDIFF(HOUR, data_criacao, GETDATE()) AS horas_sem_atualizacao
+  #     FROM operations.dbo.pedidos
+  #     WHERE status IN ('PENDENTE', 'EM_PROCESSAMENTO')
+  #       AND DATEDIFF(HOUR, data_criacao, GETDATE()) > 48   -- SLA: 48h
+  #     ORDER BY horas_sem_atualizacao DESC
+  #     LIMIT 10
+  #   severity: MEDIA
+  #   message_template: "{count} pedido(s) acima do SLA de 48h sem atualização de status."
+  #   active: true
+  #   interval_minutes: 60
+
+  # - name: "Dados Desatualizados (Freshness)"
+  #   platform: databricks
+  #   table: "catalog.silver.vendas_diarias"
+  #   check_sql: |
+  #     SELECT
+  #       MAX(data_referencia) AS ultima_data,
+  #       DATEDIFF(HOUR, MAX(data_referencia), CURRENT_TIMESTAMP) AS horas_defasagem
+  #     FROM catalog.silver.vendas_diarias
+  #     HAVING DATEDIFF(HOUR, MAX(data_referencia), CURRENT_TIMESTAMP) > 4  -- freshness SLA: 4h
+  #   severity: MEDIA
+  #   message_template: "Tabela vendas_diarias desatualizada há {horas_defasagem}h (SLA: 4h)."
+  #   active: true
+  #   interval_minutes: 60
+
+  # # ── FINANCEIRO ────────────────────────────────────────────────────
+  # - name: "Transações Acima do Limite"
+  #   platform: databricks
+  #   table: "catalog.gold.transacoes_financeiras"
+  #   check_sql: |
+  #     SELECT
+  #       id_transacao,
+  #       tipo,
+  #       valor,
+  #       usuario_responsavel,
+  #       data_transacao
+  #     FROM catalog.gold.transacoes_financeiras
+  #     WHERE valor > 50000                          -- threshold configurável
+  #       AND DATE(data_transacao) = CURRENT_DATE
+  #       AND aprovacao_gerencial IS NULL            -- sem aprovação registrada
+  #     LIMIT 10
+  #   severity: ALTA
+  #   message_template: "{count} transação(ões) acima de R$50.000 sem aprovação gerencial hoje."
+  #   active: false                                  # desativado por padrão — ajustar threshold

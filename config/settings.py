@@ -250,6 +250,29 @@ class Settings(BaseSettings):
     # Override via .env: MEMORY_RETRIEVAL_MAX=10
     memory_retrieval_max: int = 10
 
+    # --- Business Monitor ---
+    monitor_enabled: bool = True
+    monitor_start_hour: int = 8
+    monitor_end_hour: int = 23
+    monitor_interval_minutes: int = 30
+    monitor_manifest_path: str = "config/monitor_manifest.yaml"
+    monitor_alert_email_to: str = ""
+
+    # SMTP para envio de alertas por email (ex: Gmail com App Password)
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+
+    # Databricks SQL Warehouse ID (para execução direta via SDK no monitor daemon)
+    databricks_warehouse_id: str = ""
+
+    # Fabric SQL Endpoint (para monitores com platform: fabric_sql)
+    fabric_sql_server: str = ""
+    fabric_sql_user: str = ""
+    fabric_sql_password: str = ""
+    fabric_sql_database: str = ""
+
     # --- Output Compressor Limits ---
     # Limites de truncagem do output_compressor_hook.py.
     # Reduzir MAX_OUTPUT_CHARS economiza tokens de contexto em troca de menos detalhe.

@@ -781,6 +781,17 @@ async def run_interactive() -> None:
                         _session_state["total_cost"] += result_metrics.get("cost", 0)
                         continue
 
+                    # --- /monitor → Business Monitor autônomo (on/off/status/run/ask) ---
+                    if command_result and command_result.command == "/monitor":
+                        from commands.monitor import run_monitor_command
+
+                        args_str = user_input[len("/monitor") :].strip()
+                        response = await run_monitor_command(
+                            args_str, console=console, client=client
+                        )
+                        console.print(Markdown(response))
+                        continue
+
                     # Ativa thinking apenas para DOMA Full (/plan) — planejamento complexo
                     if command_result and command_result.doma_mode == "full":
                         options.thinking = {"type": "enabled", "budget_tokens": 8000}
