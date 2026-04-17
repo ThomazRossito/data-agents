@@ -76,11 +76,15 @@ python main.py
 | `ANTHROPIC_API_KEY` | Sim | Claude API |
 | `DATABRICKS_HOST`, `DATABRICKS_TOKEN` | Não | Databricks |
 | `AZURE_TENANT_ID`, `FABRIC_WORKSPACE_ID` | Não | Microsoft Fabric |
+| `DATABRICKS_GENIE_SPACES` | Não | Databricks Genie (Conversational BI) |
+| `FABRIC_SQL_LAKEHOUSES` | Não | Fabric SQL Analytics Endpoint |
+| `KUSTO_SERVICE_URI` | Não | Fabric Real-Time Intelligence (KQL) |
 | `TAVILY_API_KEY` | Não | Busca web |
 | `GITHUB_PERSONAL_ACCESS_TOKEN` | Não | GitHub MCP |
 | `FIRECRAWL_API_KEY` | Não | Web scraping |
 | `POSTGRES_URL` | Não | PostgreSQL MCP |
 | `MIGRATION_SOURCES` | Não | Migration Source MCP (SQL Server/PostgreSQL de origem) |
+| `TIER_MODEL_MAP` | Não | Override de modelo por tier (T1/T2/T3) |
 
 > O sistema ativa automaticamente apenas as plataformas com credenciais configuradas. `context7` e `memory_mcp` são ativados sempre, sem credenciais.
 
@@ -101,6 +105,7 @@ python main.py
 | **Semantic Modeler** | `/semantic` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards |
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion) |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
+| **Skill Updater** | `/skill` | T2 | Atualiza Skills com documentação recente via context7, tavily e firecrawl |
 | **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 ### Party Mode — Múltiplos Especialistas em Paralelo
@@ -150,6 +155,7 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/health` | Status das plataformas configuradas |
 | `/status` | Estado da sessão atual |
 | `/memory <query>` | Consulta à memória persistente |
+| `/export` | Exporta o histórico da sessão para HTML (abra no browser → Cmd+P para PDF) |
 
 ---
 
@@ -192,15 +198,16 @@ O sistema conecta diretamente às plataformas via Model Context Protocol (MCP):
 | `databricks` | Databricks | SQL, listagem de tabelas, clusters, jobs, model serving |
 | `databricks_genie` | Databricks Genie | Conversational BI, espaços Genie |
 | `fabric` | Microsoft Fabric | REST API, workspaces, itens, pipelines |
-| `fabric_sql` | Fabric SQL Analytics | Queries diretas ao Lakehouse via TDS |
+| `fabric_sql` | Fabric SQL Analytics | Queries diretas ao Lakehouse via TDS (resolve limitação do schema `dbo` da REST API) |
 | `fabric_rti` | Fabric RTI | KQL, Kusto, Real-Time Intelligence |
 | `fabric_community` | Fabric | Linhagem de dados, dependências entre itens |
-| `context7` | Docs de bibliotecas | Documentação atualizada de qualquer lib |
+| `fabric_semantic` | Power BI / Fabric | Introspecção de Semantic Models: TMDL, DAX, RLS, relacionamentos |
+| `context7` | Docs de bibliotecas | Documentação atualizada de qualquer lib — ativo automaticamente (sem credenciais) |
 | `tavily` | Web | Busca web para LLMs |
 | `github` | GitHub | Repos, issues, PRs |
 | `firecrawl` | Web | Scraping estruturado de páginas |
 | `postgres` | PostgreSQL | Queries readonly em bancos externos |
-| `memory_mcp` | Local | Knowledge graph persistente de entidades |
+| `memory_mcp` | Local | Knowledge graph persistente de entidades — ativo automaticamente (sem credenciais) |
 | `migration_source` | SQL Server / PostgreSQL | Conexão direta ao banco de origem — DDL, views, procedures, functions, stats |
 
 ---
@@ -246,6 +253,8 @@ MEMORY_CAPTURE_ENABLED=true
 ### Web UI Chainlit (recomendada — porta 8503)
 Interface com steps expandíveis em tempo real mostrando cada delegação e tool call. Dois modos: **Data Agents** (sistema completo) e **Dev Assistant** (Claude direto com ferramentas de código).
 
+Use `/export` em qualquer momento para baixar o histórico completo da sessão como HTML formatado — abre no browser com Cmd+P (macOS) ou Ctrl+P (Windows/Linux) para salvar como PDF.
+
 ```bash
 ./start.sh --chainlit         # Chainlit (8503) + Monitoring (8501)
 ./start.sh --chainlit --monitor-only  # somente Chainlit
@@ -288,13 +297,18 @@ make health-fabric
 
 | Variável | Default | Descrição |
 |----------|---------|-----------|
+| `DEFAULT_MODEL` | `claude-opus-4-6` | Modelo do Supervisor |
 | `MAX_BUDGET_USD` | 5.0 | Limite de custo por sessão (USD) |
 | `MAX_TURNS` | 50 | Limite de turnos por sessão |
-| `TIER_MODEL_MAP` | `{}` | Override de modelo por tier |
+| `TIER_MODEL_MAP` | `{}` | Override de modelo por tier — ex: `{"T1": "claude-opus-4-6", "T2": "claude-sonnet-4-6", "T3": "claude-opus-4-6"}` |
+| `TIER_TURNS_MAP` | T1=20, T2=12, T3=5 | Override de número máximo de turns por tier |
+| `TIER_EFFORT_MAP` | high/medium/low | Nível de raciocínio por tier (high, medium, low) |
 | `INJECT_KB_INDEX` | true | Injeção automática de KBs nos agentes |
 | `IDLE_TIMEOUT_MINUTES` | 30 | Reset automático por inatividade |
 | `MEMORY_ENABLED` | true | Sistema de memória persistente |
+| `CONSOLE_LOG_LEVEL` | WARNING | Nível de log no terminal (WARNING oculta logs operacionais) |
 | `SKILL_REFRESH_INTERVAL_DAYS` | 3 | Intervalo de refresh das Skills |
+| `AGENT_PERMISSION_MODE` | `bypassPermissions` | `acceptEdits` para pedir confirmação antes de writes |
 
 ---
 

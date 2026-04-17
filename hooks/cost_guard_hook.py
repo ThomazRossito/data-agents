@@ -38,13 +38,38 @@ COST_TIERS: dict[str, dict] = {
 _session_counters: dict[str, int] = {}
 
 
+def _extract_cost_context(tool_name: str, tool_input: dict[str, Any]) -> dict[str, str]:
+    """Extrai campos de contexto relevantes do tool_input para enriquecer logs de custo."""
+    context: dict[str, str] = {}
+    # Campos úteis por tipo de operação — máx 3 campos, valores truncados a 100 chars
+    candidates = [
+        "job_id",
+        "run_id",
+        "cluster_id",
+        "pipeline_id",
+        "query",
+        "sql",
+        "statement",
+        "warehouse_id",
+        "notebook_path",
+        "path",
+    ]
+    for key in candidates:
+        value = tool_input.get(key)
+        if value and isinstance(value, str):
+            context[key] = value[:100]
+            if len(context) >= 3:
+                break
+    return context
+
+
 async def log_cost_generating_operations(
     input_data: dict[str, Any],
     tool_use_id: str | None,
     context: Any,
 ) -> dict[str, Any]:
     """
-    Registra operações de custo elevado com classificação por tier.
+    Registra operações de custo elevado com classificação por tier e contexto enriquecido.
 
     Emite warnings para operações HIGH e alertas quando o acumulado
     de operações HIGH ultrapassa 100 na mesma sessão.
@@ -61,6 +86,7 @@ async def log_cost_generating_operations(
     info = COST_TIERS[tool_name]
     tier = info["tier"]
     description = info["description"]
+    tool_input = input_data.get("tool_input") or {}
 
     # Incrementar contador de sessão
     _session_counters[tool_name] = _session_counters.get(tool_name, 0) + 1
@@ -71,10 +97,14 @@ async def log_cost_generating_operations(
         _session_counters.get(t, 0) for t, i in COST_TIERS.items() if i["tier"] == "HIGH"
     )
 
+    # Contexto enriquecido para operações HIGH (diagnóstico de custo)
+    cost_ctx = _extract_cost_context(tool_name, tool_input) if tier == "HIGH" else {}
+
     if tier == "HIGH":
+        ctx_str = f" ctx={cost_ctx}" if cost_ctx else ""
         logger.warning(
             f"[COST:HIGH] {description}: {tool_name} "
-            f"(uso #{count} nesta sessão, total HIGH={total_high}) "
+            f"(uso #{count} nesta sessão, total HIGH={total_high}){ctx_str} "
             f"tool_use_id={tool_use_id}"
         )
         if total_high >= 100:

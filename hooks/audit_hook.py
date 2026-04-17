@@ -20,6 +20,19 @@ from typing import Any
 
 from config.settings import settings
 
+# Padrão que mascara valores após flags sensíveis em comandos shell
+_SECRET_FLAG_PATTERN = re.compile(
+    r"((?:--?(?:token|password|key|secret|api[_-]?key|pat|pw|passwd|auth|credential|cred))"
+    r"(?:\s+|=))\S+",
+    re.IGNORECASE,
+)
+
+
+def _sanitize_command(cmd: str) -> str:
+    """Mascara valores de flags sensíveis em comandos shell para evitar vazamento em logs."""
+    return _SECRET_FLAG_PATTERN.sub(r"\1***", cmd)
+
+
 logger = logging.getLogger("data_agents.audit")
 
 # ─── Classificação de operações ───────────────────────────────────
@@ -204,8 +217,9 @@ async def audit_tool_usage(
     elif tool_name == "Grep" and "path" in tool_input:
         log_entry["file_path"] = str(tool_input.get("path", ""))
     elif tool_name == "Bash" and "command" in tool_input:
-        # Registra apenas os primeiros 120 chars do comando (sem argumentos longos)
-        log_entry["command_preview"] = str(tool_input["command"])[:120]
+        # Registra apenas os primeiros 120 chars do comando, com secrets mascarados
+        sanitized = _sanitize_command(str(tool_input["command"]))
+        log_entry["command_preview"] = sanitized[:120]
 
     # Adiciona campos de erro somente quando há erro (economia de espaço)
     if has_error:

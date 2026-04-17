@@ -12,6 +12,7 @@ Uso:
 """
 
 import asyncio
+import hashlib
 import logging
 import sys
 import time
@@ -60,6 +61,14 @@ from commands.party import run_party_query, parse_party_args
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
+
+# Cache de memory retrieval: {query_hash: (system_prompt_enriched, timestamp)}
+# Evita chamar Sonnet lateral para queries idênticas dentro de 60 segundos
+_retrieval_cache: dict[str, tuple[str, float]] = {}
+_RETRIEVAL_CACHE_TTL = 60.0  # segundos
+
+# Flag para garantir que apply_decay() só é executado 1x por sessão
+_decay_applied: bool = False
 
 
 # ─── Mapeamento de tool → label amigável para o usuário ──────────────
@@ -780,16 +789,34 @@ async def run_interactive() -> None:
 
                     # --- Memory Retrieval: injeta memórias relevantes no system prompt ---
                     if settings.memory_enabled and settings.memory_retrieval_enabled:
+                        global _decay_applied
                         try:
-                            enriched_prompt = inject_memory_context(
-                                query=doma_prompt,
-                                system_prompt=options.system_prompt or "",
-                            )
-                            if enriched_prompt != (options.system_prompt or ""):
-                                options.system_prompt = enriched_prompt
-                                logger.debug("System prompt enriquecido com memórias relevantes.")
+                            # Cache por query hash (TTL 60s) — evita Sonnet lateral redundante
+                            query_hash = hashlib.md5(
+                                doma_prompt[:200].encode(), usedforsecurity=False
+                            ).hexdigest()
+                            cached = _retrieval_cache.get(query_hash)
+                            if cached and (time.monotonic() - cached[1]) < _RETRIEVAL_CACHE_TTL:
+                                options.system_prompt = cached[0]
+                                logger.debug("Memory retrieval: usando contexto cacheado.")
+                            else:
+                                enriched_prompt = inject_memory_context(
+                                    query=doma_prompt,
+                                    system_prompt=options.system_prompt or "",
+                                    apply_decay=not _decay_applied,
+                                )
+                                _decay_applied = True
+                                if enriched_prompt != (options.system_prompt or ""):
+                                    options.system_prompt = enriched_prompt
+                                    _retrieval_cache[query_hash] = (
+                                        enriched_prompt,
+                                        time.monotonic(),
+                                    )
+                                    logger.debug(
+                                        "System prompt enriquecido com memórias relevantes."
+                                    )
                         except Exception as e:
-                            logger.debug(f"Memory retrieval ignorado: {e}")
+                            logger.warning(f"Memory retrieval falhou: {e}")
 
                     # --- Enviar para o Supervisor e processar com feedback visual ---
                     await client.query(doma_prompt)

@@ -126,8 +126,8 @@ def _format_context_entry(
     return "\n".join(parts)
 
 
-# Padrões de captura instantânea (regex)
-_INSTANT_PATTERNS = {
+# Padrões default de captura instantânea
+_DEFAULT_INSTANT_PATTERNS: dict[str, str] = {
     # Correções do usuário
     r"(?i)(?:não|nao)\s+(?:faça|faca|use|gere|crie)\s+(.+)": "feedback",
     r"(?i)(?:prefiro|prefira|sempre use|use sempre)\s+(.+)": "feedback",
@@ -138,22 +138,51 @@ _INSTANT_PATTERNS = {
 }
 
 
+def _get_instant_patterns() -> dict[str, str]:
+    """Retorna padrões de captura configurados via settings (com fallback para defaults)."""
+    from config.settings import settings  # importação local — evita circular
+
+    if not settings.memory_instant_patterns:
+        return _DEFAULT_INSTANT_PATTERNS
+
+    patterns: dict[str, str] = dict(_DEFAULT_INSTANT_PATTERNS)
+    for entry in settings.memory_instant_patterns:
+        if "::" in entry:
+            pattern, mem_type = entry.rsplit("::", 1)
+            patterns[pattern.strip()] = mem_type.strip()
+    return patterns
+
+
 def _check_instant_patterns(text: str) -> None:
     """
     Verifica padrões de captura instantânea no texto.
 
     Quando detecta, adiciona uma entrada formatada ao buffer
     com marcador de tipo para que o compiler saiba classificar.
+    Limita a settings.memory_max_captures_per_output por chamada para evitar buffer bloat.
     """
-    for pattern, mem_type in _INSTANT_PATTERNS.items():
+    from config.settings import settings
+
+    max_captures = settings.memory_max_captures_per_output
+    capture_count = 0
+
+    for pattern, mem_type in _get_instant_patterns().items():
+        if capture_count >= max_captures:
+            logger.debug(
+                f"Limite de capturas instantâneas atingido ({max_captures}) — ignorando restantes."
+            )
+            break
         matches = re.findall(pattern, text)
         for match in matches:
+            if capture_count >= max_captures:
+                break
             entry = (
                 f"[INSTANT_CAPTURE] type={mem_type}\n"
                 f"  pattern_matched: {pattern}\n"
                 f"  content: {match.strip()}"
             )
             _session_buffer.append(entry)
+            capture_count += 1
             logger.debug(f"Captura instantânea ({mem_type}): {match.strip()[:80]}")
 
 

@@ -26,9 +26,22 @@ from config.settings import settings
 
 logger = logging.getLogger("data_agents.hooks.context_budget")
 
-# Tokens aproximados: estimativa grosseira se os metadados não estiverem disponíveis
-# 1 token ≈ 4 chars em inglês / ~3.5 chars em português
-_CHARS_PER_TOKEN = 4
+
+# Estimativa de tokens ajustada por presença de caracteres não-ASCII (português/especiais)
+# Em vez de constante única, usa heurística dinâmica para reduzir desvio em até ~14%
+def _estimate_tokens(text: str) -> int:
+    """
+    Estima tokens a partir de caracteres, ajustando para idioma.
+
+    Português e outros idiomas com acentos têm ~3.5 chars/token.
+    Inglês e código têm ~4 chars/token.
+    """
+    if not text:
+        return 0
+    non_ascii = sum(1 for c in text if ord(c) > 127)
+    ratio = 3.5 if non_ascii / len(text) > 0.10 else 4.0
+    return max(1, int(len(text) / ratio))
+
 
 # Rastreia se o checkpoint crítico já foi salvo na sessão atual (evita saves repetidos)
 _critical_checkpoint_saved: bool = False
@@ -148,10 +161,10 @@ def _extract_token_counts(
 
     if tool_input:
         input_text = str(tool_input)
-        estimated_input = max(1, len(input_text) // _CHARS_PER_TOKEN)
+        estimated_input = _estimate_tokens(input_text)
 
     if tool_output:
-        estimated_output = max(1, len(tool_output) // _CHARS_PER_TOKEN)
+        estimated_output = _estimate_tokens(tool_output)
 
     return estimated_input, estimated_output
 

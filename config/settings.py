@@ -134,9 +134,16 @@ class Settings(BaseSettings):
     # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/migration-source-mcp
     migration_source_command: str = "migration-source-mcp"
 
+    # --- Permissões dos Agentes ---
+    # "bypassPermissions" (padrão): agentes executam sem pedir confirmação — ideal para automação.
+    # "acceptEdits": agentes pedem confirmação antes de operações write/execute — recomendado
+    # em ambientes multi-usuário ou onde auditoria manual é necessária.
+    # Override via .env: AGENT_PERMISSION_MODE=acceptEdits
+    agent_permission_mode: str = "bypassPermissions"
+
     # --- Configurações do Sistema ---
-    default_model: str = "bedrock/anthropic.claude-4-6-sonnet"
-    # default_model: str = "claude-opus-4-6"
+    # default_model: str = "bedrock/anthropic.claude-4-6-sonnet"
+    default_model: str = "claude-opus-4-6"
     max_budget_usd: float = 5.0
     max_turns: int = 50
     log_level: str = "INFO"
@@ -212,6 +219,16 @@ class Settings(BaseSettings):
     # Override via .env: SKILL_REFRESH_DOMAINS=databricks,fabric
     skill_refresh_domains: str = "databricks,fabric"
 
+    # --- Memory Instant Capture Patterns ---
+    # Padrões regex para captura instantânea de memórias sem chamada LLM.
+    # Cada padrão é uma string "regex::tipo" onde tipo é: feedback, architecture, progress.
+    # Padrão vazio usa os 5 padrões default. Override via .env para adicionar novos tipos.
+    # Ex: MEMORY_INSTANT_PATTERNS='["(?i)#concern\\s*[:\\-]?\\s*(.+)::architecture"]'
+    memory_instant_patterns: list[str] = []
+
+    # Máx de capturas instantâneas por output de tool (evita buffer bloat)
+    memory_max_captures_per_output: int = 10
+
     # --- Memory Daily Log Cleanup ---
     # Se True, apaga daily logs compilados após N dias (reduz acúmulo de arquivos).
     # Logs compilados já tiveram seu conteúdo extraído para o store — são redundantes.
@@ -258,6 +275,36 @@ class Settings(BaseSettings):
     _available_platforms: ClassVar[list[str]] = []
 
     # ─── Validators ───────────────────────────────────────────────
+
+    @field_validator(
+        "fabric_community_command",
+        "fabric_sql_command",
+        "databricks_genie_command",
+        "fabric_semantic_command",
+        "migration_source_command",
+        mode="before",
+    )
+    @classmethod
+    def validate_mcp_command(cls, v: str) -> str:
+        """Valida que comandos MCP não contêm path separators ou metacaracteres shell."""
+        import re as _re
+
+        if not v:
+            return v
+        # Permite apenas nomes de comando simples: letras, dígitos, hífens, underscores, pontos
+        # Bloqueia path separators (/ \), metacaracteres shell (; | & $ ` ( ) < > ! ~ {})
+        if not _re.match(r"^[a-zA-Z0-9_./-]+$", v):
+            raise ValueError(
+                f"Comando MCP inválido: '{v}'. "
+                "Use apenas letras, dígitos, hífens, underscores, pontos e barras de path. "
+                "Metacaracteres shell (;|&$`()!~{}) não são permitidos."
+            )
+        # Bloqueia traversal e metacaracteres perigosos
+        dangerous = ["..", ";", "|", "&", "$", "`", "(", ")", "<", ">", "!", "~", "{", "}"]
+        for char in dangerous:
+            if char in v:
+                raise ValueError(f"Comando MCP inválido: '{v}' contém caractere proibido '{char}'.")
+        return v
 
     @field_validator("anthropic_api_key")
     @classmethod

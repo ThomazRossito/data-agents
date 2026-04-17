@@ -22,6 +22,8 @@ from __future__ import annotations
 
 import json
 import logging
+import time
+import urllib.error
 import urllib.request
 
 from memory.store import MemoryStore
@@ -29,6 +31,11 @@ from memory.types import Memory, MemoryType
 from config.settings import settings
 
 logger = logging.getLogger("data_agents.memory.retrieval")
+
+# Contador de falhas consecutivas para throttling adaptativo
+# Se >= _MAX_CONSECUTIVE_FAILURES, pula retrieval e loga warning
+_consecutive_failures: int = 0
+_MAX_CONSECUTIVE_FAILURES = 5
 
 # Modelo e limites lidos de settings para permitir override via .env
 
@@ -122,9 +129,22 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
     """
     Faz a chamada lateral ao Sonnet para selecionar IDs relevantes.
 
+    Inclui retry com backoff exponencial (3 tentativas) para erros 429/5xx.
+    Implementa throttling adaptativo: após _MAX_CONSECUTIVE_FAILURES falhas
+    consecutivas, pula o retrieval e emite warning até o próximo sucesso.
+
     Usa urllib direto (sem dependência do SDK anthropic) — consistente
     com o padrão do _stream_geral no main.py.
     """
+    global _consecutive_failures
+
+    if _consecutive_failures >= _MAX_CONSECUTIVE_FAILURES:
+        logger.warning(
+            f"Memory retrieval desabilitado temporariamente após {_consecutive_failures} "
+            "falhas consecutivas. Será reativado no próximo sucesso."
+        )
+        return []
+
     user_message = f"## Query do Usuário\n\n{query}\n\n## Index de Memórias\n\n{index_content}"
 
     payload = json.dumps(
@@ -148,32 +168,57 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
         method="POST",
     )
 
-    try:
-        with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
-            data = json.loads(resp.read().decode("utf-8"))
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:  # nosec B310
+                data = json.loads(resp.read().decode("utf-8"))
 
-        text = data["content"][0]["text"] if data.get("content") else "[]"
+            text = data["content"][0]["text"] if data.get("content") else "[]"
 
-        # Parse custo para logging
-        usage = data.get("usage", {})
-        input_tok = usage.get("input_tokens", 0)
-        output_tok = usage.get("output_tokens", 0)
-        cost = (input_tok * 3.00 + output_tok * 15.00) / 1_000_000
-        logger.debug(f"Retrieval Sonnet: {input_tok} in / {output_tok} out = ${cost:.5f}")
+            # Parse custo para logging
+            usage = data.get("usage", {})
+            input_tok = usage.get("input_tokens", 0)
+            output_tok = usage.get("output_tokens", 0)
+            cost = (input_tok * 3.00 + output_tok * 15.00) / 1_000_000
+            logger.debug(f"Retrieval Sonnet: {input_tok} in / {output_tok} out = ${cost:.5f}")
 
-        # Extrair JSON array da resposta
-        text = text.strip()
-        if text.startswith("["):
-            ids = json.loads(text)
-            if isinstance(ids, list):
-                return [str(i) for i in ids]
+            # Extrair JSON array da resposta
+            text = text.strip()
+            if text.startswith("["):
+                try:
+                    ids = json.loads(text)
+                    if isinstance(ids, list):
+                        _consecutive_failures = 0  # reset ao primeiro sucesso
+                        return [str(i) for i in ids]
+                except json.JSONDecodeError:
+                    pass
 
-        logger.warning(f"Resposta do Sonnet não é JSON array válido: {text[:100]}")
-        return []
+            logger.warning(f"Resposta do Sonnet não é JSON array válido: {text[:100]}")
+            _consecutive_failures = 0
+            return []
 
-    except Exception as e:
-        logger.error(f"Erro no retrieval Sonnet: {e}")
-        return []
+        except urllib.error.HTTPError as e:
+            if e.code == 429 and attempt < max_retries - 1:
+                wait = 2**attempt
+                logger.warning(
+                    f"Rate limit no retrieval (429) — aguardando {wait}s (tentativa {attempt + 1}/{max_retries})"
+                )
+                time.sleep(wait)
+                continue
+            _consecutive_failures += 1
+            logger.error(
+                f"Erro HTTP no retrieval Sonnet: {e.code} {e.reason} — falhas consecutivas: {_consecutive_failures}"
+            )
+            return []
+        except Exception as e:
+            _consecutive_failures += 1
+            logger.error(
+                f"Erro no retrieval Sonnet: {e} — falhas consecutivas: {_consecutive_failures}"
+            )
+            return []
+
+    return []
 
 
 def format_memories_for_injection(memories: list[Memory]) -> str:

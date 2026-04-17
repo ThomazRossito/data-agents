@@ -50,7 +50,7 @@ ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
 from commands.parser import parse_command  # noqa: E402
-from ui.config import (  # noqa: E402
+from ui.ui_config import (  # noqa: E402
     COMMAND_GROUPS as _COMMAND_GROUPS,
     agent_display_name as _agent_author_fn,
     enrich_tool_label as _enrich_tool_label,
@@ -718,6 +718,21 @@ async def _handle_supervisor(user_input: str) -> None:
 
     await response_msg.update()
 
+    # ── Tracking de resposta para export ─────────────────────────────────────
+    from datetime import datetime as _dt
+
+    if response_msg.content:
+        _hist = cl.user_session.get("chat_history") or []
+        _hist.append(
+            {
+                "role": "assistant",
+                "author": response_msg.author or "Supervisor",
+                "content": response_msg.content,
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        cl.user_session.set("chat_history", _hist)
+
 
 async def _handle_dev(user_input: str) -> None:
     """
@@ -860,6 +875,67 @@ async def _handle_dev(user_input: str) -> None:
 
     await response_msg.update()
 
+    # ── Tracking de resposta para export ─────────────────────────────────────
+    from datetime import datetime as _dt
+
+    if response_msg.content:
+        _hist = cl.user_session.get("chat_history") or []
+        _hist.append(
+            {
+                "role": "assistant",
+                "author": "Dev Assistant",
+                "content": response_msg.content,
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        cl.user_session.set("chat_history", _hist)
+
+
+# ── Export ────────────────────────────────────────────────────────────────────
+
+
+async def _handle_export() -> None:
+    """
+    Exporta o histórico da sessão para Markdown e PDF.
+    Acionado pelo comando /export ou /exportar.
+    """
+    history: list = cl.user_session.get("chat_history") or []
+
+    if not history:
+        await cl.Message(
+            content="⚠️ Nenhuma mensagem para exportar. Inicie uma conversa primeiro.",
+            author="Sistema",
+        ).send()
+        return
+
+    await cl.Message(content="⏳ Gerando arquivos de export...", author="Sistema").send()
+
+    try:
+        title = f"Data Agents — {len(history)} mensagens"
+
+        from ui.exporter import export_html
+
+        html_path = export_html(history, title=title)
+
+        elements = [
+            cl.File(name="conversa.html", path=html_path, mime="text/html"),
+        ]
+        await cl.Message(
+            content=(
+                f"✅ **Export concluído** — {len(history)} mensagens exportadas.\n\n"
+                "📄 Baixe o arquivo HTML abaixo.\n"
+                "💡 **Para PDF:** abra no browser e use **Cmd+P → Salvar como PDF**."
+            ),
+            elements=elements,
+            author="Sistema",
+        ).send()
+
+    except Exception as exc:
+        await cl.Message(
+            content=f"❌ Erro ao gerar export: `{exc}`",
+            author="Sistema",
+        ).send()
+
 
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
 
@@ -872,6 +948,7 @@ async def on_chat_start() -> None:
     evitando que o custo acumulado da sessão anterior bloqueie o novo chat.
     """
     _supervisor_cache["needs_reconnect"] = True
+    cl.user_session.set("chat_history", [])
     await _show_mode_selection()
 
 
@@ -986,6 +1063,11 @@ async def on_message(message: cl.Message) -> None:
         await _show_mode_selection()
         return
 
+    # Comando global /export — exporta histórico para Markdown e PDF
+    if user_input.lower() in ("/export", "/exportar"):
+        await _handle_export()
+        return
+
     mode: str | None = cl.user_session.get("mode")
 
     # Nenhum modo selecionado ainda
@@ -994,6 +1076,20 @@ async def on_message(message: cl.Message) -> None:
             content="⚠️ Selecione um modo primeiro usando os botões acima.",
         ).send()
         return
+
+    # ── Tracking de mensagem do usuário para export ───────────────────────────
+    from datetime import datetime as _dt
+
+    _chat_history: list = cl.user_session.get("chat_history") or []
+    _chat_history.append(
+        {
+            "role": "user",
+            "author": "Você",
+            "content": user_input,
+            "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+        }
+    )
+    cl.user_session.set("chat_history", _chat_history)
 
     # ── Checkpoint: "continuar" retoma sessão anterior ────────────────────────
     if mode == MODE_SUPERVISOR and user_input.lower() in ("continuar", "continue", "retomar"):

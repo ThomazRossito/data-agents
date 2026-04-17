@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import logging
 import os
-import re
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -32,6 +32,13 @@ logger = logging.getLogger("data_agents.memory.store")
 _DEFAULT_DATA_DIR = Path(__file__).parent.parent / "memory" / "data"
 
 
+def _atomic_write(path: Path, content: str) -> None:
+    """Escreve conteúdo de forma atômica usando arquivo temporário + rename."""
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    os.replace(tmp, path)  # atomic no mesmo filesystem
+
+
 class MemoryStore:
     """
     Gerencia a persistência de memórias em arquivos Markdown.
@@ -42,6 +49,7 @@ class MemoryStore:
 
     def __init__(self, data_dir: Path | str | None = None) -> None:
         self.data_dir = Path(data_dir) if data_dir is not None else _DEFAULT_DATA_DIR
+        self._lock = threading.Lock()
         self._ensure_dirs()
 
     def _ensure_dirs(self) -> None:
@@ -58,7 +66,7 @@ class MemoryStore:
 
     def save(self, memory: Memory) -> Path:
         """
-        Salva uma memória em arquivo Markdown.
+        Salva uma memória em arquivo Markdown (atomic write + thread-safe).
 
         Se o arquivo já existir, sobrescreve (update).
         Atualiza o updated_at automaticamente.
@@ -66,12 +74,13 @@ class MemoryStore:
         memory.updated_at = datetime.now(timezone.utc)
         path = self._memory_path(memory)
 
-        try:
-            path.write_text(memory.to_markdown(), encoding="utf-8")
-            logger.debug(f"Memória salva: {memory.id} ({memory.type.value}) → {path}")
-        except OSError as e:
-            logger.error(f"Erro ao salvar memória {memory.id}: {e}")
-            raise
+        with self._lock:
+            try:
+                _atomic_write(path, memory.to_markdown())
+                logger.debug(f"Memória salva: {memory.id} ({memory.type.value}) → {path}")
+            except OSError as e:
+                logger.error(f"Erro ao salvar memória {memory.id}: {e}")
+                raise
 
         return path
 
@@ -282,27 +291,27 @@ class MemoryStore:
         if not path.exists():
             header = f"# Daily Log — {date_str}\n\n"
 
-        try:
-            # Se o arquivo já existe e tem marcador COMPILED, remove-o antes de
-            # appender — novo conteúdo significa que o log precisa ser recompilado.
-            existing = ""
-            if path.exists():
-                existing = path.read_text(encoding="utf-8")
-                if "<!-- COMPILED" in existing:
-                    # Remove o marcador (e whitespace antes dele)
-                    import re as _re
+        with self._lock:
+            try:
+                # Se o arquivo já existe e tem marcador COMPILED, remove-o antes de
+                # appender — novo conteúdo significa que o log precisa ser recompilado.
+                existing = ""
+                if path.exists():
+                    existing = path.read_text(encoding="utf-8")
+                    if "<!-- COMPILED" in existing:
+                        import re as _re
 
-                    existing = _re.sub(r"\s*<!-- COMPILED[^>]*-->\s*$", "", existing)
-                    path.write_text(existing, encoding="utf-8")
-                    logger.debug(f"Marcador COMPILED removido de {date_str} (novo conteúdo)")
+                        existing = _re.sub(r"\s*<!-- COMPILED[^>]*-->\s*$", "", existing)
+                        _atomic_write(path, existing)
+                        logger.debug(f"Marcador COMPILED removido de {date_str} (novo conteúdo)")
 
-            with open(path, "a", encoding="utf-8") as f:
-                if header:
-                    f.write(header)
-                f.write(f"\n---\n\n{content}\n")
-            logger.debug(f"Daily log atualizado: {date_str} (+{len(content)} chars)")
-        except OSError as e:
-            logger.error(f"Erro ao escrever daily log: {e}")
+                with open(path, "a", encoding="utf-8") as f:
+                    if header:
+                        f.write(header)
+                    f.write(f"\n---\n\n{content}\n")
+                logger.debug(f"Daily log atualizado: {date_str} (+{len(content)} chars)")
+            except OSError as e:
+                logger.error(f"Erro ao escrever daily log: {e}")
 
         return path
 
@@ -359,13 +368,14 @@ class MemoryStore:
 
         index_content = "\n".join(lines)
 
-        # Salva o index.md
+        # Salva o index.md (atomic write para evitar leitura parcial durante retrieval)
         index_path = self.data_dir / "index.md"
-        try:
-            index_path.write_text(index_content, encoding="utf-8")
-            logger.info(f"Index gerado: {len(lines)} linhas → {index_path}")
-        except OSError as e:
-            logger.error(f"Erro ao gerar index: {e}")
+        with self._lock:
+            try:
+                _atomic_write(index_path, index_content)
+                logger.info(f"Index gerado: {len(lines)} linhas → {index_path}")
+            except OSError as e:
+                logger.error(f"Erro ao gerar index: {e}")
 
         return index_content
 
@@ -379,50 +389,13 @@ class MemoryStore:
             logger.warning(f"Erro ao ler {path}: {e}")
             return None
 
-        # Extrai frontmatter
-        pattern = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)", re.DOTALL)
-        match = pattern.match(content)
+        try:
+            from utils.frontmatter import parse_yaml_frontmatter
 
-        if not match:
+            metadata, body = parse_yaml_frontmatter(content)
+        except ValueError:
             logger.warning(f"Arquivo sem frontmatter válido: {path}")
             return None
-
-        yaml_block = match.group(1)
-        body = match.group(2).strip()
-
-        # Parse manual do YAML simples (consistente com loader.py)
-        metadata: dict[str, Any] = {}
-        for line in yaml_block.splitlines():
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if ":" not in line:
-                continue
-
-            key, _, raw_value = line.partition(":")
-            key = key.strip()
-            raw_value = raw_value.strip()
-
-            # Lista inline
-            if raw_value.startswith("[") and raw_value.endswith("]"):
-                items = raw_value[1:-1].split(",")
-                metadata[key] = [i.strip().strip('"').strip("'") for i in items if i.strip()]
-            # String com aspas
-            elif raw_value.startswith('"') and raw_value.endswith('"'):
-                metadata[key] = raw_value[1:-1]
-            elif raw_value.startswith("'") and raw_value.endswith("'"):
-                metadata[key] = raw_value[1:-1]
-            # Float
-            elif "." in raw_value and raw_value.replace(".", "", 1).replace("-", "", 1).isdigit():
-                metadata[key] = float(raw_value)
-            # Int
-            elif raw_value.replace("-", "", 1).isdigit():
-                metadata[key] = int(raw_value)
-            # None
-            elif raw_value.lower() == "none" or raw_value == "":
-                metadata[key] = None
-            else:
-                metadata[key] = raw_value
 
         metadata["content"] = body
         return Memory.from_dict(metadata)

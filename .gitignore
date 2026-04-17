@@ -2,6 +2,8 @@
 # SECRETS & CREDENTIALS
 # =============================================================================
 .env
+.env.personal
+.env.flow
 *.pem
 *.key
 
@@ -24,6 +26,7 @@ venv/
 .ruff_cache/
 htmlcov/
 .coverage
+.files/
 
 # =============================================================================
 # LOGS & AUDITORIA

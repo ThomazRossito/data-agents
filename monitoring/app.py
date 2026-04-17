@@ -408,12 +408,33 @@ if page == "📊 Overview":
     c4.metric("Warnings", app["by_level"].get("WARNING", 0), help="app.jsonl")
     c5.metric("Errors", app["by_level"].get("ERROR", 0), help="app.jsonl")
 
-    # Custo total das sessões registradas
+    # Custo total das sessões registradas + Cache Hit Rate
     if session_records:
         total_session_cost = sum(r.get("total_cost_usd", 0) or 0 for r in session_records)
-        st.info(
-            f"💰 Custo total acumulado: **${total_session_cost:.4f}** em **{len(session_records)}** sessões registradas"
-        )
+
+        # Cache hit rate (campos da API Anthropic: cache_read_input_tokens / input_tokens)
+        total_input = sum(r.get("total_input_tokens", 0) or 0 for r in session_records)
+        total_cache_read = sum(r.get("cache_read_input_tokens", 0) or 0 for r in session_records)
+        cache_hit_rate = (total_cache_read / total_input * 100) if total_input > 0 else None
+
+        cost_cols = st.columns([2, 1])
+        with cost_cols[0]:
+            st.info(
+                f"💰 Custo total acumulado: **${total_session_cost:.4f}** em **{len(session_records)}** sessões registradas"
+            )
+        with cost_cols[1]:
+            if cache_hit_rate is not None:
+                color = (
+                    "green" if cache_hit_rate >= 40 else "orange" if cache_hit_rate >= 15 else "red"
+                )
+                st.metric(
+                    "🗃️ Cache Hit Rate",
+                    f"{cache_hit_rate:.1f}%",
+                    help="Tokens reutilizados do prompt cache Anthropic. >40% = excelente, >15% = bom.",
+                    delta=f"{'✅' if cache_hit_rate >= 40 else '⚠️' if cache_hit_rate >= 15 else '❌'} {'Excelente' if cache_hit_rate >= 40 else 'Baixo'}",
+                )
+            else:
+                st.info("🗃️ Cache Hit Rate: sem dados (sessions log não contém token breakdown)")
 
     st.divider()
 

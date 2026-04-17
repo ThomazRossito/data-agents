@@ -80,6 +80,27 @@ _SQL_IN_BASH = re.compile(
 _SQL_TOOL_FIELDS = ("query", "sql", "statement")
 
 
+# ─── Padrões SQL adicionais de segurança ────────────────────────
+
+# WHERE trivial (sempre verdadeiro — bypass de filtro)
+_TRIVIAL_WHERE = re.compile(
+    r"\bWHERE\s+(?:1\s*=\s*1|'[^']*'\s*=\s*'[^']*'|TRUE\b)",
+    re.IGNORECASE,
+)
+
+# UNION SELECT — extração de dados de outra tabela
+_UNION_SELECT = re.compile(r"\bUNION\s+(?:ALL\s+)?SELECT\b", re.IGNORECASE)
+
+# OR trivial (bypass de WHERE: "... OR 1=1")
+_OR_TRIVIAL = re.compile(r"\bOR\s+(?:1\s*=\s*1|TRUE\b)", re.IGNORECASE)
+
+# Multi-statement (separados por ponto-e-vírgula com keywords SQL)
+_MULTI_STATEMENT = re.compile(
+    r";\s*(?:SELECT|INSERT|UPDATE|DELETE|DROP|TRUNCATE|CREATE|ALTER|EXEC)\b",
+    re.IGNORECASE,
+)
+
+
 def _detect_expensive_sql(sql: str) -> tuple[bool, str]:
     """
     Analisa uma string SQL e sinaliza padrões de alto custo de computação.
@@ -90,6 +111,9 @@ def _detect_expensive_sql(sql: str) -> tuple[bool, str]:
     ------------------
     1. SELECT * sem WHERE **e** sem LIMIT/TOP → full table scan garantido.
     2. SELECT * sem LIMIT/TOP → pode retornar toda a tabela mesmo com WHERE parcial.
+    3. WHERE trivial (WHERE 1=1, OR 1=1) → bypassa filtros de linha.
+    4. UNION SELECT → pode extrair dados de outras tabelas.
+    5. Multi-statement (;SELECT, ;DROP) → operação combinada não autorizada.
     """
     s = sql.upper().strip()
 
@@ -101,13 +125,41 @@ def _detect_expensive_sql(sql: str) -> tuple[bool, str]:
     if leading and leading.group(1) in ("INSERT", "CREATE", "MERGE", "UPDATE", "REPLACE"):
         return False, ""
 
+    # Multi-statement: sempre bloqueia
+    if _MULTI_STATEMENT.search(sql):
+        return (
+            True,
+            "Query com múltiplos statements (;SELECT, ;DROP, etc.) não é permitida. "
+            "Execute cada statement separadamente.",
+        )
+
+    # UNION SELECT: pode vazar dados de outras tabelas
+    if _UNION_SELECT.search(sql):
+        return (
+            True,
+            "UNION SELECT detectado — pode extrair dados de outras tabelas. "
+            "Use subqueries explícitas se precisar combinar resultados.",
+        )
+
     has_star = bool(re.search(r"\bSELECT\s+\*", s))
     has_where = bool(re.search(r"\bWHERE\b", s))
     has_limit = bool(re.search(r"\bLIMIT\b", s))
     has_top = bool(re.search(r"\bSELECT\s+TOP\s+\d+\b", s))  # T-SQL / Fabric style
-    has_row_filter = has_where or has_limit or has_top
 
-    if has_star and not has_where and not has_limit and not has_top:
+    # WHERE trivial ou OR trivial: trata como se não tivesse filtro
+    has_trivial_where = bool(_TRIVIAL_WHERE.search(sql)) or bool(_OR_TRIVIAL.search(sql))
+    has_real_where = has_where and not has_trivial_where
+
+    has_row_filter = has_real_where or has_limit or has_top
+
+    if has_trivial_where:
+        return (
+            True,
+            "Condição WHERE trivial detectada (WHERE 1=1 / OR 1=1 / OR TRUE). "
+            "Substitua por um filtro real de partição ou condição de negócio.",
+        )
+
+    if has_star and not has_real_where and not has_limit and not has_top:
         return (
             True,
             "SELECT * sem WHERE e sem LIMIT pode escanear TBs de dados em tabelas de produção. "
@@ -124,7 +176,6 @@ def _detect_expensive_sql(sql: str) -> tuple[bool, str]:
     # SELECT genérico sem qualquer filtro de linha (não necessariamente SELECT *)
     has_any_select = bool(re.search(r"\bSELECT\b", s))
     if has_any_select and not has_row_filter:
-        # Aviso menos severo — bloqueia apenas se também não tiver GROUP BY / HAVING (agrega tudo)
         has_group = bool(re.search(r"\bGROUP\s+BY\b", s))
         if not has_group:
             return (

@@ -40,6 +40,10 @@ dependencies = [
     # Output formatado
     "rich>=13.0",
 
+    # Export de conversas (HTML) — usado pela UI Chainlit (/export)
+    # PDF: abrir o HTML no browser e usar Cmd+P → Salvar como PDF
+    "markdown2>=2.4",
+
 ]
 
 [project.optional-dependencies]

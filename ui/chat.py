@@ -31,7 +31,7 @@ sys.path.insert(0, str(ROOT))
 # ── Imports do projeto ────────────────────────────────────────────────────────
 from commands.parser import parse_command, COMMAND_REGISTRY  # noqa: E402
 from config.settings import settings  # noqa: E402
-from ui.config import (  # noqa: E402
+from ui.ui_config import (  # noqa: E402
     COMMAND_GROUPS,
     COMMANDS_NO_ARGS,
     STREAMLIT_CSS,

@@ -22,7 +22,6 @@ Campos opcionais: mcp_servers, kb_domains, skill_domains, tier
 """
 
 import logging
-import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal, cast
@@ -69,7 +68,6 @@ from mcp_servers.tavily.server_config import TAVILY_MCP_TOOLS
 
 from memory.store import MemoryStore
 from memory.retrieval import retrieve_relevant_memories, format_memories_for_injection
-from memory.decay import apply_decay
 
 logger = logging.getLogger("data_agents.loader")
 
@@ -215,52 +213,14 @@ def _parse_frontmatter(content: str) -> tuple[dict[str, Any], str]:
     """
     Extrai o frontmatter YAML e o corpo Markdown de um arquivo .md.
 
+    Delega ao parser unificado em utils/frontmatter.py.
+
     Returns:
         Tupla (metadata_dict, body_markdown)
     """
-    # Detecta bloco frontmatter delimitado por ---
-    pattern = re.compile(r"^---\s*\n(.*?)\n---\s*\n(.*)", re.DOTALL)
-    match = pattern.match(content)
+    from utils.frontmatter import parse_yaml_frontmatter
 
-    if not match:
-        raise ValueError("Arquivo de agente sem frontmatter YAML válido (delimitado por ---)")
-
-    yaml_block = match.group(1)
-    body = match.group(2).strip()
-
-    # Parse manual do YAML simples (evita dependência externa)
-    metadata: dict[str, Any] = {}
-    for line in yaml_block.splitlines():
-        line = line.strip()
-        if not line or line.startswith("#"):
-            continue
-
-        if ":" in line:
-            key, _, raw_value = line.partition(":")
-            key = key.strip()
-            raw_value = raw_value.strip()
-
-            # Lista inline: [item1, item2]
-            if raw_value.startswith("[") and raw_value.endswith("]"):
-                items = raw_value[1:-1].split(",")
-                metadata[key] = [i.strip().strip('"').strip("'") for i in items if i.strip()]
-            # String com aspas
-            elif raw_value.startswith('"') and raw_value.endswith('"'):
-                metadata[key] = raw_value[1:-1]
-            elif raw_value.startswith("'") and raw_value.endswith("'"):
-                metadata[key] = raw_value[1:-1]
-            # Booleano
-            elif raw_value.lower() == "true":
-                metadata[key] = True
-            elif raw_value.lower() == "false":
-                metadata[key] = False
-            # Número
-            elif raw_value.replace(".", "", 1).isdigit():
-                metadata[key] = float(raw_value) if "." in raw_value else int(raw_value)
-            else:
-                metadata[key] = raw_value
-
-    return metadata, body
+    return parse_yaml_frontmatter(content)
 
 
 def _resolve_tools(tool_list: list[str]) -> list[str]:
@@ -448,7 +408,8 @@ def _load_cache_prefix(prefix_path: Path | None = None) -> str:
         return ""
 
     try:
-        content = path.read_text(encoding="utf-8").strip()
+        # Sem .strip() — preserva bytes exatos para prompt caching byte-idêntico
+        content = path.read_text(encoding="utf-8")
         logger.debug(f"Cache prefix carregado: {len(content)} chars ({path.name})")
         return content
     except Exception as e:
@@ -726,12 +687,16 @@ def load_all_agents(
     return agents
 
 
-def inject_memory_context(query: str, system_prompt: str) -> str:
+def inject_memory_context(
+    query: str,
+    system_prompt: str,
+    apply_decay: bool = True,
+) -> str:
     """
     Injeta memórias relevantes no system prompt do supervisor.
 
     Usa o Sonnet lateral para selecionar memórias do store que são
-    relevantes para a query atual. Aplica decay antes do retrieval.
+    relevantes para a query atual.
 
     Retorna o system_prompt original sem modificação se:
       - memory_enabled=False no .env
@@ -740,6 +705,8 @@ def inject_memory_context(query: str, system_prompt: str) -> str:
     Args:
         query: A query/tarefa atual do usuário.
         system_prompt: System prompt original do supervisor.
+        apply_decay: Se True, aplica decay antes do retrieval. Padrão True.
+                     Passe False quando decay já foi aplicado nesta sessão.
 
     Returns:
         System prompt enriquecido com memórias relevantes.
@@ -752,10 +719,13 @@ def inject_memory_context(query: str, system_prompt: str) -> str:
     try:
         store = MemoryStore()
 
-        # Aplica decay em todas as memórias antes do retrieval
-        all_memories = store.list_all(active_only=False)
-        if all_memories:
-            apply_decay(all_memories, save_fn=store.save)
+        # Aplica decay apenas quando solicitado (1x por sessão no main.py)
+        if apply_decay:
+            all_memories = store.list_all(active_only=False)
+            if all_memories:
+                from memory.decay import apply_decay as _apply_decay
+
+                _apply_decay(all_memories, save_fn=store.save)
 
         # Busca memórias relevantes via Sonnet lateral
         relevant = retrieve_relevant_memories(query, store, max_memories=8)

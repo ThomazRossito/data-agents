@@ -133,10 +133,12 @@ def apply_decay(
         else:
             expired.append(mem)
 
-    if expired:
-        logger.info(
-            f"Decay aplicado: {len(active)} ativas, {len(expired)} expiradas "
-            f"(tipos: {[m.type.value for m in expired]})"
-        )
+    decayed_count = sum(
+        1 for mem in memories if abs(compute_decayed_confidence(mem, now) - mem.confidence) > 0.01
+    )
+    logger.info(
+        f"Decay aplicado: {len(active)} ativas, {len(expired)} expiradas, "
+        f"{decayed_count} atualizadas (tipos expiradas: {[m.type.value for m in expired]})"
+    )
 
     return active, expired
