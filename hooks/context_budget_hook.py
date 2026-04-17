@@ -112,7 +112,7 @@ def _save_emergency_checkpoint() -> None:
     try:
         from hooks.checkpoint import save_checkpoint
 
-        save_checkpoint(reason="context_budget_critical")
+        save_checkpoint(last_prompt="", reason="context_budget_critical")
         logger.warning("💾 Checkpoint de emergência salvo (context budget crítico).")
     except Exception as e:
         logger.warning(f"Checkpoint de emergência não disponível: {e}")
