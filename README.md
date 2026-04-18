@@ -63,13 +63,10 @@ cp .env.example .env   # ou copie e edite manualmente com suas chaves
 # 5. Smoke test end-to-end (só precisa de ANTHROPIC_API_KEY, ~$0.005)
 make demo
 
-# 6a. Web UI Chainlit (recomendada)
-./start.sh --chainlit  # http://localhost:8503 (Chat) + http://localhost:8501 (Monitoring)
+# 6a. Web UI (Chainlit + Monitoring)
+./start.sh             # http://localhost:8503 (Chat) + http://localhost:8501 (Monitoring)
 
-# 6b. Web UI Streamlit
-./start.sh             # http://localhost:8502 (Chat) + http://localhost:8501 (Monitoring)
-
-# 6c. Terminal
+# 6b. Terminal
 python main.py         # ou: make run
 ```
 
@@ -256,22 +253,14 @@ MEMORY_CAPTURE_ENABLED=true
 
 ## Interfaces
 
-### Web UI Chainlit (recomendada — porta 8503)
+### Web UI Chainlit (porta 8503)
 Interface com steps expandíveis em tempo real mostrando cada delegação e tool call. Dois modos: **Data Agents** (sistema completo) e **Dev Assistant** (Claude direto com ferramentas de código).
 
 Use `/export` em qualquer momento para baixar o histórico completo da sessão como HTML formatado — abre no browser com Cmd+P (macOS) ou Ctrl+P (Windows/Linux) para salvar como PDF.
 
 ```bash
-./start.sh --chainlit         # Chainlit (8503) + Monitoring (8501)
-./start.sh --chainlit --monitor-only  # somente Chainlit
-```
-
-### Web UI Streamlit (porta 8502)
-Chat com histórico persistente, suporte a todos os slash commands e visualização de artefatos gerados (PRDs, SPECs, Backlogs).
-
-```bash
-./start.sh                    # Streamlit (8502) + Monitoring (8501)
-./start.sh --chat-only        # somente Streamlit
+./start.sh              # Chainlit (8503) + Monitoring (8501)
+./start.sh --chat-only  # somente Chainlit
 ```
 
 ### Dashboard de Monitoramento (porta 8501)

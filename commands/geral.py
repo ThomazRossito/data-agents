@@ -1,11 +1,11 @@
 """
 commands/geral.py — Lógica compartilhada do comando /geral.
 
-Módulo único importado por ambos os entry points:
-  - main.py        (CLI interativo / terminal)
-  - ui/chat.py     (interface Streamlit)
+Módulo único importado por múltiplos entry points:
+  - main.py              (CLI interativo / terminal)
+  - ui/chainlit_app.py   (interface Chainlit)
 
-Garante implementação única — sem duplicação entre os dois entry points.
+Garante implementação única — sem duplicação entre os entry points.
 O caller é responsável por gerenciar o histórico e exibir a resposta.
 
 Uso típico:

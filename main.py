@@ -511,7 +511,7 @@ async def _handle_memory_command(user_input: str) -> None:
 
 
 # Histórico de conversa do /geral — mantido na sessão CLI.
-# A lógica central está em commands/geral.py (compartilhada com ui/chat.py).
+# A lógica central está em commands/geral.py (compartilhada com ui/chainlit_app.py).
 _geral_history: list[dict] = []
 
 

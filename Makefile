@@ -64,7 +64,7 @@ run: ## Inicia o Data Agents em modo interativo
 ui: ## Inicia a UI de Chat + Monitoring (./start.sh)
 	./start.sh
 
-ui-chat: ## Inicia somente a UI de Chat (porta 8502)
+ui-chat: ## Inicia somente a UI de Chat Chainlit (porta 8503)
 	./start.sh --chat-only
 
 ui-monitor: ## Inicia somente o Monitoring (porta 8501)

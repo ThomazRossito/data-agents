@@ -17,7 +17,7 @@ cp .env.example .env   # preencher credenciais
 python main.py                        # CLI interativo
 python main.py "liste tabelas silver" # single-query
 ./start.sh                            # Web UI (Chat + Monitoring)
-./start.sh --chat-only                # Só o chat (porta 8502)
+./start.sh --chat-only                # Só o chat Chainlit (porta 8503)
 
 # Qualidade
 make test        # pytest com cobertura (mínimo 80%)
@@ -33,7 +33,7 @@ make health-fabric
 ## Arquitetura de Alto Nível
 
 ```
-Usuário → main.py / ui/chat.py / ui/chainlit_app.py
+Usuário → main.py / ui/chainlit_app.py
   └─► Supervisor (claude-opus-4-6, sem MCP direto)
         ├─► business-analyst   [T3] — intake de requisitos, /brief
         ├─► sql-expert         [T1] — SQL, schemas, catálogos

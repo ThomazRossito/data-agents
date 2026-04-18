@@ -146,9 +146,6 @@ COMMAND_GROUPS: dict[str, list[str]] = {
     "💬 Conversacional": ["/geral"],
 }
 
-# Comandos que executam sem texto adicional
-COMMANDS_NO_ARGS: set[str] = {"/health", "/status", "/review"}
-
 
 # Enriquecimento de labels com argumentos reais da tool call
 def enrich_tool_label(tool_name: str, data: dict) -> str:
@@ -183,52 +180,6 @@ def enrich_tool_label(tool_name: str, data: dict) -> str:
             return f"🤖 Delegando → {agent_display_name(agent)}"
     return ""
 
-
-# ── CSS compartilhado (Streamlit) ─────────────────────────────────────────────
-STREAMLIT_CSS = """
-<style>
-    #MainMenu { visibility: hidden; }
-    footer    { visibility: hidden; }
-
-    [data-testid="stSidebar"] { min-width: 285px !important; }
-
-    /* Botões de comando rápido */
-    .stButton > button {
-        font-family: 'Courier New', monospace !important;
-        font-size: 0.80em !important;
-        padding: 0.25rem 0.5rem !important;
-        border-radius: 4px !important;
-        text-align: left !important;
-        width: 100% !important;
-        white-space: nowrap !important;
-        overflow: hidden !important;
-        text-overflow: ellipsis !important;
-    }
-
-    /* Avatar do assistente */
-    [data-testid="stChatMessageContent"] pre {
-        font-size: 0.85em !important;
-    }
-
-    /* Reduce padding dos step containers */
-    [data-testid="stExpander"] > div > div {
-        padding: 0.4rem 0.6rem !important;
-    }
-
-    /* Badge de tier nos cards de agente */
-    .tier-badge {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 0.75em;
-        font-weight: 600;
-        margin-left: 6px;
-    }
-    .tier-T1 { background: #0F1A0F; color: #3FB950; border: 1px solid #3FB950; }
-    .tier-T2 { background: #1A0F1A; color: #A78BFA; border: 1px solid #A78BFA; }
-    .tier-T3 { background: #1A1510; color: #FCD34D; border: 1px solid #FCD34D; }
-</style>
-"""
 
 # ── Workflows pré-definidos (para monitoring e UI) ────────────────────────────
 WORKFLOW_METADATA: dict[str, dict] = {
