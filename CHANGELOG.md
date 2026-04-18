@@ -38,6 +38,19 @@
 
 ### Added
 
+- **Página "🔭 Observabilidade"** em `monitoring/app.py` (T6.5): nova
+  página do dashboard com 4 tabs — (1) **Custo por agente**: agrega
+  `logs/sessions.jsonl` via mapa `session_type → agente`, soma
+  `total_cost_usd` / `num_turns`, complementa com delegações reais do
+  Supervisor a partir de `logs/workflows.jsonl` (event `agent_delegation`);
+  (2) **Latência**: p50/p95/max/mean por agente em ms (filtra
+  `duration_s > 0`); (3) **Erros por MCP**: taxa de erro por `platform`
+  vindo de `logs/audit.jsonl` (`has_error=true`) com
+  `st.column_config.ProgressColumn` + drill-down dos últimos 50 erros,
+  mais erros de sessão (`sessions.jsonl.has_error`); (4) **Cache hit
+  rate**: empty state gated em T2.5/SDK #626 que auto-ativa quando
+  `cache_read_tokens` aparecer nos registros. Respeita o filtro de data
+  da sidebar já existente.
 - **`PRODUCT.md`** na raiz: tese de produto em uma página — ICP, JTBD,
   diferencial vs alternativas (Genie nativo, Copilot Fabric, dbt AI,
   LangChain, ChatGPT/Claude direto) e anti-escopo explícito.

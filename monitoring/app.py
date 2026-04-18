@@ -258,6 +258,7 @@ with st.sidebar:
             "📋 Logs",
             "⚙️ Configurações",
             "💰 Custo & Tokens",
+            "🔭 Observabilidade",
             "ℹ️ Sobre",
         ],
         label_visibility="collapsed",
@@ -1417,6 +1418,385 @@ elif page == "💰 Custo & Tokens":
                 column_config={
                     "Economia (USD)": st.column_config.NumberColumn(format="$%.6f"),
                     "Redução %": st.column_config.NumberColumn(format="%.1f%%"),
+                },
+            )
+
+
+# ── OBSERVABILIDADE ───────────────────────────────────────────────────────────
+elif page == "🔭 Observabilidade":
+    st.title("🔭 Observabilidade")
+    st.caption(
+        "Visão consolidada de custo, latência, erros por MCP e cache hit rate. "
+        "Dados agregados a partir de `sessions.jsonl` (custo/latência) e "
+        "`audit.jsonl` (tools/erros)."
+    )
+    st.divider()
+
+    # Mapeia session_type → agente responsável (para slash commands diretos).
+    # Sessões Supervisor (interactive, ui, plan, party, workflow, review, dev-assistant)
+    # são tratadas como multi-agente e aparecem no card "Supervisor / multi".
+    _SESSION_TYPE_TO_AGENT: dict[str, str] = {
+        "sql": "sql-expert",
+        "spark": "spark-expert",
+        "pipeline": "pipeline-architect",
+        "dbt": "dbt-expert",
+        "quality": "data-quality-steward",
+        "governance": "governance-auditor",
+        "semantic": "semantic-modeler",
+        "genie": "semantic-modeler",
+        "dashboard": "semantic-modeler",
+        "brief": "business-analyst",
+        "python": "python-expert",
+        "migrate": "migration-expert",
+        "fabric": "pipeline-architect",
+        "geral": "geral",
+        "monitor": "business-monitor",
+    }
+    _SUPERVISOR_LIKE = {
+        "interactive",
+        "ui",
+        "plan",
+        "party",
+        "workflow",
+        "review",
+        "dev-assistant",
+    }
+
+    def _session_bucket(session_type: str) -> str:
+        if session_type in _SESSION_TYPE_TO_AGENT:
+            return _SESSION_TYPE_TO_AGENT[session_type]
+        if session_type in _SUPERVISOR_LIKE:
+            return "Supervisor / multi"
+        return f"(outros: {session_type})"
+
+    try:
+        import pandas as pd
+    except ImportError:
+        st.error("pandas não instalado — rode `pip install -e '.[monitoring]'`.")
+        st.stop()
+
+    if not _all_session_records:
+        st.info("Sem registros em `logs/sessions.jsonl`. Rode uma sessão para ver dados aqui.")
+        st.stop()
+
+    # Aplica filtro de data já selecionado na sidebar
+    _sessions = _filter_by_date(_all_session_records, filter_start, filter_end)
+    _audit = audit_records  # já filtrado acima
+
+    # ── Tabs ──
+    tab_cost, tab_latency, tab_errors, tab_cache = st.tabs(
+        ["💰 Custo por agente", "⏱️ Latência", "🚨 Erros por MCP", "🧠 Cache hit rate"]
+    )
+
+    # ── TAB 1: Custo por agente ──
+    with tab_cost:
+        st.subheader("Custo acumulado por agente")
+        st.caption(
+            "Soma de `total_cost_usd` por agente, mapeando `session_type` para o especialista "
+            "correspondente. Sessões com múltiplos agentes (Supervisor) ficam em um bucket separado."
+        )
+
+        df_cost = pd.DataFrame(
+            [
+                {
+                    "session_type": r.get("session_type", "?"),
+                    "agent": _session_bucket(r.get("session_type", "?")),
+                    "cost": float(r.get("total_cost_usd") or 0),
+                    "turns": int(r.get("num_turns") or 0),
+                }
+                for r in _sessions
+            ]
+        )
+
+        if df_cost.empty or df_cost["cost"].sum() == 0:
+            st.info("Nenhum custo registrado no período selecionado.")
+        else:
+            agg = (
+                df_cost.groupby("agent")
+                .agg(
+                    Custo_USD=("cost", "sum"),
+                    Sessoes=("cost", "count"),
+                    Turns=("turns", "sum"),
+                    Custo_Medio=("cost", "mean"),
+                )
+                .reset_index()
+                .sort_values("Custo_USD", ascending=False)
+            )
+            agg["Custo_por_Turn"] = agg.apply(
+                lambda r: r["Custo_USD"] / r["Turns"] if r["Turns"] else 0, axis=1
+            )
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total (período)", f"${agg['Custo_USD'].sum():.4f}")
+            col2.metric("Agentes ativos", len(agg))
+            col3.metric(
+                "Agente mais caro",
+                agg.iloc[0]["agent"] if not agg.empty else "—",
+                f"${agg.iloc[0]['Custo_USD']:.4f}" if not agg.empty else "",
+            )
+
+            st.bar_chart(agg.set_index("agent")["Custo_USD"], color="#f59e0b")
+            st.dataframe(
+                agg.rename(columns={"agent": "Agente"}),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Custo_USD": st.column_config.NumberColumn("Custo (USD)", format="$%.4f"),
+                    "Custo_Medio": st.column_config.NumberColumn("Custo médio", format="$%.4f"),
+                    "Custo_por_Turn": st.column_config.NumberColumn("Custo/turn", format="$%.5f"),
+                },
+            )
+
+            # Delegações reais do Supervisor (workflows.jsonl) — mostra para onde
+            # o Supervisor roteou dentro das sessões "Supervisor / multi".
+            _deleg = [
+                r
+                for r in _filter_by_date(_all_workflow_records, filter_start, filter_end)
+                if r.get("event") == "agent_delegation"
+            ]
+            if _deleg:
+                st.divider()
+                st.subheader("Delegações reais do Supervisor (workflows.jsonl)")
+                st.caption(
+                    "Conta de `agent_delegation` events. Não há custo por delegação — o custo "
+                    "fica na sessão-pai. Use como proxy de carga relativa entre agentes."
+                )
+                deleg_counts: dict[str, int] = defaultdict(int)
+                for r in _deleg:
+                    deleg_counts[r.get("agent", "?")] += 1
+                df_deleg = pd.DataFrame(
+                    {"Agente": list(deleg_counts), "Delegações": list(deleg_counts.values())}
+                ).sort_values("Delegações", ascending=False)
+                st.bar_chart(df_deleg.set_index("Agente"), color="#6366f1")
+
+    # ── TAB 2: Latência ──
+    with tab_latency:
+        st.subheader("Latência por agente (p50 / p95 / max)")
+        st.caption(
+            "Percentis de `duration_s` das sessões por agente (slash commands diretos) "
+            "ou bucket Supervisor. Ignora sessões com `duration_ms=0` (erros antes da primeira resposta)."
+        )
+
+        df_lat = pd.DataFrame(
+            [
+                {
+                    "agent": _session_bucket(r.get("session_type", "?")),
+                    "duration_s": float(r.get("duration_s") or 0),
+                    "turns": int(r.get("num_turns") or 0),
+                }
+                for r in _sessions
+                if (r.get("duration_s") or 0) > 0
+            ]
+        )
+
+        if df_lat.empty:
+            st.info("Nenhuma sessão com duração > 0 no período.")
+        else:
+            agg_lat = (
+                df_lat.groupby("agent")["duration_s"]
+                .agg(
+                    Sessoes="count",
+                    p50="median",
+                    p95=lambda s: float(s.quantile(0.95)),
+                    Max="max",
+                    Media="mean",
+                )
+                .reset_index()
+                .sort_values("p95", ascending=False)
+            )
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Sessões medidas", int(agg_lat["Sessoes"].sum()))
+            col2.metric("p50 global", f"{df_lat['duration_s'].median():.1f}s")
+            col3.metric("p95 global", f"{df_lat['duration_s'].quantile(0.95):.1f}s")
+
+            st.bar_chart(agg_lat.set_index("agent")[["p50", "p95"]], color=["#22c55e", "#ef4444"])
+            st.dataframe(
+                agg_lat.rename(columns={"agent": "Agente"}),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "p50": st.column_config.NumberColumn("p50 (s)", format="%.1f"),
+                    "p95": st.column_config.NumberColumn("p95 (s)", format="%.1f"),
+                    "Max": st.column_config.NumberColumn("max (s)", format="%.1f"),
+                    "Media": st.column_config.NumberColumn("média (s)", format="%.1f"),
+                },
+            )
+
+    # ── TAB 3: Erros por MCP ──
+    with tab_errors:
+        st.subheader("Taxa de erro por plataforma MCP")
+        st.caption(
+            "Calcula `has_error / total_calls` por `platform` em `audit.jsonl`. "
+            "Sessões com `has_error=true` em `sessions.jsonl` também são contadas separadamente."
+        )
+
+        # Erros por plataforma MCP
+        platform_totals: dict[str, int] = defaultdict(int)
+        platform_errors: dict[str, int] = defaultdict(int)
+        error_records: list[dict] = []
+        for r in _audit:
+            platform = r.get("platform")
+            if not platform:
+                continue
+            platform_totals[platform] += 1
+            if r.get("has_error"):
+                platform_errors[platform] += 1
+                error_records.append(r)
+
+        if not platform_totals:
+            st.info("Nenhuma chamada MCP registrada no audit.jsonl para o período.")
+        else:
+            df_err = pd.DataFrame(
+                [
+                    {
+                        "Plataforma": p,
+                        "Chamadas": platform_totals[p],
+                        "Erros": platform_errors.get(p, 0),
+                        "Taxa_de_Erro": (
+                            platform_errors.get(p, 0) / platform_totals[p] * 100
+                            if platform_totals[p]
+                            else 0
+                        ),
+                    }
+                    for p in sorted(platform_totals, key=lambda k: -platform_totals[k])
+                ]
+            )
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Chamadas MCP", int(df_err["Chamadas"].sum()))
+            col2.metric("Erros MCP", int(df_err["Erros"].sum()))
+            total_calls = int(df_err["Chamadas"].sum())
+            total_errs = int(df_err["Erros"].sum())
+            col3.metric(
+                "Taxa global",
+                f"{(total_errs / total_calls * 100) if total_calls else 0:.2f}%",
+            )
+
+            st.dataframe(
+                df_err,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Taxa_de_Erro": st.column_config.ProgressColumn(
+                        "Taxa de erro (%)",
+                        format="%.2f%%",
+                        min_value=0,
+                        max_value=100,
+                    ),
+                },
+            )
+
+            if error_records:
+                st.divider()
+                st.subheader("Últimos erros (drill-down)")
+                df_drill = pd.DataFrame(
+                    [
+                        {
+                            "Timestamp": to_sp(r.get("timestamp", "")),
+                            "Tool": r.get("tool_name", "?"),
+                            "Plataforma": r.get("platform", "?"),
+                            "Categoria": r.get("error_category", "?"),
+                            "Trecho": (r.get("error_preview") or "")[:120],
+                        }
+                        for r in sorted(
+                            error_records,
+                            key=lambda x: x.get("timestamp", ""),
+                            reverse=True,
+                        )[:50]
+                    ]
+                )
+                st.dataframe(df_drill, use_container_width=True, hide_index=True)
+
+        # Erros a nível de sessão (session.has_error=True)
+        sess_errs = [r for r in _sessions if r.get("has_error")]
+        if sess_errs:
+            st.divider()
+            st.subheader("Sessões com erro (sessions.jsonl)")
+            df_sess_err = pd.DataFrame(
+                [
+                    {
+                        "Timestamp": to_sp(r.get("timestamp", "")),
+                        "Tipo": r.get("session_type", "?"),
+                        "Provider": r.get("provider", "—"),
+                        "Modelo": r.get("model", "—"),
+                        "Erro": (r.get("error_preview") or "")[:150],
+                    }
+                    for r in sorted(sess_errs, key=lambda x: x.get("timestamp", ""), reverse=True)[
+                        :30
+                    ]
+                ]
+            )
+            st.dataframe(df_sess_err, use_container_width=True, hide_index=True)
+
+    # ── TAB 4: Cache hit rate ──
+    with tab_cache:
+        st.subheader("Cache hit rate (prompt caching)")
+
+        # Procura campos de cache em qualquer record de sessões (SDK pode expor no futuro)
+        cache_records = [
+            r
+            for r in _sessions
+            if r.get("cache_read_tokens") is not None or r.get("cache_creation_tokens") is not None
+        ]
+
+        if not cache_records:
+            st.warning(
+                "⏳ **Aguardando telemetria upstream (T2.5)**\n\n"
+                "O hook `hooks/audit_hook.py` já registra "
+                "`cache_creation_input_tokens`, `cache_read_input_tokens` e "
+                "`cache_hit_rate` — mas o `claude-agent-sdk==0.1.63` não expõe esses "
+                "campos no `ResultMessage.usage`. Esta view ativa automaticamente "
+                "quando o SDK começar a propagar os dados (issue upstream "
+                "[#626](https://github.com/anthropics/claude-agent-sdk-python/issues/626))."
+            )
+            st.caption(
+                "Enquanto isso, o caching **implícito** via `agents/cache_prefix.md` "
+                "byte-idêntico continua ativo — só não temos métrica agregada para exibir."
+            )
+        else:
+            df_cache = pd.DataFrame(
+                [
+                    {
+                        "timestamp": r.get("timestamp", ""),
+                        "agent": _session_bucket(r.get("session_type", "?")),
+                        "cache_read": float(r.get("cache_read_tokens") or 0),
+                        "cache_write": float(r.get("cache_creation_tokens") or 0),
+                    }
+                    for r in cache_records
+                ]
+            )
+            total_read = df_cache["cache_read"].sum()
+            total_write = df_cache["cache_write"].sum()
+            global_rate = (
+                total_read / (total_read + total_write) if (total_read + total_write) else 0
+            )
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Sessões com cache", len(df_cache))
+            col2.metric("Hit rate global", f"{global_rate:.1%}")
+            col3.metric("Tokens de cache read", f"{int(total_read):,}".replace(",", "."))
+
+            agg_cache = df_cache.groupby("agent").agg(
+                Sessoes=("cache_read", "count"),
+                Tokens_Read=("cache_read", "sum"),
+                Tokens_Write=("cache_write", "sum"),
+            )
+            agg_cache["Hit_Rate"] = agg_cache.apply(
+                lambda r: (
+                    r["Tokens_Read"] / (r["Tokens_Read"] + r["Tokens_Write"])
+                    if (r["Tokens_Read"] + r["Tokens_Write"])
+                    else 0
+                ),
+                axis=1,
+            )
+            st.dataframe(
+                agg_cache.reset_index(),
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Hit_Rate": st.column_config.ProgressColumn(
+                        "Hit rate", format="%.1f%%", min_value=0, max_value=1
+                    ),
                 },
             )
 
