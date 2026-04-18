@@ -41,7 +41,9 @@ logs/
 output/
 !output/workflow-context/
 !output/workflow-context/.gitkeep
-memory/
+memory/*
+!memory/*.py
+!memory/MEMORY_ARCHITECTURE.docx
 
 # =============================================================================
 # INPUTS (documentos externos — não versionar)
