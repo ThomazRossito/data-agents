@@ -1,0 +1,203 @@
+# Data Agents — Evals canônicos
+#
+# Queries representativas executadas contra o agente `geral` (Haiku 4.5,
+# zero MCP). Usadas pra detectar regressão de qualidade sem precisar de
+# Databricks/Fabric reais.
+#
+# Rubric (determinística, sem LLM-as-judge):
+#   must_include     — substrings que DEVEM aparecer (case-insensitive)
+#   must_not_include — substrings que NÃO DEVEM aparecer (anti-alucinação)
+#   min_length       — tamanho mínimo em chars (evita respostas degeneradas)
+#   max_length       — tamanho máximo em chars (evita verbosidade)
+#
+# Score por query:
+#   1.0 — todas as checks passam
+#   0.5 — must_include parcial (≥50% dos termos presentes)
+#   0.0 — must_not_include hit OU must_include falhou majoritariamente
+#         OU length fora do intervalo
+
+version: 1
+model: claude-haiku-4-5           # executa via run_geral_query
+
+queries:
+  # ─── Conceitos: arquitetura Medallion ───────────────────────────
+  - id: medallion-architecture
+    domain: conceptual
+    prompt: |
+      Explique a arquitetura Medallion (Bronze / Silver / Gold) em 3
+      parágrafos curtos, um para cada camada.
+    rubric:
+      must_include: [bronze, silver, gold]
+      must_not_include: ["não sei", "desculpe, não posso"]
+      min_length: 250
+      max_length: 3000
+
+  # ─── Conceitos: Delta Lake ──────────────────────────────────────
+  - id: delta-lake-features
+    domain: conceptual
+    prompt: |
+      Cite 3 features principais do Delta Lake e explique brevemente
+      cada uma (ACID, time travel, schema evolution, etc.).
+    rubric:
+      must_include: [acid, transaç, delta]
+      must_not_include: ["não sei", "não tenho acesso"]
+      min_length: 200
+      max_length: 3000
+
+  # ─── Conceitos: Unity Catalog ───────────────────────────────────
+  - id: unity-catalog-hierarchy
+    domain: conceptual
+    prompt: |
+      Qual é a hierarquia de objetos no Unity Catalog do Databricks
+      (metastore → catalog → schema → table)? Explique em 2 parágrafos.
+    rubric:
+      must_include: [metastore, catalog, schema]
+      must_not_include: ["não tenho certeza", "depende do contexto"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── Comparações: Delta Lake vs Iceberg ─────────────────────────
+  - id: delta-vs-iceberg
+    domain: comparative
+    prompt: |
+      Quais são as principais diferenças técnicas entre Delta Lake e
+      Apache Iceberg? Liste 3 diferenças concretas.
+    rubric:
+      must_include: [delta, iceberg]
+      must_not_include: ["são idênticos", "não há diferença"]
+      min_length: 250
+      max_length: 3000
+
+  # ─── Comparações: Databricks vs Fabric ──────────────────────────
+  - id: databricks-vs-fabric
+    domain: comparative
+    prompt: |
+      Databricks e Microsoft Fabric: liste 2 casos em que cada um
+      seria a escolha mais adequada.
+    rubric:
+      must_include: [databricks, fabric]
+      must_not_include: ["não sei dizer", "depende demais"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── SQL: window functions ──────────────────────────────────────
+  - id: sql-window-functions
+    domain: sql
+    prompt: |
+      Escreva um exemplo de SQL usando ROW_NUMBER() OVER (PARTITION BY)
+      para deduplicar registros, mantendo o mais recente por chave.
+    rubric:
+      must_include: [row_number, partition, order by]
+      must_not_include: ["não posso gerar", "preciso de mais contexto"]
+      min_length: 150
+      max_length: 2000
+
+  # ─── Spark: structured streaming ────────────────────────────────
+  - id: spark-structured-streaming
+    domain: spark
+    prompt: |
+      Escreva um snippet PySpark usando Structured Streaming para ler
+      de uma tabela Delta e gravar incrementalmente em outra tabela
+      Delta. Use checkpointLocation.
+    rubric:
+      must_include: [readstream, writestream, checkpoint]
+      must_not_include: ["não consigo", "requer contexto adicional"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── dbt: snapshots ─────────────────────────────────────────────
+  - id: dbt-snapshots
+    domain: dbt
+    prompt: |
+      Para que serve o recurso de snapshots no dbt? Quando você
+      usaria SCD type 2 versus check strategy?
+    rubric:
+      must_include: [snapshot, scd]
+      must_not_include: ["não conheço", "não tenho informação"]
+      min_length: 250
+      max_length: 3000
+
+  # ─── Migração: assessment de SQL Server ─────────────────────────
+  - id: migration-sqlserver-assessment
+    domain: migration
+    prompt: |
+      Liste 4 artefatos que você mapearia ao fazer assessment de um
+      banco SQL Server para migrar pra Databricks Lakehouse (tabelas,
+      views, procedures, etc.) e por quê.
+    rubric:
+      must_include: [tabela, view, stored procedure, índice]
+      must_not_include: ["não faço migrações", "fora do meu escopo"]
+      min_length: 300
+      max_length: 3000
+
+  # ─── Qualidade: great expectations ──────────────────────────────
+  - id: data-quality-patterns
+    domain: quality
+    prompt: |
+      Cite 3 padrões de validação de qualidade de dados para pipelines
+      de ingestão (null checks, schema validation, referential integrity).
+    rubric:
+      must_include: [null, schema]
+      must_not_include: ["não é minha especialidade"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── Governança: LGPD/GDPR ──────────────────────────────────────
+  - id: governance-pii-tagging
+    domain: governance
+    prompt: |
+      Quais colunas de uma tabela de clientes você marcaria como PII
+      para fins de conformidade LGPD/GDPR? Liste 5 exemplos.
+    rubric:
+      must_include: [cpf, email]
+      must_not_include: ["não posso opinar"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── Semântica: modelo estrela ──────────────────────────────────
+  - id: star-schema-basics
+    domain: semantic
+    prompt: |
+      O que é um modelo estrela (star schema) em data warehousing?
+      Explique a diferença entre tabela fato e tabela dimensão.
+    rubric:
+      must_include: [fato, dimensão]
+      must_not_include: ["não me lembro"]
+      min_length: 250
+      max_length: 3000
+
+  # ─── Pipeline: idempotência ─────────────────────────────────────
+  - id: pipeline-idempotency
+    domain: pipeline
+    prompt: |
+      Por que idempotência é importante em pipelines de dados? Cite 2
+      técnicas para torná-los idempotentes.
+    rubric:
+      must_include: [idempot, reprocess]
+      must_not_include: ["não sei explicar"]
+      min_length: 250
+      max_length: 3000
+
+  # ─── Python: pandas vs polars ───────────────────────────────────
+  - id: pandas-vs-polars
+    domain: python
+    prompt: |
+      Em que cenários Polars é preferível a Pandas? Liste 2 vantagens
+      concretas de Polars para datasets grandes.
+    rubric:
+      must_include: [polars, pandas]
+      must_not_include: ["são equivalentes", "não há diferença prática"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── Performance: particionamento ───────────────────────────────
+  - id: partitioning-strategy
+    domain: performance
+    prompt: |
+      Como escolher a coluna de partição em uma tabela Delta grande?
+      Cite 2 critérios e um anti-padrão comum a evitar.
+    rubric:
+      must_include: [partição, cardinalidade]
+      must_not_include: ["sempre particione por data", "nunca particione"]
+      min_length: 250
+      max_length: 3000

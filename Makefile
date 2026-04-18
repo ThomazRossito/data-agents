@@ -3,7 +3,7 @@
 # Automação de tarefas comuns de desenvolvimento e deploy
 # ═══════════════════════════════════════════════════════════════════
 
-.PHONY: help install dev bootstrap demo test lint format type-check security clean run health-databricks health-fabric fabric-env deploy-staging deploy-prod refresh-skills refresh-skills-dry refresh-skills-force
+.PHONY: help install dev bootstrap demo evals test lint format type-check security clean run health-databricks health-fabric fabric-env deploy-staging deploy-prod refresh-skills refresh-skills-dry refresh-skills-force
 
 # Cores para output
 CYAN := \033[36m
@@ -32,6 +32,9 @@ bootstrap: ## Wizard interativo para criar .env mínimo (primeira vez)
 
 demo: ## Executa query canônica (/geral) — smoke test end-to-end
 	python scripts/demo.py
+
+evals: ## Roda queries canônicas (~$$0.08) e gera scoreboard
+	python -m evals.runner
 
 # ─── Quality ──────────────────────────────────────────────────────
 

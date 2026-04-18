@@ -23,6 +23,15 @@
   funciona antes de configurar Databricks/Fabric.
 - **8 testes** em `tests/test_bootstrap.py` para `_render_env` e
   `_validate_anthropic_key` (funções puras do wizard).
+- **`make evals`** (`evals/runner.py` + `evals/canonical_queries.yaml`):
+  framework de regressão v1 com 15 queries canônicas e rubric
+  determinística (`must_include`, `must_not_include`, `min_length`,
+  `max_length`). Score 1.0 / 0.5 / 0.0 por query; exit 0 se tudo passa.
+  Executa via `run_geral_query` (Haiku 4.5, ~$0.005 por query =
+  ~$0.08 por rodada completa). Resultados persistidos em
+  `logs/evals/<timestamp>.jsonl`. Filtros CLI: `--domain`, `--id`,
+  `--limit`. **18 testes** em `tests/test_evals.py` cobrindo
+  loader, scoring e filtros.
 
 ### Fixed
 
