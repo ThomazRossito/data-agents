@@ -1,10 +1,11 @@
 """
 Skill Refresh — Atualiza Skills operacionais com documentação recente.
 
-Chama a Anthropic Messages API diretamente (sem Claude Agent SDK, sem MCPs) e
-usa o tool nativo `web_search` para buscar docs recentes. Cada SKILL.md é passada
-num request one-shot: o modelo devolve o arquivo atualizado em um bloco marcado,
-e o script escreve em disco.
+Chama a Anthropic Messages API diretamente (sem Claude Agent SDK, sem MCPs) via
+**Batch API** — todas as skills pendentes viram uma única submissão com 50% de
+desconto sobre input+output. Cada skill usa o tool nativo `web_search` para buscar
+docs recentes; o modelo devolve o arquivo atualizado em um bloco marcado e o script
+escreve em disco após o batch concluir.
 
 Uso:
   python scripts/refresh_skills.py                    # refresh dos domínios configurados
@@ -18,6 +19,12 @@ Configuração via .env:
   SKILL_REFRESH_INTERVAL_DAYS=3      # pula skills atualizadas há menos de N dias
   SKILL_REFRESH_DOMAINS=databricks,fabric
   SKILL_REFRESH_MODEL=claude-sonnet-4-6   # opcional; padrão usa o memory_extractor_model
+
+Notas sobre Batch API:
+- SLA oficial: 24h. Batches pequenos (≤20 skills) concluem em minutos.
+- Em caso de Ctrl+C, o batch **continua rodando** no servidor. Use
+  `anthropic batches cancel <batch_id>` (CLI oficial) ou espere o resultado
+  na próxima execução — tokens são cobrados mesmo assim.
 """
 
 from __future__ import annotations
@@ -42,8 +49,15 @@ logger = logging.getLogger("data_agents.refresh_skills")
 _SKILLS_DIR = _PROJECT_ROOT / "skills"
 
 # Preços Anthropic (USD por 1M tokens) — Sonnet 4.6 (ajuste quando mudar modelo).
+# Batch API aplica 50% de desconto sobre input e output.
 _PRICE_INPUT_PER_MTOK = 3.00
 _PRICE_OUTPUT_PER_MTOK = 15.00
+_BATCH_DISCOUNT = 0.5
+
+# Polling do batch: a API tem SLA de 24h mas batches pequenos costumam concluir
+# em minutos. Intervalo conservador para não gastar quota de retrieve.
+_BATCH_POLL_INTERVAL_S = 10
+_BATCH_TIMEOUT_S = 24 * 60 * 60
 
 # Delimitadores usados para que o modelo marque o SKILL.md atualizado no output.
 _SKILL_BEGIN = "<<<SKILL_BEGIN>>>"
@@ -168,26 +182,18 @@ def _extract_updated_skill(response_text: str) -> str | None:
     return match.group(1).strip() + "\n"
 
 
-def _estimate_cost(input_tokens: int, output_tokens: int) -> float:
-    return (
+def _estimate_cost(input_tokens: int, output_tokens: int, batch: bool = True) -> float:
+    base = (
         input_tokens / 1_000_000 * _PRICE_INPUT_PER_MTOK
         + output_tokens / 1_000_000 * _PRICE_OUTPUT_PER_MTOK
     )
+    return base * _BATCH_DISCOUNT if batch else base
 
 
-async def _refresh_skill(skill_path: Path, model: str) -> dict:
-    """
-    Chama a Messages API para atualizar um SKILL.md.
-
-    Returns: {"skill", "status", "cost", "preview"}
-    """
-    from anthropic import AsyncAnthropic
-
+def _build_user_prompt(skill_path: Path, current_content: str) -> str:
     rel_path = skill_path.relative_to(_PROJECT_ROOT)
-    current_content = skill_path.read_text(encoding="utf-8")
     today = datetime.now().strftime("%Y-%m-%d")
-
-    user_prompt = (
+    return (
         f"Arquivo: `{rel_path}`\n"
         f"Data de hoje: {today}\n\n"
         f"SKILL.md ATUAL:\n\n{current_content}\n\n"
@@ -195,24 +201,36 @@ async def _refresh_skill(skill_path: Path, model: str) -> dict:
         f"devolva o arquivo atualizado conforme as regras do system prompt."
     )
 
-    client = AsyncAnthropic()  # usa ANTHROPIC_API_KEY do ambiente
-    response = await client.messages.create(
-        model=model,
-        max_tokens=8_000,
-        system=_SYSTEM_PROMPT,
-        tools=[{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
-        messages=[{"role": "user", "content": user_prompt}],
-    )
 
+def _build_batch_request(skill_path: Path, custom_id: str, model: str) -> dict:
+    """Monta uma entrada de batch para uma skill."""
+    current_content = skill_path.read_text(encoding="utf-8")
+    return {
+        "custom_id": custom_id,
+        "params": {
+            "model": model,
+            "max_tokens": 8_000,
+            "system": _SYSTEM_PROMPT,
+            "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
+            "messages": [
+                {"role": "user", "content": _build_user_prompt(skill_path, current_content)}
+            ],
+        },
+    }
+
+
+def _process_batch_result(skill_path: Path, message) -> dict:
+    """Processa o Message de um item succeeded do batch e escreve o SKILL.md atualizado."""
+    rel_path = skill_path.relative_to(_PROJECT_ROOT)
     response_text = "".join(
-        block.text for block in response.content if getattr(block, "type", None) == "text"
+        block.text for block in message.content if getattr(block, "type", None) == "text"
     )
-    updated = _extract_updated_skill(response_text)
-    cost = _estimate_cost(response.usage.input_tokens, response.usage.output_tokens)
+    cost = _estimate_cost(message.usage.input_tokens, message.usage.output_tokens, batch=True)
 
     if response_text.strip().startswith("NO_CHANGE"):
         return {"skill": str(rel_path), "status": "no_change", "cost": cost, "preview": ""}
 
+    updated = _extract_updated_skill(response_text)
     if updated is None:
         return {
             "skill": str(rel_path),
@@ -230,15 +248,43 @@ async def _refresh_skill(skill_path: Path, model: str) -> dict:
     }
 
 
+async def _submit_and_poll_batch(client, requests: list[dict]) -> str:
+    """Submete um batch e aguarda até ended. Retorna o batch_id."""
+    import asyncio as _asyncio
+
+    batch = await client.messages.batches.create(requests=requests)
+    batch_id = batch.id
+    logger.info(f"Batch submetido: {batch_id} ({len(requests)} requests)")
+    print(f"  Batch ID: {batch_id} (pode ser cancelado com `anthropic batches cancel {batch_id}`)")
+
+    elapsed = 0
+    while elapsed < _BATCH_TIMEOUT_S:
+        batch = await client.messages.batches.retrieve(batch_id)
+        if batch.processing_status == "ended":
+            return batch_id
+        counts = batch.request_counts
+        print(
+            f"  ⏳ processing… succeeded={counts.succeeded} "
+            f"errored={counts.errored} expired={counts.expired} "
+            f"canceled={counts.canceled} processing={counts.processing}",
+            flush=True,
+        )
+        await _asyncio.sleep(_BATCH_POLL_INTERVAL_S)
+        elapsed += _BATCH_POLL_INTERVAL_S
+
+    raise TimeoutError(f"Batch {batch_id} não concluiu em {_BATCH_TIMEOUT_S}s (SLA 24h)")
+
+
 async def run_refresh(
     domains: list[str],
     interval_days: int,
     force: bool = False,
     dry_run: bool = False,
-    max_concurrent: int = 2,
     model: str | None = None,
 ) -> dict:
-    """Executa o refresh de todas as skills dos domínios especificados."""
+    """Executa o refresh de todas as skills dos domínios via Batch API (50% desconto)."""
+    from anthropic import AsyncAnthropic
+
     model = model or os.environ.get("SKILL_REFRESH_MODEL") or settings.memory_extractor_model
     skill_paths = _get_skill_paths(domains)
 
@@ -250,6 +296,7 @@ async def run_refresh(
         "errors": 0,
         "cost": 0.0,
         "details": [],
+        "batch_id": None,
     }
 
     if not skill_paths:
@@ -258,7 +305,7 @@ async def run_refresh(
 
     print(f"\n{'=' * 60}")
     print(f"Skill Refresh — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    print(f"Modelo: {model}")
+    print(f"Modelo: {model} (via Batch API, 50% desconto)")
     print(f"Domínios: {', '.join(domains)} | Intervalo: {interval_days}d | Force: {force}")
     print(f"Skills encontradas: {len(skill_paths)}")
     print(f"{'=' * 60}\n")
@@ -283,36 +330,61 @@ async def run_refresh(
         metrics["refreshed"] = len(to_refresh)
         return metrics
 
-    print(f"\nAtualizando {len(to_refresh)} skills (max {max_concurrent} simultâneas)...\n")
+    # custom_id → skill_path para mapear resultados do batch de volta aos arquivos
+    id_to_path: dict[str, Path] = {}
+    requests: list[dict] = []
+    for i, skill_path in enumerate(to_refresh):
+        custom_id = f"skill-{i:03d}"
+        id_to_path[custom_id] = skill_path
+        requests.append(_build_batch_request(skill_path, custom_id, model))
 
-    for i in range(0, len(to_refresh), max_concurrent):
-        batch = to_refresh[i : i + max_concurrent]
-        tasks = [_refresh_skill(path, model) for path in batch]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+    print(f"\nSubmetendo batch com {len(requests)} skills ao Anthropic...\n")
 
-        for skill_path, result in zip(batch, results):
-            rel = skill_path.relative_to(_PROJECT_ROOT)
-            if isinstance(result, Exception):
-                print(f"  ✗ {rel} — ERRO: {result}")
-                metrics["errors"] += 1
-                metrics["details"].append(
-                    {"skill": str(rel), "status": "error", "error": str(result)}
-                )
-                continue
+    client = AsyncAnthropic()
+    try:
+        batch_id = await _submit_and_poll_batch(client, requests)
+    except Exception as e:
+        logger.error(f"Falha no batch: {e}")
+        metrics["errors"] = len(to_refresh)
+        metrics["details"].append({"status": "batch_error", "error": str(e)})
+        return metrics
 
-            status = result["status"]
-            cost = result["cost"]
-            metrics["cost"] += cost
-            metrics["details"].append(result)
-            if status == "ok":
-                print(f"  ✅ {rel} — atualizada (${cost:.4f})")
-                metrics["refreshed"] += 1
-            elif status == "no_change":
-                print(f"  ✓  {rel} — sem alterações (${cost:.4f})")
-                metrics["no_change"] += 1
-            else:
-                print(f"  ⚠️  {rel} — {status} (${cost:.4f})")
-                metrics["errors"] += 1
+    metrics["batch_id"] = batch_id
+    print(f"\nBatch {batch_id} concluído. Processando resultados...\n")
+
+    # results() é um iterador assíncrono quando usado com AsyncAnthropic
+    async for entry in await client.messages.batches.results(batch_id):
+        custom_id = entry.custom_id
+        skill_path = id_to_path.get(custom_id)
+        if skill_path is None:
+            logger.warning(f"custom_id desconhecido no resultado: {custom_id}")
+            continue
+        rel = skill_path.relative_to(_PROJECT_ROOT)
+
+        if entry.result.type != "succeeded":
+            err_type = entry.result.type
+            err_detail = getattr(entry.result, "error", None)
+            print(f"  ✗ {rel} — {err_type}: {err_detail}")
+            metrics["errors"] += 1
+            metrics["details"].append(
+                {"skill": str(rel), "status": err_type, "error": str(err_detail)}
+            )
+            continue
+
+        result = _process_batch_result(skill_path, entry.result.message)
+        status = result["status"]
+        cost = result["cost"]
+        metrics["cost"] += cost
+        metrics["details"].append(result)
+        if status == "ok":
+            print(f"  ✅ {rel} — atualizada (${cost:.4f})")
+            metrics["refreshed"] += 1
+        elif status == "no_change":
+            print(f"  ✓  {rel} — sem alterações (${cost:.4f})")
+            metrics["no_change"] += 1
+        else:
+            print(f"  ⚠️  {rel} — {status} (${cost:.4f})")
+            metrics["errors"] += 1
 
     print(f"\n{'=' * 60}")
     print(
@@ -320,7 +392,7 @@ async def run_refresh(
         f"{metrics['no_change']} sem alteração | "
         f"{metrics['skipped']} puladas | "
         f"{metrics['errors']} erros | "
-        f"Custo: ${metrics['cost']:.4f}"
+        f"Custo: ${metrics['cost']:.4f} (Batch API)"
     )
     print(f"{'=' * 60}\n")
 
@@ -345,7 +417,6 @@ def main() -> None:
     )
     parser.add_argument("--force", action="store_true", help="Atualiza todas.")
     parser.add_argument("--dry-run", action="store_true", help="Lista sem modificar.")
-    parser.add_argument("--concurrent", type=int, default=2, help="Skills em paralelo. Padrão: 2.")
     parser.add_argument("--model", type=str, default=None, help="Override do modelo Anthropic.")
 
     args = parser.parse_args()
@@ -367,7 +438,6 @@ def main() -> None:
             interval_days=interval,
             force=args.force,
             dry_run=args.dry_run,
-            max_concurrent=args.concurrent,
             model=args.model,
         )
     )

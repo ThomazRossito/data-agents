@@ -9,6 +9,17 @@
 
 ### Changed
 
+- **`scripts/refresh_skills.py` migrado para Anthropic Batch API** (T5.2):
+  todas as skills pendentes de refresh agora são submetidas em um único
+  batch via `client.messages.batches.create()`, com 50% de desconto sobre
+  input+output. O script faz polling a cada 10s (SLA máximo 24h, batches
+  pequenos concluem em minutos) e escreve cada SKILL.md conforme os
+  resultados retornam. Flag `--concurrent` removida (paralelismo é
+  servidor-side). Custo estimado por rodada cai de `~$1-3` para `~$0.50-1.50`.
+  20 testes novos em `tests/test_refresh_skills_batch.py` mockam o ciclo
+  `create → retrieve → results` e cobrem custo, submissão única,
+  propagação de erros e curto-circuito em `--dry-run`.
+
 - **Skills migradas para o formato nativo Anthropic** (T5.3): cinco skills
   canônicas que viviam como arquivos flat em `skills/*.md` agora residem em
   `skills/patterns/<name>/SKILL.md` com frontmatter YAML (`name` +
@@ -69,6 +80,10 @@
 
 - **T0.2.1** — Abrir issue no `anthropics/claude-agent-sdk-python` pedindo
   passthrough de `extra_headers` para `anthropic-beta: token-efficient-tools-2025-02-19`.
+- **T5.1** — Prompt caching explícito no Supervisor. **Confirmado bloqueado em
+  SDK 0.1.63**: `SdkBeta` aceita apenas `context-1m-2025-08-07`, sem campo
+  `cache_control` nem `extra_headers`. Issue #626 (upstream) segue aberta.
+  Caching implícito via `agents/cache_prefix.md` byte-idêntico continua ativo.
 
 ---
 
