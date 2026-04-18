@@ -44,8 +44,9 @@ def on_session_start(session_id: str) -> None:
     Args:
         session_id: Identificador único da sessão (ex: uuid hex).
     """
-    # Reseta o contexto acumulado da sessão anterior
-    reset_context_budget()
+    # Reseta o contexto acumulado da sessão anterior e registra o session_id
+    # para o auto-fire do summarizer localizar o transcript quando disparar.
+    reset_context_budget(session_id=session_id)
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     logger.info(f"[session_start] sessão={session_id} | {now}")

@@ -209,3 +209,154 @@ class TestResetContextBudget:
         reset_context_budget()
         reset_context_budget()
         assert get_context_usage()["input_tokens"] == 0
+
+    def test_reset_records_session_id(self):
+        reset_context_budget(session_id="cli-abcd1234")
+        assert budget_module._active_session_id == "cli-abcd1234"
+
+    def test_reset_without_session_id_clears_it(self):
+        budget_module._active_session_id = "stale-id"
+        reset_context_budget()
+        assert budget_module._active_session_id is None
+
+
+# ─── Summarizer auto-fire (T4.4 wiring) ──────────────────────────────────────
+
+
+class TestSummarizerAutoFire:
+    """Testes para o disparo automático do summarizer em ≥65%."""
+
+    @pytest.mark.asyncio
+    async def test_does_not_fire_below_threshold(self, monkeypatch):
+        """Abaixo de 65% não deve disparar summarize."""
+        called = {"count": 0}
+
+        async def fake_fire(ratio):
+            called["count"] += 1
+
+        monkeypatch.setattr(budget_module, "_fire_summarizer", fake_fire)
+        reset_context_budget(session_id="cli-test")
+        # 60% → abaixo do threshold default (65%)
+        budget_module._session_input_tokens = int(budget_module._INPUT_TOKEN_LIMIT * 0.60)
+        await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
+        assert called["count"] == 0
+        assert budget_module._summary_fired_for_session is False
+
+    @pytest.mark.asyncio
+    async def test_fires_once_at_threshold(self, monkeypatch):
+        """Ao cruzar 65% deve disparar uma vez; chamadas subsequentes não re-disparam."""
+        calls: list[float] = []
+
+        async def fake_fire(ratio):
+            calls.append(ratio)
+
+        monkeypatch.setattr(budget_module, "_fire_summarizer", fake_fire)
+        reset_context_budget(session_id="cli-test")
+        budget_module._session_input_tokens = int(budget_module._INPUT_TOKEN_LIMIT * 0.65)
+        await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
+        assert len(calls) == 1
+        # Segunda tool call no mesmo patamar não deve redisparar
+        await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
+        assert len(calls) == 1
+        assert budget_module._summary_fired_for_session is True
+
+    @pytest.mark.asyncio
+    async def test_fire_persists_summary_file(self, monkeypatch, tmp_path):
+        """_fire_summarizer deve gravar logs/summaries/<sid>.md com o resumo."""
+        from utils import summarizer as summarizer_module
+
+        # Aponta o diretório base dos logs para tmp_path
+        monkeypatch.setattr(budget_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
+
+        # Transcript fake via load_transcript
+        def fake_load(_sid):
+            return [
+                {"role": "user", "content": "fazer X"},
+                {"role": "assistant", "content": "ok"},
+            ]
+
+        async def fake_summarize(transcript, **kwargs):
+            return {
+                "summary": "## Objetivo\nTeste\n",
+                "input_tokens": 100,
+                "output_tokens": 40,
+                "cost_usd": 0.00012,
+                "model": "claude-haiku-4-5-20251001",
+                "turns_summarized": len(transcript),
+            }
+
+        # Patch no módulo real onde _fire_summarizer faz o import tardio
+        import hooks.transcript_hook as transcript_hook
+
+        monkeypatch.setattr(transcript_hook, "load_transcript", fake_load)
+        monkeypatch.setattr(summarizer_module, "summarize_session", fake_summarize)
+
+        reset_context_budget(session_id="cli-persist")
+        await budget_module._fire_summarizer(0.70)
+
+        summary_file = tmp_path / "summaries" / "cli-persist.md"
+        assert summary_file.exists()
+        content = summary_file.read_text(encoding="utf-8")
+        assert "Session Summary — cli-persist" in content
+        assert "70%" in content
+        assert "## Objetivo" in content
+        assert "claude-haiku-4-5-20251001" in content
+
+    @pytest.mark.asyncio
+    async def test_fire_skipped_without_session_id(self, monkeypatch, caplog):
+        """Sem session_id, _fire_summarizer loga INFO e retorna sem chamar o modelo."""
+        from utils import summarizer as summarizer_module
+
+        async def should_not_be_called(*args, **kwargs):
+            raise AssertionError("summarize_session não deveria rodar sem session_id")
+
+        monkeypatch.setattr(summarizer_module, "summarize_session", should_not_be_called)
+        reset_context_budget(session_id=None)
+        with caplog.at_level(logging.INFO, logger="data_agents.hooks.context_budget"):
+            await budget_module._fire_summarizer(0.70)
+        assert any("session_id desconhecido" in r.message for r in caplog.records)
+
+    @pytest.mark.asyncio
+    async def test_fire_skipped_when_transcript_empty(self, monkeypatch, tmp_path, caplog):
+        """Transcript vazio → _fire_summarizer pula sem persistir nem chamar modelo."""
+        from utils import summarizer as summarizer_module
+
+        monkeypatch.setattr(budget_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
+
+        import hooks.transcript_hook as transcript_hook
+
+        monkeypatch.setattr(transcript_hook, "load_transcript", lambda _sid: [])
+
+        async def should_not_be_called(*args, **kwargs):
+            raise AssertionError("summarize_session não deveria rodar com transcript vazio")
+
+        monkeypatch.setattr(summarizer_module, "summarize_session", should_not_be_called)
+        reset_context_budget(session_id="cli-empty")
+        with caplog.at_level(logging.INFO, logger="data_agents.hooks.context_budget"):
+            await budget_module._fire_summarizer(0.70)
+        assert any("transcript vazio" in r.message for r in caplog.records)
+        assert not (tmp_path / "summaries" / "cli-empty.md").exists()
+
+    @pytest.mark.asyncio
+    async def test_fire_graceful_on_summarize_error(self, monkeypatch, tmp_path, caplog):
+        """Se summarize_session levantar, o hook loga WARNING e não propaga."""
+        from utils import summarizer as summarizer_module
+
+        monkeypatch.setattr(budget_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
+
+        import hooks.transcript_hook as transcript_hook
+
+        monkeypatch.setattr(
+            transcript_hook,
+            "load_transcript",
+            lambda _sid: [{"role": "user", "content": "x"}],
+        )
+
+        async def raise_runtime(*args, **kwargs):
+            raise RuntimeError("API down")
+
+        monkeypatch.setattr(summarizer_module, "summarize_session", raise_runtime)
+        reset_context_budget(session_id="cli-err")
+        with caplog.at_level(logging.WARNING, logger="data_agents.hooks.context_budget"):
+            await budget_module._fire_summarizer(0.70)
+        assert any("auto-fire falhou" in r.message for r in caplog.records)

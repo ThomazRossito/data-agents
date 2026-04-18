@@ -20,6 +20,8 @@ Relação com outros hooks:
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from config.settings import settings
@@ -30,6 +32,13 @@ logger = logging.getLogger("data_agents.hooks.context_budget")
 
 # Rastreia se o checkpoint crítico já foi salvo na sessão atual (evita saves repetidos)
 _critical_checkpoint_saved: bool = False
+
+# T4.4 wiring: rastreia se o summarizer já foi disparado na sessão atual.
+_summary_fired_for_session: bool = False
+
+# Session ID da sessão corrente — configurado por reset_context_budget(session_id=...).
+# Necessário para o summarizer localizar o transcript em logs/sessions/<sid>.jsonl.
+_active_session_id: str | None = None
 
 # Contadores por sessão — isolados por reset explícito (reset_context_budget)
 _session_input_tokens: int = 0
@@ -59,6 +68,7 @@ async def track_context_budget(
         {} (hook não modifica o output).
     """
     global _session_input_tokens, _session_output_tokens, _critical_checkpoint_saved
+    global _summary_fired_for_session
 
     if not input_data or not isinstance(input_data, dict):
         return {}
@@ -66,6 +76,7 @@ async def track_context_budget(
     input_token_limit = settings.context_budget_input_limit
     warn_threshold = settings.context_budget_warn_threshold
     critical_threshold = settings.context_budget_critical_threshold
+    summarize_threshold = settings.context_budget_summarize_threshold
 
     tool_input = input_data.get("tool_input")
     tool_output = input_data.get("tool_output")
@@ -79,6 +90,13 @@ async def track_context_budget(
     _session_output_tokens += output_tokens
 
     usage_ratio = _session_input_tokens / input_token_limit
+
+    # T4.4 wiring: dispara o summarizer lateral (Haiku) uma única vez por sessão
+    # ao cruzar o limiar. Definimos a flag ANTES do await para evitar disparos
+    # duplicados caso duas tool calls cheguem ao limiar no mesmo tick.
+    if usage_ratio >= summarize_threshold and not _summary_fired_for_session:
+        _summary_fired_for_session = True
+        await _fire_summarizer(usage_ratio)
 
     if usage_ratio >= critical_threshold:
         logger.error(
@@ -114,6 +132,65 @@ def _save_emergency_checkpoint() -> None:
         logger.warning("💾 Checkpoint de emergência salvo (context budget crítico).")
     except Exception as e:
         logger.warning(f"Checkpoint de emergência não disponível: {e}")
+
+
+async def _fire_summarizer(usage_ratio: float) -> None:
+    """Dispara sumarização lateral via Haiku e persiste em logs/summaries/<sid>.md.
+
+    O disparo é best-effort: falhas no carregamento do transcript, na chamada
+    ao modelo ou na escrita em disco são logadas mas não propagam — o hook
+    não deve quebrar o fluxo do usuário.
+
+    Bloqueia a tool call corrente (~3-5s), mas roda apenas uma vez por sessão
+    graças ao flag `_summary_fired_for_session` verificado em `track_context_budget`.
+    """
+    session_id = _active_session_id
+    if not session_id:
+        logger.info(
+            f"📋 Summarizer não disparado: session_id desconhecido "
+            f"(usage={usage_ratio:.0%}). Chame reset_context_budget(session_id=...)."
+        )
+        return
+    try:
+        from hooks.transcript_hook import load_transcript
+        from utils.summarizer import summarize_session
+
+        transcript = load_transcript(session_id)
+        if not transcript:
+            logger.info(f"📋 Summarizer: transcript vazio para {session_id}; skip.")
+            return
+
+        result = await summarize_session(transcript)
+        _persist_summary(session_id, result, usage_ratio)
+        logger.info(
+            f"📋 Summarizer disparado a {usage_ratio:.0%}: {session_id} "
+            f"({result['turns_summarized']} turns, ${result['cost_usd']:.5f})"
+        )
+    except Exception as e:
+        logger.warning(f"Summarizer auto-fire falhou (session={session_id}): {e}")
+
+
+def _persist_summary(session_id: str, result: dict[str, Any], usage_ratio: float) -> None:
+    """Grava o resumo estruturado em `logs/summaries/<session_id>.md`.
+
+    Arquivo contém header com timestamp, modelo, turns sumarizados, custo e
+    razão de uso; corpo é o Markdown dos 7 campos GAPS G3 produzido pelo Haiku.
+    """
+    summaries_dir = Path(settings.audit_log_path).parent / "summaries"
+    path = summaries_dir / f"{session_id}.md"
+    ts = datetime.now(timezone.utc).isoformat()
+    header = (
+        f"# Session Summary — {session_id}\n\n"
+        f"_Disparado em {ts} ao atingir {usage_ratio:.0%} do context budget._\n"
+        f"_Modelo: {result['model']} | Turns: {result['turns_summarized']} | "
+        f"Custo: ${result['cost_usd']:.5f}_\n\n---\n\n"
+    )
+    try:
+        summaries_dir.mkdir(parents=True, exist_ok=True)
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(header + result.get("summary", "") + "\n")
+    except OSError as e:
+        logger.warning(f"Falha ao gravar summary em {path}: {e}")
 
 
 def _extract_token_counts(
@@ -183,14 +260,19 @@ def get_context_usage() -> dict[str, Any]:
     }
 
 
-def reset_context_budget() -> None:
+def reset_context_budget(session_id: str | None = None) -> None:
     """
     Reseta os contadores de tokens da sessão.
 
-    Chamado no início de cada nova sessão ou após /memory flush.
+    Chamado no início de cada nova sessão ou após /memory flush. Quando
+    `session_id` é fornecido, registra-o como sessão ativa — necessário
+    para o auto-fire do summarizer (T4.4 wiring) localizar o transcript.
     """
     global _session_input_tokens, _session_output_tokens, _critical_checkpoint_saved
+    global _summary_fired_for_session, _active_session_id
     _session_input_tokens = 0
     _session_output_tokens = 0
     _critical_checkpoint_saved = False
-    logger.debug("Context budget resetado.")
+    _summary_fired_for_session = False
+    _active_session_id = session_id
+    logger.debug(f"Context budget resetado (session_id={session_id}).")
