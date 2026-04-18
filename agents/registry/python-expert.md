@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, context7_all]
 mcp_servers: [context7]
 kb_domains: [python-patterns]
-skill_domains: [root, databricks]
+skill_domains: [patterns, databricks]
 tier: T1
 output_budget: "100-400 linhas"
 ---

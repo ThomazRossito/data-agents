@@ -15,9 +15,9 @@ Antes de planejar, leia a KB indicada. Skills são opcionais (detalhes operacion
 
 | Tipo de Tarefa                                       | KB a Ler Primeiro                   | Skill Operacional                                                                                    |
 |------------------------------------------------------|-------------------------------------|------------------------------------------------------------------------------------------------------|
-| Pipeline SDP/LakeFlow (Spark Declarative)            | `kb/pipeline-design/index.md`       | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` + `skills/pipeline_design.md`    |
+| Pipeline SDP/LakeFlow (Spark Declarative)            | `kb/pipeline-design/index.md`       | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` + `skills/patterns/pipeline-design/SKILL.md`    |
 | Pipeline Spark Structured Streaming                  | `kb/spark-patterns/index.md`        | `skills/databricks/databricks-spark-structured-streaming/SKILL.md`                                   |
-| DDL / Tabelas Delta / Unity Catalog                  | `kb/sql-patterns/index.md`          | `skills/sql_generation.md` + `skills/databricks/databricks-unity-catalog/SKILL.md`                   |
+| DDL / Tabelas Delta / Unity Catalog                  | `kb/sql-patterns/index.md`          | `skills/patterns/sql-generation/SKILL.md` + `skills/databricks/databricks-unity-catalog/SKILL.md`                   |
 | SQL Warehouse / Materialized Views                   | `kb/databricks/index.md`            | `skills/databricks/databricks-dbsql/SKILL.md`                                                        |
 | Databricks Jobs / Workflows / Orquestração           | `kb/databricks/index.md`            | `skills/databricks/databricks-jobs/SKILL.md`                                                         |
 | Databricks Asset Bundles / CI-CD                     | `kb/databricks/index.md`            | `skills/databricks/databricks-bundles/SKILL.md`                                                      |
@@ -28,19 +28,19 @@ Antes de planejar, leia a KB indicada. Skills são opcionais (detalhes operacion
 | AI/BI Dashboard (criar/publicar)                     | `kb/semantic-modeling/index.md`     | `skills/databricks/databricks-aibi-dashboards/SKILL.md`                                              |
 | Knowledge Assistants / Mosaic AI Agents (KA/MAS)     | `kb/databricks/index.md`            | `skills/databricks/databricks-agent-bricks/SKILL.md`                                                 |
 | Execução de código serverless                        | `kb/databricks/index.md`            | *(use `mcp__databricks__execute_code`)*                                                              |
-| Múltiplas queries SQL em paralelo                    | `kb/sql-patterns/index.md`          | `skills/sql_generation.md` (use `execute_sql_multi`)                                                 |
-| Fabric Lakehouse / Medallion                         | `kb/fabric/index.md`                | `skills/fabric/fabric-medallion/SKILL.md` + `skills/pipeline_design.md`                              |
+| Múltiplas queries SQL em paralelo                    | `kb/sql-patterns/index.md`          | `skills/patterns/sql-generation/SKILL.md` (use `execute_sql_multi`)                                                 |
+| Fabric Lakehouse / Medallion                         | `kb/fabric/index.md`                | `skills/fabric/fabric-medallion/SKILL.md` + `skills/patterns/pipeline-design/SKILL.md`                              |
 | Fabric Direct Lake / Power BI                        | `kb/fabric/index.md`                | `skills/fabric/fabric-direct-lake/SKILL.md`                                                          |
 | Semantic Model Fabric (análise/criação/DAX)          | `kb/semantic-modeling/index.md`     | `skills/fabric/fabric-direct-lake/SKILL.md`                                                          |
 | Fabric RTI / Eventhouse / KQL / Activator            | `kb/fabric/index.md`                | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                                       |
 | Fabric Data Factory / Dataflows Gen2                 | `kb/fabric/index.md`                | `skills/fabric/fabric-data-factory/SKILL.md`                                                         |
-| Fabric ↔ Databricks (Cross-Platform)                 | `kb/pipeline-design/index.md`       | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md`                         |
-| Qualidade de Dados / Expectations / Profiling        | `kb/data-quality/index.md`          | `skills/data_quality.md`                                                                             |
+| Fabric ↔ Databricks (Cross-Platform)                 | `kb/pipeline-design/index.md`       | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/patterns/pipeline-design/SKILL.md`                         |
+| Qualidade de Dados / Expectations / Profiling        | `kb/data-quality/index.md`          | `skills/patterns/data-quality/SKILL.md`                                                                             |
 | Governança / Auditoria / Linhagem / PII              | `kb/governance/index.md`            | `skills/databricks/databricks-unity-catalog/SKILL.md`                                                |
 | Modelagem Semântica / DAX / Direct Lake              | `kb/semantic-modeling/index.md`     | `skills/fabric/fabric-direct-lake/SKILL.md`                                                          |
-| Star Schema / Modelagem Dimensional (Gold)           | `kb/pipeline-design/index.md`       | `skills/star_schema_design.md`                                                                       |
+| Star Schema / Modelagem Dimensional (Gold)           | `kb/pipeline-design/index.md`       | `skills/patterns/star-schema-design/SKILL.md`                                                                       |
 | Databricks Metric Views / Semantic Layer             | `kb/semantic-modeling/index.md`     | `skills/databricks/databricks-metric-views/SKILL.md`                                                 |
-| Padrões Spark genéricos                              | `kb/spark-patterns/index.md`        | `skills/spark_patterns.md`                                                                           |
+| Padrões Spark genéricos                              | `kb/spark-patterns/index.md`        | `skills/patterns/spark-patterns/SKILL.md`                                                                           |
 | Pipeline End-to-End / Multi-Agente / Workflow        | `kb/collaboration-workflows.md`     | `templates/pipeline-spec.md` ou `templates/star-schema-spec.md`                                      |
 | Migração Cross-Platform / Multi-Plataforma           | `kb/collaboration-workflows.md`     | `templates/cross-platform-spec.md`                                                                   |
 | Transcript / Briefing / Requisitos não estruturados  | *(delegar ao business-analyst)*    | `templates/backlog.md`                                                                               |

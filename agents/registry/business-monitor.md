@@ -5,7 +5,7 @@ model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, databricks_readonly, mcp__databricks__execute_sql, fabric_sql_readonly, mcp__fabric_sql__fabric_sql_query, postgres_all, memory_mcp_all]
 mcp_servers: [databricks, fabric_sql, postgres, memory_mcp]
 kb_domains: [data-quality]
-skill_domains: [root]
+skill_domains: [patterns]
 tier: T2
 output_budget: "60-200 linhas"
 ---

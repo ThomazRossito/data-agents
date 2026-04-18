@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, databricks_readonly, mcp__databricks__execute_sql, mcp__databricks__execute_sql_multi, mcp__databricks__get_best_warehouse, mcp__databricks__get_table_stats_and_schema, databricks_genie_readonly, fabric_readonly, fabric_sql_readonly, fabric_rti_readonly, context7_all, postgres_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres]
 kb_domains: [sql-patterns, databricks, fabric]
-skill_domains: [databricks, fabric, root]
+skill_domains: [databricks, fabric, patterns]
 tier: T1
 output_budget: "150-400 linhas"
 ---
@@ -68,14 +68,14 @@ do time. Depois, leia as Skills para os detalhes operacionais da ferramenta.
 
 | Tipo de Tarefa                              | KB a Ler Primeiro                  | Skill Operacional (se necessário)                                               |
 |---------------------------------------------|------------------------------------|---------------------------------------------------------------------------------|
-| DDL Delta (CREATE TABLE, ALTER TABLE)       | `kb/sql-patterns/index.md`         | `skills/sql_generation.md` + `skills/databricks/databricks-dbsql/SKILL.md`     |
+| DDL Delta (CREATE TABLE, ALTER TABLE)       | `kb/sql-patterns/index.md`         | `skills/patterns/sql-generation/SKILL.md` + `skills/databricks/databricks-dbsql/SKILL.md`     |
 | Unity Catalog (schemas, grants, volumes)    | `kb/databricks/index.md`           | `skills/databricks/databricks-unity-catalog/SKILL.md`                           |
 | SQL para LakeFlow/SDP                       | `kb/databricks/index.md`           | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`             |
 | SQL Warehouse / Materialized Views          | `kb/databricks/index.md`           | `skills/databricks/databricks-dbsql/SKILL.md`                                   |
 | KQL / Fabric RTI / Eventhouse / Activator   | `kb/fabric/index.md`               | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                  |
 | Fabric Lakehouse (T-SQL, Delta, Medallion)  | `kb/fabric/index.md`               | `skills/fabric/fabric-medallion/SKILL.md` — use `fabric_sql__*` para schemas customizados |
 | Fabric Direct Lake (DDL para Power BI)      | `kb/fabric/index.md`               | `skills/fabric/fabric-direct-lake/SKILL.md`                                     |
-| Star Schema / Gold Layer (dim_* e fact_*)   | `kb/sql-patterns/index.md`         | `skills/star_schema_design.md`                                                  |
+| Star Schema / Gold Layer (dim_* e fact_*)   | `kb/sql-patterns/index.md`         | `skills/patterns/star-schema-design/SKILL.md`                                                  |
 | Databricks Genie (pergunta em LN a Space)   | `kb/databricks/index.md`           | `skills/databricks/databricks-genie/SKILL.md` — use `mcp__databricks_genie__genie_ask` |
 
 ---

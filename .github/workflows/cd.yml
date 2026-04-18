@@ -129,5 +129,5 @@ jobs:
           echo "Verifying deployment..."
           databricks workspace ls /Shared/data-agents/skills/databricks/databricks-spark-declarative-pipelines/
           databricks workspace ls /Shared/data-agents/skills/fabric/
-          databricks workspace ls /Shared/data-agents/skills/star_schema_design.md
+          databricks workspace ls /Shared/data-agents/skills/patterns/star-schema-design/SKILL.md
           echo "Deployment verified successfully."

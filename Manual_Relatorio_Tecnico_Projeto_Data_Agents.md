@@ -453,10 +453,10 @@ Manuais técnicos que os agentes **são obrigados a ler antes de agir**. Garante
 
 **Skills Gerais:**
 
-- `skills/pipeline_design.md` — Arquitetura Medalhão com regras por camada (Bronze/Silver/Gold)
-- `skills/spark_patterns.md` — PySpark moderno: Delta Lake, MERGE, OPTIMIZE, VACUUM
-- `skills/sql_generation.md` — Padrões SQL com Liquid Clustering (substitui `PARTITIONED BY + ZORDER BY`)
-- `skills/star_schema_design.md` — 5 regras de ouro para criar tabelas Gold
+- `skills/patterns/pipeline-design/SKILL.md` — Arquitetura Medalhão com regras por camada (Bronze/Silver/Gold)
+- `skills/patterns/spark-patterns/SKILL.md` — PySpark moderno: Delta Lake, MERGE, OPTIMIZE, VACUUM
+- `skills/patterns/sql-generation/SKILL.md` — Padrões SQL com Liquid Clustering (substitui `PARTITIONED BY + ZORDER BY`)
+- `skills/patterns/star-schema-design/SKILL.md` — 5 regras de ouro para criar tabelas Gold
 
 **Skills Databricks (26+ skills):** Spark Declarative Pipelines, Structured Streaming, Jobs, Unity Catalog, MLflow Evaluation, Vector Search, Synthetic Data Generation, Model Serving, AI Functions, Lakebase, Apps Python, ZeroBus Ingest, DBSQL, Iceberg, e outras.
 

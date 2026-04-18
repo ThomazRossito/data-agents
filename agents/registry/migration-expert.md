@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, Bash, migration_source_all, databricks_all, fabric_sql_all, fabric_all, context7_all]
 mcp_servers: [migration_source, databricks, fabric, fabric_sql, context7]
 kb_domains: [migration, pipeline-design, databricks, fabric, sql-patterns, governance]
-skill_domains: [migration, databricks, fabric, root]
+skill_domains: [migration, databricks, fabric, patterns]
 tier: T1
 max_turns: 25
 effort: high

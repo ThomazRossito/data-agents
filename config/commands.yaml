@@ -21,7 +21,7 @@ commands:
     doma_mode: express
     description: Envia tarefa SQL diretamente para o SQL Expert (DOMA Express).
     skills:
-    - skills/sql_generation.md
+    - skills/patterns/sql-generation/SKILL.md
     prompt_template: |-
       [DOMA EXPRESS] Delegue IMEDIATAMENTE para sql-expert. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
     display_template: '[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
@@ -39,7 +39,7 @@ commands:
     doma_mode: express
     description: Envia tarefa de pipeline para o Pipeline Architect (DOMA Express).
     skills:
-    - skills/pipeline_design.md
+    - skills/patterns/pipeline-design/SKILL.md
     prompt_template: |-
       [DOMA EXPRESS] Delegue IMEDIATAMENTE para pipeline-architect. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
     display_template: '[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
@@ -70,7 +70,7 @@ commands:
     description: Inicia o fluxo DOMA completo com PRD e aprovação.
     skills: []
     prompt_template: |-
-      Como Product Manager/Arquiteto (DOMA Passo 1), você deve criar um PRD completo para a tarefa abaixo. ANTES de escrever qualquer linha do PRD, use a ferramenta Read para ler os skills relevantes: (1) Identifique o tipo de tarefa (SDP, Structured Streaming, Jobs, Fabric Lakehouse, RTI, etc). (2) Consulte o Mapa de Skills no seu system prompt para decidir quais SKILL.md ler. (3) Leia TODOS os skills identificados antes de começar o PRD. (4) Garanta que o diretório `output/prd/` existe (Bash: mkdir -p output/prd). (5) Crie um PRD detalhado em `output/prd/prd_<nome_descritivo>.md` usando Bash, incluindo: arquitetura Medallion moderna (Bronze→Silver→Gold), padrões obrigatórios por camada, agentes a acionar e ordem de execução. Se a tarefa envolver Star Schema ou Gold Layer com dim_*/fact_*, inclua no PRD as regras de `skills/star_schema_design.md`: autonomia das dimensões, geração sintética de dim_data via SEQUENCE, e INNER JOIN obrigatório nas fact_*. (6) Apresente o resumo do PRD e aguarde aprovação antes de delegar. Após aprovação: garanta que `output/specs/` existe (mkdir -p output/specs) e salve a SPEC em `output/specs/spec_<nome_descritivo>.md`. Tarefa: {task}
+      Como Product Manager/Arquiteto (DOMA Passo 1), você deve criar um PRD completo para a tarefa abaixo. ANTES de escrever qualquer linha do PRD, use a ferramenta Read para ler os skills relevantes: (1) Identifique o tipo de tarefa (SDP, Structured Streaming, Jobs, Fabric Lakehouse, RTI, etc). (2) Consulte o Mapa de Skills no seu system prompt para decidir quais SKILL.md ler. (3) Leia TODOS os skills identificados antes de começar o PRD. (4) Garanta que o diretório `output/prd/` existe (Bash: mkdir -p output/prd). (5) Crie um PRD detalhado em `output/prd/prd_<nome_descritivo>.md` usando Bash, incluindo: arquitetura Medallion moderna (Bronze→Silver→Gold), padrões obrigatórios por camada, agentes a acionar e ordem de execução. Se a tarefa envolver Star Schema ou Gold Layer com dim_*/fact_*, inclua no PRD as regras de `skills/patterns/star-schema-design/SKILL.md`: autonomia das dimensões, geração sintética de dim_data via SEQUENCE, e INNER JOIN obrigatório nas fact_*. (6) Apresente o resumo do PRD e aguarde aprovação antes de delegar. Após aprovação: garanta que `output/specs/` existe (mkdir -p output/specs) e salve a SPEC em `output/specs/spec_<nome_descritivo>.md`. Tarefa: {task}
     display_template: |-
       [bold purple]🗺️ [DOMA Agile] Iniciando Context Engineering — lendo skills relevantes...[/bold purple]
   health:
@@ -113,7 +113,7 @@ commands:
     description: Envia tarefa de qualidade de dados para o Data Quality Steward (DOMA Express).
     skills:
     - kb/data-quality/index.md
-    - skills/data_quality.md
+    - skills/patterns/data-quality/SKILL.md
     prompt_template: |-
       [DOMA EXPRESS] Delegue IMEDIATAMENTE para data-quality-steward. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/data-quality/index.md` antes de executar. Tarefa: {task}
     display_template: '[bold yellow]🔍 [DOMA Express] Direcionando para: {agent}[/bold yellow]'

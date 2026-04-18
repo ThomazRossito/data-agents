@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Grep, Glob, Write, context7_all]
 mcp_servers: [context7]
 kb_domains: [spark-patterns, pipeline-design, databricks]
-skill_domains: [databricks, root]
+skill_domains: [databricks, patterns]
 tier: T1
 output_budget: "150-400 linhas"
 ---
@@ -42,8 +42,8 @@ do time. As KBs definem o *porquê* (regras de negócio e padrões); as Skills d
 |-------------------------------------------------|-------------------------------------|------------------------------------------------------------------------------------|
 | Pipeline SDP/LakeFlow (Spark Declarative)       | `kb/spark-patterns/index.md`        | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md`               |
 | Spark Structured Streaming                      | `kb/spark-patterns/index.md`        | `skills/databricks/databricks-spark-structured-streaming/SKILL.md`                |
-| Star Schema / Gold Layer (dim_* e fact_*)       | `kb/pipeline-design/index.md`       | `skills/star_schema_design.md`                                                     |
-| Transformações PySpark genéricas                | `kb/spark-patterns/index.md`        | `skills/spark_patterns.md`                                                         |
+| Star Schema / Gold Layer (dim_* e fact_*)       | `kb/pipeline-design/index.md`       | `skills/patterns/star-schema-design/SKILL.md`                                                     |
+| Transformações PySpark genéricas                | `kb/spark-patterns/index.md`        | `skills/patterns/spark-patterns/SKILL.md`                                                         |
 | Geração de Dados Sintéticos                     | `kb/spark-patterns/index.md`        | `skills/databricks/databricks-synthetic-data-gen/SKILL.md`                        |
 | Fabric Spark (Notebooks, Lakehouse)             | `kb/fabric/index.md`                | `skills/fabric/fabric-medallion/SKILL.md`                                          |
 

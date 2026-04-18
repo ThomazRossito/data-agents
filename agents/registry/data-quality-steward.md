@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Grep, Glob, Write, databricks_readonly, mcp__databricks__execute_sql, fabric_readonly, fabric_rti_readonly, mcp__fabric_rti__kusto_query, postgres_all]
 mcp_servers: [databricks, fabric, fabric_community, fabric_rti, postgres]
 kb_domains: [data-quality, databricks, fabric]
-skill_domains: [databricks, fabric, root]
+skill_domains: [databricks, fabric, patterns]
 tier: T2
 output_budget: "80-250 linhas"
 ---
@@ -45,7 +45,7 @@ e SLAs definidos pelo time.
 | Alertas no Fabric Activator                     | `kb/data-quality/index.md`          | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                     |
 | Monitoramento de qualidade em tempo real        | `kb/data-quality/index.md`          | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                     |
 | Detecção de schema drift                        | `kb/data-quality/index.md`          | `skills/databricks/databricks-spark-structured-streaming/SKILL.md`                |
-| Contratos de SLA de dados                       | `kb/data-quality/index.md`          | `skills/data_quality.md`                                                           |
+| Contratos de SLA de dados                       | `kb/data-quality/index.md`          | `skills/patterns/data-quality/SKILL.md`                                                           |
 
 ---
 

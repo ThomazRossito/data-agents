@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, context7_all, postgres_all]
 mcp_servers: [context7, postgres]
 kb_domains: [sql-patterns]
-skill_domains: [root]
+skill_domains: [patterns]
 tier: T2
 output_budget: "80-250 linhas"
 ---

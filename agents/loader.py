@@ -299,12 +299,11 @@ def _load_skills_index(
     lê-las via `Read` quando necessário — não injeta o conteúdo completo (que pode
     ser muito grande), apenas a descoberta.
 
-    Domínios especiais:
-      - "root" → varre skills/*.md (raiz do diretório, sem subpasta)
-      - qualquer outro → varre skills/{domain}/**/SKILL.md
+    Todas as Skills seguem o formato nativo Anthropic: `skills/<domain>/<name>/SKILL.md`
+    com frontmatter YAML (`name`, `description`).
 
     Args:
-        skill_domains: Lista de domínios de skill (ex: ["databricks", "fabric", "root"])
+        skill_domains: Lista de domínios de skill (ex: ["databricks", "fabric", "patterns"])
         skills_base_dir: Diretório base das Skills. Padrão: skills/ na raiz do projeto.
 
     Returns:
@@ -315,51 +314,38 @@ def _load_skills_index(
     entries: list[str] = []
 
     for domain in skill_domains:
-        if domain == "root":
-            # Skills na raiz (ex: skills/spark_patterns.md, skills/sql_generation.md)
-            skill_files = sorted(base.glob("*.md"))
-        else:
-            # Skills organizadas em subdiretórios (ex: skills/databricks/*/SKILL.md)
-            domain_dir = base / domain
-            if not domain_dir.exists():
-                logger.debug(f"Skills domain não encontrado (ignorado): {domain}")
-                continue
-            # Exclui diretórios de template (prefixo _) e pastas TEMPLATE
-            skill_files = sorted(
-                p
-                for p in domain_dir.rglob("SKILL.md")
-                if not any(part.startswith("_") or part.upper() == "TEMPLATE" for part in p.parts)
-            )
+        domain_dir = base / domain
+        if not domain_dir.exists():
+            logger.debug(f"Skills domain não encontrado (ignorado): {domain}")
+            continue
+        # Exclui diretórios de template (prefixo _) e pastas TEMPLATE
+        skill_files = sorted(
+            p
+            for p in domain_dir.rglob("SKILL.md")
+            if not any(part.startswith("_") or part.upper() == "TEMPLATE" for part in p.parts)
+        )
 
         for skill_path in skill_files:
             try:
-                # Extrai a primeira linha significativa (após frontmatter e títulos)
                 content = skill_path.read_text(encoding="utf-8")
-                first_line = ""
-                in_frontmatter = False
-                frontmatter_done = False
-                for line in content.splitlines():
-                    stripped = line.strip()
-                    # Detecta frontmatter YAML (delimitado por ---)
-                    if not frontmatter_done and stripped == "---":
-                        in_frontmatter = not in_frontmatter
-                        if not in_frontmatter:
-                            frontmatter_done = True
-                        continue
-                    if in_frontmatter:
-                        continue
-                    # Pula títulos markdown (# ...) e linhas vazias
-                    if stripped and not stripped.startswith("#") and not stripped.startswith("---"):
-                        first_line = stripped[:100]
-                        break
+                # Frontmatter `description` é a fonte canônica; fallback para a
+                # primeira linha significativa do corpo se não houver frontmatter.
+                metadata, body = _parse_frontmatter(content)
+                description = str(metadata.get("description", "")).strip()
+                if not description:
+                    for line in body.splitlines():
+                        stripped = line.strip()
+                        if stripped and not stripped.startswith("#"):
+                            description = stripped[:160]
+                            break
 
                 rel_path = skill_path.relative_to(base.parent)
-                skill_name = (
+                skill_name = str(metadata.get("name", "")) or (
                     skill_path.parent.name if skill_path.name == "SKILL.md" else skill_path.stem
                 )
                 entry = f"- `{rel_path}` — **{skill_name}**"
-                if first_line:
-                    entry += f": {first_line}"
+                if description:
+                    entry += f": {description}"
                 entries.append(entry)
                 logger.debug(f"Skill indexada: {rel_path}")
             except Exception as e:

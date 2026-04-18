@@ -104,7 +104,7 @@ model: claude-sonnet-4-6        # ou claude-opus-4-6 para T1 complexo
 tools: [Read, Write, Grep, Glob, databricks_readonly, context7_all]
 mcp_servers: [databricks, context7]
 kb_domains: [databricks, sql-patterns]   # injeta index.md automaticamente
-skill_domains: [databricks, root]        # injeta índice de SKILL.md disponíveis
+skill_domains: [databricks, patterns]    # injeta índice de SKILL.md disponíveis
 tier: T2                                  # T1 | T2 | T3
 ---
 # Nome do Agente

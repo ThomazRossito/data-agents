@@ -43,7 +43,7 @@ de modelagem e as regras de negócio das métricas.
 | Análise de Modelo Semântico Existente (Fabric)  | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md`                                        |
 | Modelo semântico Power BI (Direct Lake)         | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md`                                        |
 | Medidas DAX e métricas de negócio               | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md`                                        |
-| Otimização de tabelas Gold para Direct Lake     | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md` + `skills/star_schema_design.md`       |
+| Otimização de tabelas Gold para Direct Lake     | `kb/semantic-modeling/index.md`         | `skills/fabric/fabric-direct-lake/SKILL.md` + `skills/patterns/star-schema-design/SKILL.md`       |
 | Databricks Metric Views                         | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-metric-views/SKILL.md`                               |
 | Databricks Genie (Conversational BI)            | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-genie/SKILL.md` — use `mcp__databricks_genie__genie_ask` |
 | AI/BI Dashboards no Databricks                  | `kb/semantic-modeling/index.md`         | `skills/databricks/databricks-aibi-dashboards/SKILL.md` — use `mcp__databricks__create_or_update_dashboard` |

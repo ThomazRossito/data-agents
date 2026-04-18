@@ -7,6 +7,24 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Skills migradas para o formato nativo Anthropic** (T5.3): cinco skills
+  canônicas que viviam como arquivos flat em `skills/*.md` agora residem em
+  `skills/patterns/<name>/SKILL.md` com frontmatter YAML (`name` +
+  `description`):
+  - `data_quality.md` → `patterns/data-quality/SKILL.md`
+  - `pipeline_design.md` → `patterns/pipeline-design/SKILL.md`
+  - `sql_generation.md` → `patterns/sql-generation/SKILL.md`
+  - `spark_patterns.md` → `patterns/spark-patterns/SKILL.md`
+  - `star_schema_design.md` → `patterns/star-schema-design/SKILL.md`
+
+  `agents/loader.py::_load_skills_index` deixou de ter o branch especial
+  `"root"` e usa `description` do frontmatter como hint (antes inferia a
+  primeira linha do corpo). 8 agentes tiveram `skill_domains: [..., root]`
+  atualizados para `[..., patterns]`; 25 testes novos em
+  `tests/test_native_skills.py` cobrem descoberta e injeção.
+
 ### Added
 
 - **`PRODUCT.md`** na raiz: tese de produto em uma página — ICP, JTBD,

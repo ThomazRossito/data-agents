@@ -1,3 +1,8 @@
+---
+name: spark-patterns
+description: "Padrões PySpark canônicos: leitura CSV com schema, normalização de colunas, limpeza de nulos, write Delta com Liquid Clustering, MERGE (SCD Type 1), Lakeflow/SDP (dp.table, dp.create_auto_cdc_flow) e broadcast join. Use ao escrever ou revisar código PySpark."
+---
+
 # Skill: Padrões PySpark para Engenharia de Dados
 
 ## Leitura de CSV com Schema Explícito
@@ -67,7 +72,7 @@ spark.sql("OPTIMIZE catalog.schema.table_name")
 ```
 
 > **Liquid Clustering:** Se a tabela foi criada com `CLUSTER BY`, o `OPTIMIZE` reorganiza
-> automaticamente sem `ZORDER BY`. Ver padrão em `skills/sql_generation.md`.
+> automaticamente sem `ZORDER BY`. Ver padrão em `skills/patterns/sql-generation/SKILL.md`.
 
 ## MERGE (Upsert) — SCD Type 1
 
@@ -128,7 +133,7 @@ dp.create_auto_cdc_flow(
 )
 
 # --- Gold: MATERIALIZED VIEW — REGRAS STAR SCHEMA OBRIGATÓRIAS ---
-# Leia skills/star_schema_design.md ANTES de gerar qualquer dim_* ou fact_*
+# Leia skills/patterns/star-schema-design/SKILL.md ANTES de gerar qualquer dim_* ou fact_*
 # Regras: dim_* NUNCA derivam de silver transacional; fact_* DEVE INNER JOIN todas as dims
 
 @dp.materialized_view(name="gold_vendas_diarias", comment="Gold: agregação por dia")
@@ -140,7 +145,7 @@ def gold_vendas_diarias():
         .agg(F.sum("valor").alias("total_vendas"))
     )
 
-# Para Star Schema completo (dim_* + fact_*), ver: skills/star_schema_design.md
+# Para Star Schema completo (dim_* + fact_*), ver: skills/patterns/star-schema-design/SKILL.md
 ```
 
 ## Broadcast Join para Tabelas Pequenas

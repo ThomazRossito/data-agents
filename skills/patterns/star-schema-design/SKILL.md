@@ -1,3 +1,8 @@
+---
+name: star-schema-design
+description: "Regras de design de Star Schema para Gold layer no LakeFlow: autonomia das dims, geração sintética de dim_data, INNER JOIN obrigatório em fact_*, Liquid Clustering e checklist. Leia ANTES de gerar qualquer tabela dim_* ou fact_* em pipelines Medallion."
+---
+
 # Skill: Star Schema — Regras de Design Gold Layer
 
 > **Leia este arquivo ANTES de gerar qualquer tabela Gold (dim_* ou fact_*) em

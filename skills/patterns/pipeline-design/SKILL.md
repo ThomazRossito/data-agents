@@ -1,3 +1,8 @@
+---
+name: pipeline-design
+description: "Arquitetura Medallion (Bronze/Silver/Gold) com regras mandatórias por camada no Lakeflow/SDP, padrões cross-platform Fabric↔Databricks, JSON de Job Databricks e checklist de qualidade de pipeline. Use ao desenhar ou revisar um novo pipeline ETL/ELT."
+---
+
 # Skill: Design de Pipelines ETL/ELT
 
 ## Arquitetura Medallion (Bronze → Silver → Gold)

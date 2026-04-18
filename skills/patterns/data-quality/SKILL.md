@@ -1,3 +1,8 @@
+---
+name: data-quality
+description: "Padrões de validação e qualidade de dados em pipelines PySpark/Delta — null checks, duplicatas, expectations do Lakeflow/SDP (dp.expect) e reconciliação fonte × destino. Use ao desenhar validações em camada Silver ou gates de qualidade pós-ingestão."
+---
+
 # Skill: Qualidade e Validação de Dados
 
 ## Validações Básicas com PySpark

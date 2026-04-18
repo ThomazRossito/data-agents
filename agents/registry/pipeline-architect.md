@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, Bash, databricks_all, databricks_compute, databricks_aibi, databricks_genie_all, fabric_all, fabric_sql_all, fabric_rti_all, context7_all, github_all, firecrawl_all, memory_mcp_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, github, firecrawl, memory_mcp]
 kb_domains: [pipeline-design, databricks, fabric]
-skill_domains: [databricks, fabric, root]
+skill_domains: [databricks, fabric, patterns]
 tier: T1
 output_budget: "150-400 linhas"
 ---
@@ -54,18 +54,18 @@ arquiteturais e regras de negócio do time. As KBs definem o *porquê*; as Skill
 
 | Cenário de Pipeline                             | KB a Ler Primeiro                   | Skill Operacional (se necessário)                                                                                    |
 |-------------------------------------------------|-------------------------------------|----------------------------------------------------------------------------------------------------------------------|
-| Databricks: SDP / LakeFlow (qualquer)           | `kb/pipeline-design/index.md`       | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` + `skills/pipeline_design.md`                  |
+| Databricks: SDP / LakeFlow (qualquer)           | `kb/pipeline-design/index.md`       | `skills/databricks/databricks-spark-declarative-pipelines/SKILL.md` + `skills/patterns/pipeline-design/SKILL.md`                  |
 | Databricks: Spark Structured Streaming          | `kb/spark-patterns/index.md`        | `skills/databricks/databricks-spark-structured-streaming/SKILL.md`                                                  |
 | Databricks: Jobs multi-task / Workflows         | `kb/databricks/index.md`            | `skills/databricks/databricks-jobs/SKILL.md`                                                                        |
 | Databricks: CI/CD com Asset Bundles             | `kb/databricks/index.md`            | `skills/databricks/databricks-bundles/SKILL.md`                                                                     |
 | Databricks: Ingestão Python Data Source         | `kb/databricks/index.md`            | `skills/databricks/spark-python-data-source/SKILL.md`                                                               |
 | Databricks: Ingestão ZeroBus                    | `kb/databricks/index.md`            | `skills/databricks/databricks-zerobus-ingest/SKILL.md`                                                              |
-| Fabric: Lakehouse / Medallion                   | `kb/fabric/index.md`                | `skills/fabric/fabric-medallion/SKILL.md` + `skills/pipeline_design.md`                                             |
+| Fabric: Lakehouse / Medallion                   | `kb/fabric/index.md`                | `skills/fabric/fabric-medallion/SKILL.md` + `skills/patterns/pipeline-design/SKILL.md`                                             |
 | Fabric: Direct Lake / Power BI                  | `kb/fabric/index.md`                | `skills/fabric/fabric-direct-lake/SKILL.md`                                                                         |
 | Fabric: Real-Time Intelligence / Eventhouse     | `kb/fabric/index.md`                | `skills/fabric/fabric-eventhouse-rti/SKILL.md`                                                                      |
 | Fabric: Data Factory / Pipelines / Dataflows    | `kb/fabric/index.md`                | `skills/fabric/fabric-data-factory/SKILL.md`                                                                        |
-| Cross-Platform: Fabric ↔ Databricks             | `kb/pipeline-design/index.md`       | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/pipeline_design.md`                                        |
-| Star Schema / Gold Layer (dim_* e fact_*)       | `kb/pipeline-design/index.md`       | `skills/star_schema_design.md`                                                                                       |
+| Cross-Platform: Fabric ↔ Databricks             | `kb/pipeline-design/index.md`       | `skills/fabric/fabric-cross-platform/SKILL.md` + `skills/patterns/pipeline-design/SKILL.md`                                        |
+| Star Schema / Gold Layer (dim_* e fact_*)       | `kb/pipeline-design/index.md`       | `skills/patterns/star-schema-design/SKILL.md`                                                                                       |
 
 ---
 

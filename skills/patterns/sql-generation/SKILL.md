@@ -1,3 +1,8 @@
+---
+name: sql-generation
+description: "Sintaxe de SQL para Databricks/Unity Catalog (Liquid Clustering com CLUSTER BY), Fabric Synapse (T-SQL), KQL para Eventhouse e tabela de conversão T-SQL→Spark SQL. Use ao gerar DDL ou queries para qualquer das plataformas suportadas."
+---
+
 # Skill: Geração de SQL para Databricks e Fabric
 
 ## Spark SQL — Criação de Tabela Delta no Unity Catalog
