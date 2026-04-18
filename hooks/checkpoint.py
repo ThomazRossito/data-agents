@@ -25,6 +25,7 @@ from config.settings import settings
 logger = logging.getLogger("data_agents.checkpoint")
 
 CHECKPOINT_PATH: Path = Path(settings.audit_log_path).parent / "checkpoint.json"
+SESSIONS_DIR: Path = Path(settings.audit_log_path).parent / "sessions"
 
 
 def save_checkpoint(
@@ -33,26 +34,38 @@ def save_checkpoint(
     cost_usd: float = 0.0,
     turns: int = 0,
     output_files: list[str] | None = None,
+    session_id: str | None = None,
 ) -> Path:
     """
     Salva um checkpoint da sessão atual para recuperação posterior.
 
+    T1.2: grava dois arquivos:
+      - logs/sessions/<session_id>.json — histórico persistente por sessão
+      - logs/checkpoint.json             — "mais recente", consumido por load_checkpoint()
+
+    Se `session_id=None`, fallback para "default" (mantém backcompat dos callers antigos
+    que ainda não passam session_id).
+
     Args:
         last_prompt: Último prompt enviado pelo usuário (até 500 chars).
-        reason: Motivo do checkpoint ("budget_exceeded", "user_reset", "idle_timeout").
+        reason: Motivo do checkpoint ("budget_exceeded", "user_reset", "idle_timeout",
+                "normal_exit", "atexit", "signal_*").
         cost_usd: Custo acumulado da sessão até o momento.
         turns: Número de turns completados.
         output_files: Lista de arquivos gerados na sessão (caminhos relativos).
+        session_id: ID único da sessão (ex: "cli-abc12345"). Usado para histórico.
 
     Returns:
-        Path do arquivo de checkpoint salvo.
+        Path do arquivo de checkpoint mais recente (logs/checkpoint.json).
     """
-    # Detectar arquivos de output gerados
     if output_files is None:
         output_files = _scan_output_files()
 
+    sid = session_id or "default"
+
     checkpoint: dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
+        "session_id": sid,
         "reason": reason,
         "last_prompt": last_prompt[:500],
         "cost_usd": cost_usd,
@@ -61,14 +74,20 @@ def save_checkpoint(
         "budget_limit": settings.max_budget_usd,
         "model": settings.default_model,
     }
+    payload = json.dumps(checkpoint, ensure_ascii=False, indent=2)
 
     try:
+        os.makedirs(SESSIONS_DIR, exist_ok=True)
+        session_path = SESSIONS_DIR / f"{sid}.json"
+        session_path.write_text(payload, encoding="utf-8")
+
+        # Espelho "mais recente" em logs/checkpoint.json (backcompat).
         os.makedirs(CHECKPOINT_PATH.parent, exist_ok=True)
-        with open(CHECKPOINT_PATH, "w", encoding="utf-8") as f:
-            json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+        CHECKPOINT_PATH.write_text(payload, encoding="utf-8")
+
         logger.info(
-            f"Checkpoint salvo: reason={reason}, cost=${cost_usd:.4f}, "
-            f"turns={turns}, files={len(output_files)}"
+            f"Checkpoint salvo: session={sid} reason={reason} cost=${cost_usd:.4f} "
+            f"turns={turns} files={len(output_files)}"
         )
     except OSError as e:
         logger.warning(f"Falha ao salvar checkpoint: {e}")
@@ -97,13 +116,63 @@ def load_checkpoint() -> dict[str, Any] | None:
 
 
 def clear_checkpoint() -> None:
-    """Remove o checkpoint após recuperação bem-sucedida."""
+    """
+    Remove o checkpoint "mais recente" (logs/checkpoint.json) após recuperação bem-sucedida.
+
+    O histórico por sessão em logs/sessions/ é preservado — só o ponteiro de "last"
+    é limpo para evitar prompt duplicado na próxima abertura.
+    """
     if CHECKPOINT_PATH.exists():
         try:
             os.remove(CHECKPOINT_PATH)
             logger.info("Checkpoint consumido e removido.")
         except OSError as e:
             logger.warning(f"Falha ao remover checkpoint: {e}")
+
+
+def list_sessions() -> list[dict[str, Any]]:
+    """
+    Lista todos os checkpoints históricos em logs/sessions/, do mais recente ao mais antigo.
+
+    Cada entrada: {"session_id", "timestamp", "reason", "cost_usd", "turns", "last_prompt"}.
+    Returns: lista possivelmente vazia (sessão limpa).
+    """
+    if not SESSIONS_DIR.exists():
+        return []
+
+    results: list[dict[str, Any]] = []
+    for path in SESSIONS_DIR.glob("*.json"):
+        try:
+            with open(path, encoding="utf-8") as f:
+                data = json.load(f)
+            results.append(
+                {
+                    "session_id": data.get("session_id", path.stem),
+                    "timestamp": data.get("timestamp", ""),
+                    "reason": data.get("reason", "unknown"),
+                    "cost_usd": data.get("cost_usd", 0.0),
+                    "turns": data.get("turns", 0),
+                    "last_prompt": (data.get("last_prompt") or "")[:120],
+                }
+            )
+        except (json.JSONDecodeError, OSError) as e:
+            logger.debug(f"Sessão inválida {path}: {e}")
+
+    results.sort(key=lambda s: s["timestamp"], reverse=True)
+    return results
+
+
+def load_session_by_id(session_id: str) -> dict[str, Any] | None:
+    """Carrega um checkpoint específico do histórico por session_id."""
+    path = SESSIONS_DIR / f"{session_id}.json"
+    if not path.exists():
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logger.warning(f"Falha ao carregar sessão {session_id}: {e}")
+        return None
 
 
 def build_resume_prompt(checkpoint: dict[str, Any]) -> str:
@@ -123,6 +192,11 @@ def build_resume_prompt(checkpoint: dict[str, Any]) -> str:
         "budget_exceeded": "o orçamento da sessão foi excedido",
         "user_reset": "o usuário resetou a sessão",
         "idle_timeout": "a sessão expirou por inatividade",
+        "normal_exit": "o usuário encerrou a sessão normalmente",
+        "atexit": "o processo encerrou (fallback atexit)",
+        "signal_sigterm": "o processo recebeu SIGTERM",
+        "signal_sighup": "o processo recebeu SIGHUP",
+        "abnormal_exit": "a sessão terminou abruptamente",
     }
 
     reason = checkpoint.get("reason", "unknown")

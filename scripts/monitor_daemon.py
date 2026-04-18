@@ -185,89 +185,44 @@ async def _execute_check(platform: str, sql: str, settings) -> list[dict]:
 
 
 async def _run_databricks_sql(sql: str, settings) -> list[dict]:
-    """Executa SQL no Databricks via SDK direto (sem passar pelo Supervisor)."""
-    # Importação condicional — SDK pode não estar disponível em testes
-    try:
-        from databricks.sdk import WorkspaceClient
+    """Executa SQL no Databricks via SDK direto (databricks-sdk é dependência core)."""
+    from databricks.sdk import WorkspaceClient
 
-        client = WorkspaceClient(
-            host=settings.databricks_host,
-            token=settings.databricks_token,
-        )
-        # Usa Statement Execution API (synchronous)
-        result = client.statement_execution.execute_statement(
-            statement=sql,
-            warehouse_id=settings.databricks_warehouse_id,
-            wait_timeout="30s",
-        )
-        if result.status.state.value != "SUCCEEDED":
-            raise RuntimeError(f"Databricks query failed: {result.status.error}")
+    client = WorkspaceClient(
+        host=settings.databricks_host,
+        token=settings.databricks_token,
+    )
+    result = client.statement_execution.execute_statement(
+        statement=sql,
+        warehouse_id=settings.databricks_warehouse_id,
+        wait_timeout="30s",
+    )
+    if result.status.state.value != "SUCCEEDED":
+        raise RuntimeError(f"Databricks query failed: {result.status.error}")
 
-        schema = [col.name for col in (result.manifest.schema.columns or [])]
-        rows = []
-        if result.result and result.result.data_array:
-            for row in result.result.data_array:
-                rows.append(dict(zip(schema, row)))
-        return rows
-    except ImportError:
-        logger.warning("databricks-sdk não instalado — usando MCP agent fallback.")
-        return await _run_via_agent(sql, "databricks")
+    schema = [col.name for col in (result.manifest.schema.columns or [])]
+    rows: list[dict] = []
+    if result.result and result.result.data_array:
+        for row in result.result.data_array:
+            rows.append(dict(zip(schema, row)))
+    return rows
 
 
 async def _run_fabric_sql(sql: str, settings) -> list[dict]:
-    """Executa T-SQL no Fabric SQL Endpoint via pyodbc/pymssql."""
-    try:
-        import pymssql  # type: ignore
+    """Executa T-SQL no Fabric SQL Endpoint via pymssql."""
+    import pymssql  # type: ignore
 
-        conn = pymssql.connect(
-            server=settings.fabric_sql_server,
-            user=settings.fabric_sql_user,
-            password=settings.fabric_sql_password,
-            database=settings.fabric_sql_database,
-        )
-        cursor = conn.cursor(as_dict=True)
-        cursor.execute(sql)
-        rows = cursor.fetchall()
-        conn.close()
-        return rows or []
-    except ImportError:
-        logger.warning("pymssql não instalado — usando MCP agent fallback.")
-        return await _run_via_agent(sql, "fabric_sql")
-
-
-async def _run_via_agent(sql: str, platform: str) -> list[dict]:
-    """
-    Fallback: executa o SQL através do business-monitor agent via SDK.
-    Usado quando os SDKs nativos não estão disponíveis.
-    """
-    try:
-        from claude_agent_sdk import query
-        from agents.supervisor import build_supervisor_options
-
-        prompt = (
-            f"Execute este SQL no {platform} e retorne SOMENTE o resultado em JSON:\n"
-            f"```sql\n{sql}\n```\n"
-            f"Responda com um array JSON de objetos. Se não houver resultados, responda com []."
-        )
-        result_text = ""
-        async for event in query(prompt=prompt, options=build_supervisor_options()):
-            from claude_agent_sdk import AssistantMessage, TextBlock
-
-            if isinstance(event, AssistantMessage):
-                for block in event.content:
-                    if isinstance(block, TextBlock):
-                        result_text += block.text
-
-        # Extrai JSON da resposta
-        import re
-
-        match = re.search(r"\[.*\]", result_text, re.DOTALL)
-        if match:
-            return json.loads(match.group())
-        return []
-    except Exception as e:
-        logger.error(f"Falha no agent fallback: {e}")
-        return []
+    conn = pymssql.connect(
+        server=settings.fabric_sql_server,
+        user=settings.fabric_sql_user,
+        password=settings.fabric_sql_password,
+        database=settings.fabric_sql_database,
+    )
+    cursor = conn.cursor(as_dict=True)
+    cursor.execute(sql)
+    rows = cursor.fetchall()
+    conn.close()
+    return rows or []
 
 
 # ── Ciclo Principal ────────────────────────────────────────────────────────

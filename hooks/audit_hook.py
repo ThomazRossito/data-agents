@@ -154,6 +154,58 @@ def _detect_platform(tool_name: str) -> str | None:
     return None
 
 
+def _extract_cache_metrics(input_data: dict[str, Any], ctx: Any) -> dict[str, Any]:
+    """
+    Extrai métricas de cache da resposta do LLM quando disponíveis.
+
+    O Claude Agent SDK v0.1.61 (abril/2026) ainda não expõe cache_control nativamente
+    (issue #626 do repo oficial), então cache_creation_input_tokens e cache_read_input_tokens
+    geralmente são 0. Esta função já está preparada para ler esses campos assim que o SDK
+    expuser — hoje ela faz sondagem defensiva em input_data e context.
+
+    Campos retornados (quando presentes):
+      - cache_write_tokens: tokens escritos no cache (custo 1.25× base)
+      - cache_read_tokens: tokens lidos do cache (custo 0.10× base, 90% desconto)
+      - input_tokens: tokens de input não-cacheados
+      - output_tokens: tokens de output gerados
+    """
+    metrics: dict[str, Any] = {}
+
+    # Sonda 1: usage dentro de input_data (formato esperado se SDK passar)
+    usage = input_data.get("usage") or {}
+
+    # Sonda 2: atributo usage no context
+    if not usage and ctx is not None:
+        usage = getattr(ctx, "usage", None) or {}
+        # Alguns SDKs expõem via dict
+        if isinstance(ctx, dict):
+            usage = ctx.get("usage") or usage
+
+    if not isinstance(usage, dict) or not usage:
+        return metrics
+
+    cache_write = usage.get("cache_creation_input_tokens")
+    cache_read = usage.get("cache_read_input_tokens")
+    input_tokens = usage.get("input_tokens")
+    output_tokens = usage.get("output_tokens")
+
+    if cache_write is not None:
+        metrics["cache_write_tokens"] = cache_write
+    if cache_read is not None:
+        metrics["cache_read_tokens"] = cache_read
+    if input_tokens is not None:
+        metrics["input_tokens"] = input_tokens
+    if output_tokens is not None:
+        metrics["output_tokens"] = output_tokens
+
+    # Hit rate calculado quando temos ambos os campos
+    if cache_write is not None and cache_read is not None:
+        total = cache_write + cache_read
+        metrics["cache_hit_rate"] = (cache_read / total) if total > 0 else 0.0
+
+    return metrics
+
+
 async def audit_tool_usage(
     input_data: dict[str, Any],
     tool_use_id: str | None,
@@ -225,6 +277,12 @@ async def audit_tool_usage(
     if has_error:
         log_entry["error_category"] = error_category
         log_entry["error_preview"] = error_text[:200]
+
+    # Métricas de cache (preparadas para quando o SDK expuser nativamente — issue #626).
+    # Hoje geralmente vazio; quando presente, grava cache_write/read/hit_rate no JSONL.
+    cache_metrics = _extract_cache_metrics(input_data, context)
+    if cache_metrics:
+        log_entry.update(cache_metrics)
 
     log_line = json.dumps(log_entry, ensure_ascii=False) + "\n"
     log_path = settings.audit_log_path

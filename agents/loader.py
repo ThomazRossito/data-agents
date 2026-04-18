@@ -40,10 +40,7 @@ from mcp_servers.databricks_genie.server_config import (
     DATABRICKS_GENIE_MCP_TOOLS,
     DATABRICKS_GENIE_MCP_READONLY_TOOLS,
 )
-from mcp_servers.fabric.server_config import (
-    FABRIC_MCP_TOOLS,
-    FABRIC_COMMUNITY_MCP_TOOLS,
-)
+from mcp_servers.fabric.server_config import FABRIC_MCP_TOOLS
 from mcp_servers.fabric_rti.server_config import (
     FABRIC_RTI_MCP_TOOLS,
     FABRIC_RTI_READONLY_TOOLS,
@@ -96,10 +93,10 @@ MCP_TOOL_SETS: dict[str, list[str]] = {
     "databricks_compute": DATABRICKS_COMPUTE_TOOLS,  # Clusters, execute_code, wait_for_run
     "databricks_genie_all": DATABRICKS_GENIE_MCP_TOOLS,
     "databricks_genie_readonly": DATABRICKS_GENIE_MCP_READONLY_TOOLS,
-    "fabric_all": FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS,
+    "fabric_all": FABRIC_MCP_TOOLS,
     "fabric_readonly": [
         t
-        for t in FABRIC_MCP_TOOLS + FABRIC_COMMUNITY_MCP_TOOLS
+        for t in FABRIC_MCP_TOOLS
         if any(kw in t for kw in ["list_", "get_", "download_", "sample_"])
     ],
     "fabric_rti_all": FABRIC_RTI_MCP_TOOLS,

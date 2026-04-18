@@ -80,7 +80,7 @@ class TestBuildSupervisorOptions:
                 assert captured_kwargs.get("thinking") == {"type": "disabled"}
 
     def test_build_thinking_enabled(self):
-        """Verifica que thinking com budget é configurado quando enable_thinking=True."""
+        """T0.1: thinking adaptive (Opus 4.7 compat) quando enable_thinking=True."""
         mock_class, _ = self._make_mock_options_class()
         captured_kwargs = {}
 
@@ -96,8 +96,9 @@ class TestBuildSupervisorOptions:
                 build_supervisor_options(enable_thinking=True)
                 thinking = captured_kwargs.get("thinking")
                 assert thinking is not None
-                assert thinking["type"] == "enabled"
-                assert thinking["budget_tokens"] == 8000
+                # Opus 4.7 rejeita budget_tokens; o projeto padronizou em adaptive.
+                assert thinking["type"] == "adaptive"
+                assert thinking["effort"] == "high"
 
     def test_build_uses_bypass_permissions(self):
         """Verifica que permission_mode é bypassPermissions."""

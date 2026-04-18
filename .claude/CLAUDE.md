@@ -1,7 +1,7 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 12 agentes especialistas
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 13 agentes especialistas
 em Engenharia, Qualidade, Governança e Análise de Dados.
 
 ---
@@ -45,8 +45,8 @@ Usuário → main.py / ui/chat.py / ui/chainlit_app.py
         ├─► data-quality-steward [T2] — validação, profiling, SLA
         ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
         ├─► semantic-modeler     [T2] — modelos semânticos, DAX, Genie
-        ├─► skill-updater        [T2] — refresh de Skills operacionais
-        └─► geral                [T3] — perguntas conceituais, zero MCP
+        ├─► business-monitor     [T2] — Q&A interativo sobre alertas (daemon em `scripts/monitor_daemon.py`)
+        └─► geral                [T3] — perguntas conceituais, zero MCP (Haiku 4.5)
 ```
 
 **Regra central:** O Supervisor **nunca** executa código, acessa MCP ou gera SQL/PySpark.
@@ -240,11 +240,14 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | semantic-modeler | databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7 |
 | migration-expert | migration_source, databricks, fabric, fabric_sql, context7 |
 | python-expert | context7 |
-| skill-updater | context7, tavily, firecrawl |
 | geral | *(nenhum — resposta direta sem MCP)* |
 
 > MCPs sem credenciais (context7, memory_mcp) são ativados automaticamente.
 > Os demais requerem variáveis de ambiente configuradas no `.env`.
+>
+> **Nota:** refresh de Skills (`/skill`) não é mais um agente. Rodar via
+> `scripts/refresh_skills.py` — Anthropic Messages API direta + tool nativo
+> `web_search` (sem MCP).
 
 ---
 
@@ -302,7 +305,6 @@ MEMORY_CAPTURE_ENABLED=true
 | `/semantic <tarefa>` | semantic-modeler | Modelagem semântica direta |
 | `/migrate <fonte> para <destino>` | migration-expert | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | python-expert | Python puro: pacotes, testes, APIs, CLIs, automação |
-| `/skill [domínio]` | skill-updater | Atualiza Skills com documentação recente via context7/tavily |
 | `/genie <tarefa>` | semantic-modeler | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | semantic-modeler | Criar/publicar AI/BI Dashboards |
 | `/review <artefato>` | Supervisor | Review de código/pipeline |

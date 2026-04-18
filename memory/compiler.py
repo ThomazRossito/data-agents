@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import Any
 
 from memory.store import MemoryStore
+from memory.telemetry import record as _telemetry
 from memory.types import Memory, MemoryType
 from memory.decay import apply_decay
 from config.settings import settings
@@ -95,7 +96,7 @@ def compile_daily_logs(
 
     # 2. Carregar resumos existentes para dedup
     existing_memories = store.list_all(active_only=True)
-    existing_summaries = {m.summary.lower().strip() for m in existing_memories}
+    existing_summaries = {m.normalized_summary for m in existing_memories}
 
     # 3. Processar cada daily log
     for log_path in unprocessed:
@@ -109,7 +110,7 @@ def compile_daily_logs(
                     continue
 
                 # Dedup: pula se resumo já existe
-                if memory.summary.lower().strip() in existing_summaries:
+                if memory.normalized_summary in existing_summaries:
                     metrics["skipped_dupes"] += 1
                     continue
 
@@ -128,7 +129,7 @@ def compile_daily_logs(
                     metrics["new_memories"] += 1
 
                 existing_memories.append(memory)
-                existing_summaries.add(memory.summary.lower().strip())
+                existing_summaries.add(memory.normalized_summary)
 
             # Marcar como compilado
             _mark_as_compiled(log_path)
@@ -395,6 +396,14 @@ def _sonnet_check_contradiction(new_memory: Memory, candidate: Memory) -> bool:
         logger.debug(
             f"Sonnet contradiction check: {candidate.id[:8]} ↔ {new_memory.id[:8]} "
             f"→ {is_contra} (conf={confidence:.2f}) — {reason[:80]}  [${cost:.5f}]"
+        )
+        _telemetry(
+            "compiler.contradiction_check",
+            is_contradiction=is_contra,
+            confidence=confidence,
+            cost_usd=cost,
+            input_tokens=usage.get("input_tokens", 0),
+            output_tokens=usage.get("output_tokens", 0),
         )
 
         return is_contra and confidence >= 0.7

@@ -23,24 +23,9 @@ import logging
 from typing import Any
 
 from config.settings import settings
+from utils.tokenizer import estimate_tokens_adjusted as _estimate_tokens
 
 logger = logging.getLogger("data_agents.hooks.context_budget")
-
-
-# Estimativa de tokens ajustada por presença de caracteres não-ASCII (português/especiais)
-# Em vez de constante única, usa heurística dinâmica para reduzir desvio em até ~14%
-def _estimate_tokens(text: str) -> int:
-    """
-    Estima tokens a partir de caracteres, ajustando para idioma.
-
-    Português e outros idiomas com acentos têm ~3.5 chars/token.
-    Inglês e código têm ~4 chars/token.
-    """
-    if not text:
-        return 0
-    non_ascii = sum(1 for c in text if ord(c) > 127)
-    ratio = 3.5 if non_ascii / len(text) > 0.10 else 4.0
-    return max(1, int(len(text) / ratio))
 
 
 # Rastreia se o checkpoint crítico já foi salvo na sessão atual (evita saves repetidos)

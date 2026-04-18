@@ -136,6 +136,18 @@ class Memory:
         """Retorna True se a memória ainda está ativa (confidence acima do threshold)."""
         return self.confidence >= threshold and self.superseded_by is None
 
+    @property
+    def normalized_summary(self) -> str:
+        """
+        Chave canônica do resumo para dedup e detecção de duplicatas.
+
+        Shared helper consumido por `memory.compiler` (dedup antes de salvar)
+        e `memory.lint` (check `duplicate_summary`). Mantê-los alinhados é
+        requisito de correção — se um lado normaliza diferente, duplicatas
+        passam no compile e reaparecem como warnings no lint.
+        """
+        return self.summary.lower().strip()
+
     def to_frontmatter(self) -> str:
         """Serializa para frontmatter YAML (para salvar em arquivo .md)."""
         lines = [

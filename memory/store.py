@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from memory.telemetry import record as _telemetry
 from memory.types import Memory, MemoryType
 
 logger = logging.getLogger("data_agents.memory.store")
@@ -78,6 +79,7 @@ class MemoryStore:
             try:
                 _atomic_write(path, memory.to_markdown())
                 logger.debug(f"Memória salva: {memory.id} ({memory.type.value}) → {path}")
+                _telemetry("store.save", memory_type=memory.type.value, memory_id=memory.id)
             except OSError as e:
                 logger.error(f"Erro ao salvar memória {memory.id}: {e}")
                 raise
@@ -88,8 +90,11 @@ class MemoryStore:
         """Carrega uma memória específica por ID e tipo."""
         path = self.data_dir / memory_type.value / f"{memory_id}.md"
         if not path.exists():
+            _telemetry("store.load", memory_type=memory_type.value, hit=False)
             return None
-        return self._parse_memory_file(path)
+        result = self._parse_memory_file(path)
+        _telemetry("store.load", memory_type=memory_type.value, hit=result is not None)
+        return result
 
     def delete(self, memory_id: str, memory_type: MemoryType) -> bool:
         """Remove uma memória (hard delete). Retorna True se removeu."""
@@ -98,6 +103,7 @@ class MemoryStore:
             try:
                 os.remove(path)
                 logger.info(f"Memória removida: {memory_id} ({memory_type.value})")
+                _telemetry("store.delete", memory_type=memory_type.value, memory_id=memory_id)
                 return True
             except OSError as e:
                 logger.error(f"Erro ao remover memória {memory_id}: {e}")
@@ -155,6 +161,12 @@ class MemoryStore:
                     continue
                 memories.append(mem)
 
+        _telemetry(
+            "store.list_all",
+            memory_type=memory_type.value if memory_type else "all",
+            active_only=active_only,
+            count=len(memories),
+        )
         return memories
 
     def list_by_tags(self, tags: list[str], match_all: bool = False) -> list[Memory]:
@@ -310,6 +322,7 @@ class MemoryStore:
                         f.write(header)
                     f.write(f"\n---\n\n{content}\n")
                 logger.debug(f"Daily log atualizado: {date_str} (+{len(content)} chars)")
+                _telemetry("store.append_daily_log", date=date_str, chars=len(content))
             except OSError as e:
                 logger.error(f"Erro ao escrever daily log: {e}")
 
@@ -374,6 +387,7 @@ class MemoryStore:
             try:
                 _atomic_write(index_path, index_content)
                 logger.info(f"Index gerado: {len(lines)} linhas → {index_path}")
+                _telemetry("store.build_index", lines=len(lines))
             except OSError as e:
                 logger.error(f"Erro ao gerar index: {e}")
 

@@ -125,7 +125,8 @@ class TestLoadAllAgents:
         valid_models = {
             "claude-sonnet-4-6",
             "claude-opus-4-6",
-            "bedrock/anthropic.claude-4-6-sonnet",  # modelo do proxy Flow LiteLLM (produção)
+            "bedrock/anthropic.claude-4-6-sonnet",  # proxy Flow LiteLLM (produção)
+            "bedrock/anthropic.claude-haiku-4-5",  # T0.3: agente `geral` usa Haiku 4.5
         }
         for name, agent in agents.items():
             assert agent.model in valid_models, f"Agente '{name}' com model inválido: {agent.model}"

@@ -59,20 +59,23 @@ def _mock_http_response(ids: list[str]):
 
 
 class TestQuerySonnetForIds:
+    """T0.5: _query_sonnet_for_ids agora retorna (ids, cost_usd) para telemetria."""
+
     def test_returns_ids_from_sonnet_response(self):
         mock_resp = _mock_http_response(["abc123", "def456"])
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = _query_sonnet_for_ids(
+            ids, cost = _query_sonnet_for_ids(
                 "query de teste", "## Memory Index\n- **abc123**: resumo"
             )
-        assert "abc123" in result
-        assert "def456" in result
+        assert "abc123" in ids
+        assert "def456" in ids
+        assert cost >= 0.0
 
     def test_returns_empty_list_on_empty_response(self):
         mock_resp = _mock_http_response([])
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = _query_sonnet_for_ids("query", "index")
-        assert result == []
+            ids, _ = _query_sonnet_for_ids("query", "index")
+        assert ids == []
 
     def test_returns_empty_list_on_invalid_json(self):
         body = json.dumps(
@@ -86,20 +89,21 @@ class TestQuerySonnetForIds:
         mock_resp.__enter__ = lambda s: s
         mock_resp.__exit__ = MagicMock(return_value=False)
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = _query_sonnet_for_ids("query", "index")
-        assert result == []
+            ids, _ = _query_sonnet_for_ids("query", "index")
+        assert ids == []
 
     def test_returns_empty_list_on_http_error(self):
         with patch("urllib.request.urlopen", side_effect=Exception("network error")):
-            result = _query_sonnet_for_ids("query", "index")
-        assert result == []
+            ids, cost = _query_sonnet_for_ids("query", "index")
+        assert ids == []
+        assert cost == 0.0
 
     def test_ids_converted_to_strings(self):
         """IDs devem ser retornados como strings mesmo se Sonnet enviar como outros tipos."""
         mock_resp = _mock_http_response(["id1", "id2"])
         with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = _query_sonnet_for_ids("q", "index")
-        assert all(isinstance(i, str) for i in result)
+            ids, _ = _query_sonnet_for_ids("q", "index")
+        assert all(isinstance(i, str) for i in ids)
 
 
 # ─── retrieve_relevant_memories ───────────────────────────────────────

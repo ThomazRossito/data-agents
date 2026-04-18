@@ -104,7 +104,6 @@ AGENT_DISPLAY_NAMES: dict[str, str] = {
     "semantic-modeler": "Semantic Modeler",
     "business-analyst": "Business Analyst",
     "dbt-expert": "dbt Expert",
-    "skill-updater": "Skill Updater",
     "geral": "Geral",
 }
 
@@ -119,7 +118,6 @@ AGENT_TIERS: dict[str, str] = {
     "governance-auditor": "T2",
     "semantic-modeler": "T2",
     "dbt-expert": "T2",
-    "skill-updater": "T2",
     "business-analyst": "T3",
     "geral": "T3",
 }

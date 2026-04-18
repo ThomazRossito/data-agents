@@ -184,7 +184,6 @@ class TestPartyModeGroups:
         "dbt-expert",
         "business-analyst",
         "geral",
-        "skill-updater",
     }
 
     def test_all_group_agents_are_valid(self):

@@ -252,7 +252,7 @@ def _check_duplicate_summaries(memories: list[Memory], report: LintReport) -> No
     for mem in memories:
         if not mem.is_active():
             continue
-        key = mem.summary.lower().strip()
+        key = mem.normalized_summary
         if key in seen:
             report.issues.append(
                 LintIssue(

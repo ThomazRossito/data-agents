@@ -55,18 +55,19 @@ def build_supervisor_options(
     Args:
         platforms: Plataformas MCP a ativar. None = detecta por credenciais disponíveis.
                    Opções: "databricks", "fabric", "fabric_rti"
-        enable_thinking: Se True, ativa thinking com budget de 8000 tokens.
+        enable_thinking: Se True, ativa thinking adaptive com effort=high.
                          Use apenas para DOMA Full (/plan) — tarefas de planejamento complexo.
                          False por padrão para economizar custo e latência.
+                         Compatível com Opus 4.7 (que rejeita a sintaxe antiga budget_tokens).
 
     Returns:
         ClaudeAgentOptions configurado e pronto para uso com query() ou ClaudeSDKClient.
     """
-    # Thinking: ativo apenas quando explicitamente solicitado (modo DOMA Full)
-    # Typed as Any because the SDK union (ThinkingConfigEnabled | ThinkingConfigDisabled | ...)
-    # is not directly importable here without creating a hard dependency on SDK internals.
+    # Thinking: ativo apenas quando explicitamente solicitado (modo DOMA Full).
+    # Opus 4.7 exige a sintaxe "adaptive" (budget_tokens retorna HTTP 400).
+    # Sonnet/Opus 4.6 aceitam ambas; padronizamos em adaptive para forward-compat.
     thinking_config: Any = (
-        {"type": "enabled", "budget_tokens": 8000} if enable_thinking else {"type": "disabled"}
+        {"type": "adaptive", "effort": "high"} if enable_thinking else {"type": "disabled"}
     )
 
     # Servidores MCP (plataformas com credenciais disponíveis)

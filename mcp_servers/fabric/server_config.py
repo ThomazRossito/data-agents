@@ -49,10 +49,12 @@ def get_fabric_mcp_config() -> dict:
     }
 
 
-# Tools do servidor community (ativo — credenciais via .env)
+# Tools do servidor community (ativo — credenciais via .env).
+# Nome canônico do set ativo de tools Fabric neste projeto.
+# `FABRIC_COMMUNITY_MCP_TOOLS` é alias legado preservado abaixo para backward compat.
 # Ref: microsoft-fabric-mcp v0.1.4 — 28 ferramentas disponíveis
 # Fonte: /opt/anaconda3/envs/multi_agents/lib/python3.12/site-packages/fabric_mcp.py
-FABRIC_COMMUNITY_MCP_TOOLS = [
+FABRIC_MCP_TOOLS = [
     # Workspaces
     "mcp__fabric_community__list_workspaces",
     "mcp__fabric_community__list_workspaces_with_identity",
@@ -96,7 +98,8 @@ FABRIC_COMMUNITY_MCP_TOOLS = [
 # Tools do servidor oficial Microsoft (opcional — local-first, sem conexão ao tenant)
 # Ref: https://github.com/microsoft/mcp/tree/main/servers/Fabric.Mcp.Server
 # Não está ativo por padrão. Para ativar, adicione ao .mcp.json após build/npx.
-FABRIC_MCP_TOOLS = [
+# Listado aqui como referência; não é injetado nos agentes via aliases padrão.
+FABRIC_OFFICIAL_MCP_TOOLS = [
     # OneLake — Operações de arquivo
     "mcp__fabric__onelake_download_file",
     "mcp__fabric__onelake_upload_file",
@@ -116,5 +119,8 @@ FABRIC_MCP_TOOLS = [
     "mcp__fabric__get_best_practices",
 ]
 
-# Lista consolidada (community ativo + oficial como referência)
-ALL_FABRIC_TOOLS = FABRIC_COMMUNITY_MCP_TOOLS + FABRIC_MCP_TOOLS
+# Alias legado — preservado para imports existentes. Aponta para o mesmo set ativo.
+FABRIC_COMMUNITY_MCP_TOOLS = FABRIC_MCP_TOOLS
+
+# Lista consolidada (community ativo + oficial como referência documental)
+ALL_FABRIC_TOOLS = FABRIC_MCP_TOOLS + FABRIC_OFFICIAL_MCP_TOOLS

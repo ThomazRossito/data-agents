@@ -27,6 +27,7 @@ import urllib.error
 import urllib.request
 
 from memory.store import MemoryStore
+from memory.telemetry import record as _telemetry
 from memory.types import Memory, MemoryType
 from config.settings import settings
 
@@ -84,6 +85,8 @@ def retrieve_relevant_memories(
     if max_memories is None:
         max_memories = settings.memory_retrieval_max
 
+    t0 = time.time()
+
     # 1. Carregar index
     index_path = store.data_dir / "index.md"
     if not index_path.exists():
@@ -92,18 +95,40 @@ def retrieve_relevant_memories(
 
     if not index_path.exists():
         logger.warning("Nenhuma memória disponível para retrieval.")
+        _telemetry(
+            "retrieval.query",
+            reason="no_index",
+            selected=0,
+            loaded=0,
+            duration_ms=int((time.time() - t0) * 1000),
+        )
         return []
 
     index_content = index_path.read_text(encoding="utf-8")
     if not index_content.strip() or "**" not in index_content:
         logger.info("Index vazio — sem memórias para retrieval.")
+        _telemetry(
+            "retrieval.query",
+            reason="empty_index",
+            selected=0,
+            loaded=0,
+            duration_ms=int((time.time() - t0) * 1000),
+        )
         return []
 
     # 2. Query ao Sonnet lateral
-    selected_ids = _query_sonnet_for_ids(query, index_content)
+    selected_ids, cost_usd = _query_sonnet_for_ids(query, index_content)
 
     if not selected_ids:
         logger.debug(f"Sonnet não selecionou memórias para query: {query[:80]}")
+        _telemetry(
+            "retrieval.query",
+            reason="no_selection",
+            selected=0,
+            loaded=0,
+            cost_usd=cost_usd,
+            duration_ms=int((time.time() - t0) * 1000),
+        )
         return []
 
     # 3. Carregar memórias completas
@@ -121,11 +146,19 @@ def retrieve_relevant_memories(
         f"Retrieval: query='{query[:60]}' → {len(selected_ids)} selecionadas, "
         f"{len(memories)} carregadas"
     )
+    _telemetry(
+        "retrieval.query",
+        reason="ok",
+        selected=len(selected_ids),
+        loaded=len(memories),
+        cost_usd=cost_usd,
+        duration_ms=int((time.time() - t0) * 1000),
+    )
 
     return memories
 
 
-def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
+def _query_sonnet_for_ids(query: str, index_content: str) -> tuple[list[str], float]:
     """
     Faz a chamada lateral ao Sonnet para selecionar IDs relevantes.
 
@@ -143,7 +176,7 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
             f"Memory retrieval desabilitado temporariamente após {_consecutive_failures} "
             "falhas consecutivas. Será reativado no próximo sucesso."
         )
-        return []
+        return [], 0.0
 
     user_message = f"## Query do Usuário\n\n{query}\n\n## Index de Memórias\n\n{index_content}"
 
@@ -190,13 +223,13 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
                     ids = json.loads(text)
                     if isinstance(ids, list):
                         _consecutive_failures = 0  # reset ao primeiro sucesso
-                        return [str(i) for i in ids]
+                        return [str(i) for i in ids], cost
                 except json.JSONDecodeError:
                     pass
 
             logger.warning(f"Resposta do Sonnet não é JSON array válido: {text[:100]}")
             _consecutive_failures = 0
-            return []
+            return [], cost
 
         except urllib.error.HTTPError as e:
             if e.code == 429 and attempt < max_retries - 1:
@@ -210,15 +243,15 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> list[str]:
             logger.error(
                 f"Erro HTTP no retrieval Sonnet: {e.code} {e.reason} — falhas consecutivas: {_consecutive_failures}"
             )
-            return []
+            return [], 0.0
         except Exception as e:
             _consecutive_failures += 1
             logger.error(
                 f"Erro no retrieval Sonnet: {e} — falhas consecutivas: {_consecutive_failures}"
             )
-            return []
+            return [], 0.0
 
-    return []
+    return [], 0.0
 
 
 def format_memories_for_injection(memories: list[Memory]) -> str:

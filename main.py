@@ -12,8 +12,10 @@ Uso:
 """
 
 import asyncio
+import atexit
 import hashlib
 import logging
+import signal
 import sys
 import time
 
@@ -69,6 +71,55 @@ _RETRIEVAL_CACHE_TTL = 60.0  # segundos
 
 # Flag para garantir que apply_decay() só é executado 1x por sessão
 _decay_applied: bool = False
+
+# Estado exposto para atexit/signal handlers (T1.1).
+# Atualizado a cada turn bem-sucedido em run_interactive; consumido pelo
+# _emergency_checkpoint no encerramento para salvar checkpoint mesmo em
+# saídas normais (sair) ou abruptas (SIGTERM, Ctrl+C no terminal).
+_active_session: dict | None = None
+_active_session_id: str | None = None
+_checkpoint_saved_for_session: bool = False
+
+
+def _emergency_checkpoint(reason: str = "abnormal_exit") -> None:
+    """
+    Salva checkpoint se houver sessão ativa e checkpoint ainda não gravado.
+
+    Chamado por atexit (último recurso) e pelos signal handlers. Idempotente:
+    se `_checkpoint_saved_for_session` já for True, sai sem fazer nada.
+
+    Mantido minimalista — atexit não pode depender de event loop.
+    """
+    global _checkpoint_saved_for_session
+    if _checkpoint_saved_for_session or _active_session is None:
+        return
+    state = _active_session
+    if not state.get("last_prompt"):
+        return
+    try:
+        save_checkpoint(
+            last_prompt=state.get("last_prompt", ""),
+            reason=reason,
+            cost_usd=state.get("total_cost", 0.0),
+            turns=state.get("total_turns", 0),
+            session_id=_active_session_id,
+        )
+        _checkpoint_saved_for_session = True
+    except Exception as e:
+        logger.debug(f"Emergency checkpoint falhou ({reason}): {e}")
+
+
+def _signal_handler(signum: int, _frame: object) -> None:
+    """
+    Handler de SIGTERM/SIGHUP: grava checkpoint e encerra com exit(0).
+
+    SIGINT (Ctrl+C) é tratado pelo asyncio como KeyboardInterrupt dentro do
+    event loop — mantemos o fluxo original, não registramos SIGINT aqui.
+    """
+    name = signal.Signals(signum).name if hasattr(signal, "Signals") else str(signum)
+    _emergency_checkpoint(reason=f"signal_{name.lower()}")
+    # SystemExit é capturado pelo atexit que garante flush dos logs do Python
+    sys.exit(0)
 
 
 # ─── Mapeamento de tool → label amigável para o usuário ──────────────
@@ -550,6 +601,19 @@ async def run_interactive() -> None:
         "total_turns": 0,
     }
 
+    # T1.1: registra o estado como "sessão ativa" para que atexit/signal handlers
+    # possam gravar checkpoint em saídas normais (sair) ou abruptas (SIGTERM).
+    # Os handlers só são registrados uma vez por processo (idempotência via flag global).
+    global _active_session, _active_session_id, _checkpoint_saved_for_session
+    _active_session = _session_state
+    _checkpoint_saved_for_session = False
+    if not getattr(run_interactive, "_handlers_installed", False):
+        atexit.register(_emergency_checkpoint, "atexit")
+        signal.signal(signal.SIGTERM, _signal_handler)
+        if hasattr(signal, "SIGHUP"):  # não existe no Windows
+            signal.signal(signal.SIGHUP, _signal_handler)
+        run_interactive._handlers_installed = True  # type: ignore[attr-defined]
+
     # ── 1. Banner primeiro — antes de qualquer inicialização ─────────────────
     print_banner()
 
@@ -587,6 +651,7 @@ async def run_interactive() -> None:
     import uuid
 
     _session_id = f"cli-{uuid.uuid4().hex[:8]}"
+    _active_session_id = _session_id  # T1.2: expõe para _emergency_checkpoint
     try:
         async with ClaudeSDKClient(options=options) as client:
             # Ch.12 — Session Lifecycle: reseta contadores e prepara buffer de memória
@@ -613,6 +678,10 @@ async def run_interactive() -> None:
                 )
 
             while True:
+                # T1.1: reset do flag a cada iteração — estado potencialmente
+                # novo significa que _emergency_checkpoint deve salvar de novo
+                # se o processo morrer abruptamente antes do próximo save explícito.
+                _checkpoint_saved_for_session = False
                 try:
                     # Input com idle timeout: detecta inatividade e oferece reset
                     try:
@@ -633,7 +702,9 @@ async def run_interactive() -> None:
                                 reason="idle_timeout",
                                 cost_usd=_session_state["total_cost"],
                                 turns=_session_state["total_turns"],
+                                session_id=_session_id,
                             )
+                            _checkpoint_saved_for_session = True
                         console.print(
                             f"\n[yellow]⏰ Inatividade detectada "
                             f"({settings.idle_timeout_minutes} min). "
@@ -662,6 +733,21 @@ async def run_interactive() -> None:
 
                     # --- Comandos internos do CLI ---
                     if user_input.lower() in ("sair", "exit", "quit", "q", "/exit"):
+                        # T1.1: salva checkpoint em saída normal — até hoje a sessão
+                        # perdia contexto nesse caminho; agora é recuperável via `continuar`.
+                        if _session_state["last_prompt"]:
+                            save_checkpoint(
+                                last_prompt=_session_state["last_prompt"],
+                                reason="normal_exit",
+                                cost_usd=_session_state["total_cost"],
+                                turns=_session_state["total_turns"],
+                                session_id=_session_id,
+                            )
+                            _checkpoint_saved_for_session = True
+                            console.print(
+                                "[dim]💾 Checkpoint salvo. Digite [bold]continuar[/bold] "
+                                "na próxima sessão para retomar.[/dim]"
+                            )
                         # Flush de memória antes de encerrar
                         try:
                             n_mem = flush_session_memories(session_id="interactive")
@@ -687,7 +773,9 @@ async def run_interactive() -> None:
                                 reason="user_reset",
                                 cost_usd=_session_state["total_cost"],
                                 turns=_session_state["total_turns"],
+                                session_id=_session_id,
                             )
+                            _checkpoint_saved_for_session = True
                             console.print(
                                 "[dim]💾 Checkpoint salvo. Use [bold]continuar[/bold] "
                                 "na próxima sessão para retomar.[/dim]\n"
@@ -856,7 +944,9 @@ async def run_interactive() -> None:
                         reason="budget_exceeded",
                         cost_usd=_session_state["total_cost"],
                         turns=_session_state["total_turns"],
+                        session_id=_session_id,
                     )
+                    _checkpoint_saved_for_session = True
                     console.print(f"\n[bold red]Orçamento excedido:[/bold red] {e.message}")
                     console.print(
                         "[bold yellow]💾 Checkpoint salvo automaticamente![/bold yellow]\n"
