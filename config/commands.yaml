@@ -190,6 +190,22 @@ commands:
     skills: []
     prompt_template: '[MEMORY COMMAND] {task}'
     display_template: '[bold cyan]🧠 [Memory] Gerenciando memória persistente...[/bold cyan]'
+  sessions:
+    agent: null
+    doma_mode: internal
+    description: |-
+      Lista sessões registradas (transcript + checkpoint). Sem argumentos exibe as 20 mais recentes. Subcomandos: /sessions all (todas) | /sessions <session_id> (detalhes).
+    skills: []
+    prompt_template: '[SESSIONS COMMAND] {task}'
+    display_template: '[bold cyan]📚 [Sessions] Listando sessões registradas...[/bold cyan]'
+  resume:
+    agent: null
+    doma_mode: internal
+    description: |-
+      Retoma uma sessão anterior reconstruindo o contexto a partir do transcript. Uso: /resume last (mais recente) ou /resume <session_id>. Respeita o budget de contexto (~15k tokens por padrão).
+    skills: []
+    prompt_template: '[RESUME COMMAND] {task}'
+    display_template: '[bold cyan]🔄 [Resume] Retomando sessão anterior...[/bold cyan]'
   geral:
     agent: geral
     doma_mode: express

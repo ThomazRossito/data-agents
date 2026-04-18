@@ -292,6 +292,10 @@ class Settings(BaseSettings):
     # Limiares: 80% → WARNING, 95% → ERROR + salva checkpoint.
     context_budget_warn_threshold: float = 0.80
     context_budget_critical_threshold: float = 0.95
+    # T4.4: limiar para disparar sumarização lateral via Haiku (compactação do
+    # histórico em 7 campos estruturados). Default 65% — abaixo do warn para
+    # agir preventivamente antes do usuário sentir o impacto.
+    context_budget_summarize_threshold: float = 0.65
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
