@@ -44,6 +44,7 @@ output/
 memory/*
 !memory/*.py
 !memory/MEMORY_ARCHITECTURE.docx
+reports/
 
 # =============================================================================
 # INPUTS (documentos externos — não versionar)

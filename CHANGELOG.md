@@ -107,8 +107,11 @@
 
 ### Backlog
 
-- **T0.2.1** — Abrir issue no `anthropics/claude-agent-sdk-python` pedindo
-  passthrough de `extra_headers` para `anthropic-beta: token-efficient-tools-2025-02-19`.
+- ~~**T0.2.1**~~ — Issue aberta em
+  [`anthropics/claude-agent-sdk-python#845`](https://github.com/anthropics/claude-agent-sdk-python/issues/845)
+  pedindo passthrough de `extra_headers` (ou relaxar `SdkBeta`) para
+  opt-in em `anthropic-beta: token-efficient-tools-2025-02-19` (~10-14%
+  menos output tokens em workloads de tool use).
 - **T5.1** — Prompt caching explícito no Supervisor. **Confirmado bloqueado em
   SDK 0.1.63**: `SdkBeta` aceita apenas `context-1m-2025-08-07`, sem campo
   `cache_control` nem `extra_headers`. Issue #626 (upstream) segue aberta.
