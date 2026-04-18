@@ -9,9 +9,6 @@
 # Para parar o Business Monitor sem encerrar o chat:
 #   /monitor stop   (no chat)
 #   /monitor off    (pausa os ciclos, daemon continua vivo)
-#
-# O Streamlit (start.sh) continua funcionando normalmente na porta 8502.
-# Este script é adicional e independente.
 
 set -euo pipefail
 
@@ -57,8 +54,6 @@ echo "   App   : ui/chainlit_app.py"
 echo ""
 echo "   Modo 1 — Data Agents  : Supervisor + agentes especialistas"
 echo "   Modo 2 — Dev Assistant: Claude + ferramentas de desenvolvimento"
-echo ""
-echo "   Streamlit continua disponível em: http://localhost:8502 (start.sh)"
 echo ""
 
 # ── Business Monitor daemon ───────────────────────────────────────────────────

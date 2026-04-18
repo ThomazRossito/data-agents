@@ -7,6 +7,22 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **Interface Streamlit de chat** (T5.4): `ui/chat.py` (964 LOC) removido.
+  Chainlit (`ui/chainlit_app.py`) é agora a única UI de chat, ativada por
+  `./start.sh` na porta 8503. Streamlit continua como dependência do
+  dashboard de monitoramento (`monitoring/app.py`, porta 8501) e foi
+  removido dos extras `[ui]` em `pyproject.toml` — permanece só em
+  `[monitoring]`. Arquivos ajustados: `start.sh` (flag `--chainlit`
+  removida, porta padrão 8503), `start_chainlit.sh`, `README.md`,
+  `.claude/CLAUDE.md`, `Manual_Relatorio_Tecnico_Projeto_Data_Agents.md`,
+  `commands/geral.py` (docstring), `main.py` (comentário),
+  `ui/chainlit_app.py` (prompt do Dev Assistant), `ui/ui_config.py`
+  (constantes `COMMANDS_NO_ARGS` e `STREAMLIT_CSS` removidas),
+  `tests/test_functional.py` (removida a parametrização de `ui/chat.py`
+  em `TestDOMARenamingNoBMADInCode` e o teste `test_chat_uses_doma_prompt`).
+
 ### Changed
 
 - **`scripts/refresh_skills.py` migrado para Anthropic Batch API** (T5.2):

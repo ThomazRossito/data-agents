@@ -81,7 +81,7 @@ Plataformas alvo: Databricks (Unity Catalog, DLT, LakeFlow) + Microsoft Fabric.
 - hooks/               — PreToolUse / PostToolUse hooks
 - kb/                  — Knowledge Bases por domínio
 - tests/               — pytest (mínimo 80% cobertura)
-- ui/chat.py           — interface Streamlit atual
+- ui/chainlit_app.py   — interface Chainlit atual
 
 ## Papel
 Assistente de desenvolvimento para tarefas no próprio projeto:

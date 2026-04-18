@@ -13,7 +13,7 @@ Cobre 10+ cenários críticos introduzidos ou impactados pelas mudanças:
   9. Workflow Context Cache — instrução "Context Cache" no supervisor_prompt.py
  10. Supervisor prompt sem referência BMAD — usa DOMA
  11. Integridade do registry: /party é internal e sem agente alvo
- 12. UI consistency: ui/chat.py e ui/chainlit_app.py usam doma_mode/doma_prompt
+ 12. UI consistency: ui/chainlit_app.py usa doma_mode/doma_prompt
  13. Import health: commands/party.py importa corretamente sem erros
  14. Party Mode — parse retorna query correta em cada modo de invocação
  15. Tiers de agentes do Party Mode batem com o registry real
@@ -42,7 +42,6 @@ class TestDOMARenamingNoBMADInCode:
         "main.py",
         "agents/supervisor.py",
         "agents/prompts/supervisor_prompt.py",
-        "ui/chat.py",
         "ui/chainlit_app.py",
         "hooks/cost_guard_hook.py",
         "monitoring/app.py",
@@ -495,12 +494,12 @@ class TestRegistryIntegrity:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# TESTE 12 — UI consistency: ui/chat.py e chainlit_app.py usam doma_*
+# TESTE 12 — UI consistency: chainlit_app.py usa doma_*
 # ══════════════════════════════════════════════════════════════════════════════
 class TestUIConsistency:
     """Arquivos de UI devem usar doma_mode e doma_prompt, não bmad_*."""
 
-    @pytest.mark.parametrize("rel_path", ["ui/chat.py", "ui/chainlit_app.py"])
+    @pytest.mark.parametrize("rel_path", ["ui/chainlit_app.py"])
     def test_no_bmad_prompt_in_ui(self, rel_path):
         path = ROOT / rel_path
         if not path.exists():
@@ -508,13 +507,6 @@ class TestUIConsistency:
         content = path.read_text(encoding="utf-8")
         assert "bmad_prompt" not in content, f"'{rel_path}' ainda usa 'bmad_prompt'"
         assert "bmad_mode" not in content, f"'{rel_path}' ainda usa 'bmad_mode'"
-
-    def test_chat_uses_doma_prompt(self):
-        path = ROOT / "ui" / "chat.py"
-        if not path.exists():
-            pytest.skip("ui/chat.py não encontrado")
-        content = path.read_text(encoding="utf-8")
-        assert "doma_prompt" in content, "ui/chat.py deve usar 'doma_prompt'"
 
     def test_chainlit_uses_doma_mode(self):
         path = ROOT / "ui" / "chainlit_app.py"

@@ -109,7 +109,7 @@ O grande diferencial em relação a um simples "chatbot de programação" é a *
 ## 3. Arquitetura Geral do Sistema
 
 ```
- Você digita um comando (terminal, Chainlit ou Streamlit)
+ Você digita um comando (terminal ou Chainlit)
         │
         ▼
 ┌─────────────────────────────────────────────────┐
@@ -289,20 +289,11 @@ Interface moderna com steps expandíveis em tempo real mostrando cada delegaçã
 - **`/export`:** exporta o histórico completo da sessão como arquivo HTML com formatação profissional — markdown renderizado, código com syntax highlighting, separação visual de usuário (azul) vs. assistente (verde), e métricas de custo removidas automaticamente. Abra no browser e use Cmd+P (macOS) ou Ctrl+P (Windows/Linux) para salvar como PDF.
 
 ```bash
-./start.sh --chainlit         # Chainlit (8503) + Monitoring (8501)
-./start.sh --chainlit-only    # somente Chainlit
+./start.sh              # Chainlit (8503) + Monitoring (8501)
+./start.sh --chat-only  # somente Chainlit
 ```
 
-### 6.2. Web UI Streamlit (porta 8502)
-
-Chat com histórico persistente na sessão, suporte a todos os slash commands e visualização de artefatos gerados (PRDs, SPECs, Backlogs).
-
-```bash
-./start.sh             # Streamlit (8502) + Monitoring (8501)
-./start.sh --chat-only # somente Streamlit
-```
-
-### 6.3. Dashboard de Monitoramento (porta 8501)
+### 6.2. Dashboard de Monitoramento (porta 8501)
 
 9 páginas: Overview, Agentes, Workflows, Execuções, MCP Servers, Logs, Configurações, Custo e Tokens. Inclui tier badge nos cards de agentes, todos os workflows (WF-01 a WF-05), download CSV de logs, timezone configurável e indicador de freshness dos dados.
 
@@ -310,7 +301,7 @@ Chat com histórico persistente na sessão, suporte a todos os slash commands e 
 ./start.sh --monitor-only
 ```
 
-### 6.4. Terminal (CLI)
+### 6.3. Terminal (CLI)
 
 Interface de linha de comando. Ideal para automação e ambientes sem interface gráfica.
 
@@ -330,7 +321,7 @@ python main.py "liste tabelas da silver"   # consulta única
 | `Makefile` | Automação | Atalhos para tarefas comuns (instalar, testar, rodar) |
 | `.env.example` | Modelo | Template para configurar credenciais (nunca versionar o `.env` real) |
 | `switch-env.sh` | Shell | Alternância entre arquivos `.env` (ex: conta pessoal vs. proxy corporativo) |
-| `start.sh` | Shell | Inicia as interfaces (Chainlit, Streamlit, Monitoring) |
+| `start.sh` | Shell | Inicia as interfaces (Chainlit Chat + Streamlit Monitoring) |
 | `databricks.yml` | YAML | Configuração para deploy via Databricks Asset Bundles |
 | `.pre-commit-config.yaml` | Config | Hooks de qualidade que rodam antes de cada commit |
 | `agents/` | Pasta | Definições, prompts e lógica de todos os agentes |
@@ -353,9 +344,8 @@ python main.py "liste tabelas da silver"   # consulta única
 | `kb/` | Pasta | Knowledge Bases — lidas pelo Supervisor antes de cada plano |
 | `kb/constitution.md` | Markdown | Regras invioláveis do sistema (7 regras S1-S7) |
 | `memory/` | Pasta | Sistema de memória episódica — captura e retrieval semântico |
-| `ui/` | Pasta | Interfaces web (Chainlit, Streamlit) |
-| `ui/chainlit_app.py` | Python | Aplicação Chainlit — interface principal recomendada |
-| `ui/chat.py` | Python | Aplicação Streamlit |
+| `ui/` | Pasta | Interface web de chat (Chainlit) |
+| `ui/chainlit_app.py` | Python | Aplicação Chainlit — interface de chat oficial |
 | `ui/exporter.py` | Python | Exportação de histórico de sessão para HTML/PDF |
 | `monitoring/` | Pasta | Dashboard de monitoramento (Streamlit, 9 páginas) |
 | `tools/` | Pasta | Scripts utilitários para o usuário |
@@ -409,7 +399,7 @@ Exporta o histórico de chat para um arquivo HTML com:
 - Remoção automática das métricas de custo (`💰 $X.XXXX`) do conteúdo exportado
 - Estilos `@media print` para resultado profissional ao salvar como PDF via browser (Cmd+P)
 
-Ativado via `/export` na Chainlit ou Streamlit.
+Ativado via `/export` na Chainlit.
 
 ### 8.5. `agents/mlflow_wrapper.py` — Integração com MLflow
 
@@ -799,11 +789,8 @@ python tools/fabric_health_check.py
 **Passo 7: Iniciar**
 
 ```bash
-# Interface web Chainlit (recomendada)
-./start.sh --chainlit          # acesse http://localhost:8503
-
-# Streamlit
-./start.sh                     # acesse http://localhost:8502
+# Interface web Chainlit + Monitoring
+./start.sh                     # acesse http://localhost:8503
 
 # Terminal
 python main.py
