@@ -58,6 +58,7 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.10",
     "bandit>=1.7",
+    "types-PyYAML>=6.0",
 ]
 monitoring = [
     "streamlit>=1.35",
