@@ -1,9 +1,10 @@
 name: CD — Deploy to Databricks
 
 on:
-  push:
-    tags:
-      - "v*"
+  # Deploy só por acionamento manual (aba Actions → "Run workflow").
+  # Trigger por push de tag foi removido para evitar falhas de CD quando
+  # secrets de produção não estão configurados — decisão consciente de
+  # não armazenar credenciais de Databricks no GitHub.
   workflow_dispatch:
     inputs:
       environment:
@@ -26,9 +27,7 @@ jobs:
   deploy-staging:
     name: Deploy to Staging
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
-      || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && contains(github.ref, '-rc'))
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging'
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -82,9 +81,7 @@ jobs:
   deploy-production:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: |
-      github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
-      || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && !contains(github.ref, '-rc'))
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
     environment: production
     steps:
       - uses: actions/checkout@v4
