@@ -105,8 +105,9 @@ python main.py
 | **Semantic Modeler** | `/semantic` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards |
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion) |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
-| **Skill Updater** | `/skill` | T2 | Atualiza Skills com documentação recente via context7, tavily e firecrawl |
 | **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
+
+> Refresh de Skills é um script independente — `python scripts/refresh_skills.py` (não é mais um agente).
 
 ### Party Mode — Múltiplos Especialistas em Paralelo
 
@@ -144,7 +145,6 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/semantic <tarefa>` | Modelagem semântica direta |
 | `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | Python puro direto para o python-expert |
-| `/skill [domínio]` | Atualiza Skills com documentação recente (context7/tavily/firecrawl) |
 | `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |

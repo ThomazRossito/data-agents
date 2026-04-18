@@ -7,6 +7,20 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`PRODUCT.md`** na raiz: tese de produto em uma página — ICP, JTBD,
+  diferencial vs alternativas (Genie nativo, Copilot Fabric, dbt AI,
+  LangChain, ChatGPT/Claude direto) e anti-escopo explícito.
+
+### Fixed
+
+- `README.md`: removidas referências ao agente `skill-updater` (removido em
+  T3.6 do Sprint 3). Refresh de Skills é agora `scripts/refresh_skills.py`.
+- `.github/workflows/cd.yml`: removido trigger por tag (`push: tags: v*`);
+  deploy exclusivamente via `workflow_dispatch` manual. Evita falhas de CD
+  por secrets intencionalmente não configurados.
+
 ### Gated (aguardando telemetria)
 
 - **T1.7** — Decidir Caminho A vs B da memória (`logs/memory_usage.jsonl` 24-72h).
