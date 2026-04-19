@@ -1,3 +1,9 @@
+---
+name: fabric-monitoring-dmv
+description: Monitoramento de modelos semânticos Fabric via DMV/TMSCHEMA no endpoint XMLA — refreshes, saúde do modelo e capacidade.
+updated_at: 2026-04-16
+---
+
 # SKILL: fabric-monitoring-dmv
 
 > **Fonte:** Microsoft Fabric XMLA Endpoint (pyadomd, Power BI API)

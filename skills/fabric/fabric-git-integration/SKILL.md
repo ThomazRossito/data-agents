@@ -1,3 +1,9 @@
+---
+name: fabric-git-integration
+description: Integração Git (GitHub/ADO) com Fabric via REST API para CI/CD, versionamento de workspace e sincronização commit/pull.
+updated_at: 2026-04-16
+---
+
 # SKILL: fabric-git-integration
 
 > **Fonte:** Microsoft Fabric REST API (api.fabric.microsoft.com/v1)

@@ -75,7 +75,7 @@ O **Data Agents** é um sistema de **múltiplos agentes de Inteligência Artific
 
 O sistema é construído sobre o modelo de linguagem **Claude** da Anthropic e utiliza o **Model Context Protocol (MCP)** para que a IA possa interagir diretamente com as plataformas de dados, como se fosse um engenheiro humano acessando o painel de controle.
 
-São **12 agentes especialistas** organizados em três tiers de custo e capacidade, orquestrados por um Supervisor que nunca acessa dados diretamente — apenas coordena, planeja e delega.
+São **13 agentes especialistas** organizados em três tiers de custo e capacidade, orquestrados por um Supervisor que nunca acessa dados diretamente — apenas coordena, planeja e delega.
 
 O grande diferencial em relação a um simples "chatbot de programação" é a **camada de governança e conhecimento**: a IA é obrigada a ler manuais de boas práticas (Skills) antes de agir, garantindo que o código gerado seja seguro, eficiente e alinhado com os padrões corporativos modernos.
 
@@ -144,7 +144,7 @@ Em paralelo a todo esse fluxo, **11 hooks** ficam monitorando cada ação: bloqu
 
 ## 4. Os Agentes: A Equipe Virtual
 
-O sistema possui **12 agentes especialistas** organizados em três tiers. O tier define qual modelo Claude é usado, quantos turns (chamadas de ferramenta) o agente pode fazer por tarefa e qual nível de "esforço" de raciocínio aplica.
+O sistema possui **13 agentes especialistas** organizados em três tiers. O tier define qual modelo Claude é usado, quantos turns (chamadas de ferramenta) o agente pode fazer por tarefa e qual nível de "esforço" de raciocínio aplica.
 
 | Tier | Modelo padrão | Max Turns | Effort | Perfil |
 |------|---------------|-----------|--------|--------|
@@ -218,11 +218,11 @@ Assessment e migração de bancos relacionais (SQL Server, PostgreSQL) para Data
 
 Python puro: pacotes, automação, APIs, CLIs, testes unitários, pandas/polars, scripts de ETL em Python. Usa context7 para documentação atualizada de bibliotecas antes de gerar código.
 
-### 4.12. Skill Updater — Tier T2
+### 4.12. Business Monitor — Tier T2
 
-**Comando:** `/skill` | **MCPs:** context7, tavily, firecrawl
+**Comando:** `/monitor` | **MCPs:** databricks, fabric_sql, postgres, memory_mcp
 
-Atualiza os arquivos de Skills do sistema com a documentação mais recente das plataformas (Databricks, Fabric, dbt, etc.), usando context7 para docs técnicas e firecrawl/tavily para release notes e blogs.
+Agente interativo de Q&A sobre alertas emitidos pelo daemon de monitoramento autônomo (`scripts/monitor_daemon.py`). Responde perguntas sobre alertas recebidos (estoque, vendas, SLA), investiga causa raiz de anomalias e enriquece o contexto com o estado atual das tabelas. O ciclo de varredura automático roda fora do agente, via `databricks-sdk` e `pymssql`.
 
 ### 4.13. Geral — Tier T3
 
@@ -278,7 +278,7 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente com pass
 
 Interface moderna com steps expandíveis em tempo real mostrando cada delegação e tool call enquanto acontecem. Dois modos disponíveis:
 
-- **Data Agents:** sistema completo com todos os 12 agentes
+- **Data Agents:** sistema completo com todos os 13 agentes
 - **Dev Assistant:** Claude direto com ferramentas de código (sem agentes especialistas)
 
 **Funcionalidades da Chainlit:**
@@ -422,6 +422,7 @@ Os hooks são interceptadores automáticos ativados antes (`PreToolUse`) ou depo
 | `workflow_tracker.py` | PostToolUse | Rastreia delegações, Clarity Checkpoint e cascade PRD→SPEC |
 | `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente |
 | `session_logger.py` | PostToolUse | Registra métricas finais de custo/turns/duração por sessão |
+| `transcript_hook.py` | PostToolUse | Persiste transcript completo por sessão em `logs/sessions/<id>.jsonl` (append-only) — usado pelo `/resume` |
 | `checkpoint.py` | — | Save/restore automático do estado da sessão |
 | `session_lifecycle.py` | SessionStart/End | Injeção de memórias no início; config snapshot ao encerrar |
 
@@ -509,16 +510,19 @@ Os quatro MCPs customizados resolvem gaps específicos que os MCPs oficiais não
 | `/semantic <tarefa>` | Semantic Modeler | DAX, Direct Lake, modelos semânticos |
 | `/migrate <fonte> para <destino>` | Migration Expert | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | Python Expert | Python puro, scripts, APIs, testes unitários |
-| `/skill [domínio]` | Skill Updater | Atualiza Skills com documentação recente |
+| `/monitor <pergunta>` | Business Monitor | Q&A sobre alertas do daemon de monitoramento de negócio |
 | `/genie <tarefa>` | Semantic Modeler | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Semantic Modeler | Criar/publicar AI/BI Dashboards |
 | `/review <artefato>` | Supervisor | Review de código ou pipeline |
 | `/party <query>` | Multi-agente | 2-8 agentes respondem simultaneamente (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
 | `/workflow <wf-id> <query>` | Multi-agente | Workflows colaborativos WF-01 a WF-05 com context chain |
+| `/fabric <tarefa>` | Pipeline Architect | Pipeline Architect com foco em Microsoft Fabric |
 | `/geral <pergunta>` | Geral | Respostas conceituais sem Supervisor — ~95% mais barato |
 | `/health` | — | Status de todas as plataformas configuradas |
 | `/status` | — | Estado da sessão: custo, turns, PRDs gerados |
 | `/memory <query>` | — | Consulta à memória persistente |
+| `/sessions [all\|<id>]` | — | Lista sessões registradas (transcript + checkpoint) |
+| `/resume [last\|<id>]` | — | Retoma sessão anterior reconstruindo contexto do transcript |
 | `/export` | — | Exporta histórico da sessão para HTML (use Cmd+P para PDF) |
 
 **Exemplos práticos:**
@@ -822,7 +826,7 @@ O projeto **Data Agents** representa uma abordagem madura e corporativa para o u
 
 **O problema do custo** é resolvido pelo Cost Guard e pelo roteamento por tier: cada tarefa usa o modelo adequado ao seu nível de complexidade, e o limite de orçamento por sessão é configurável.
 
-**O problema da especialização** é resolvido pela arquitetura multi-agente: cada um dos 12 agentes tem papel bem definido, MCPs adequados ao seu domínio e permissões alinhadas ao seu nível de responsabilidade.
+**O problema da especialização** é resolvido pela arquitetura multi-agente: cada um dos 13 agentes tem papel bem definido, MCPs adequados ao seu domínio e permissões alinhadas ao seu nível de responsabilidade.
 
 **O problema da observabilidade** é resolvido pelo Dashboard de Monitoramento (9 páginas) e pelo sistema de memória em dois layers, que mantém contexto entre sessões e acumula conhecimento sobre o projeto ao longo do tempo.
 

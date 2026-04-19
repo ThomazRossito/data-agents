@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **12 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -108,6 +108,7 @@ python main.py         # ou: make run
 | **Semantic Modeler** | `/semantic` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards |
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion) |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
+| **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
 | **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 > Refresh de Skills é um script independente — `python scripts/refresh_skills.py` (não é mais um agente).
@@ -148,16 +149,21 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/semantic <tarefa>` | Modelagem semântica direta |
 | `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | Python puro direto para o python-expert |
+| `/monitor <pergunta>` | Q&A sobre alertas do daemon de monitoramento de negócio |
 | `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
 | `/review <artefato>` | Review de código ou pipeline |
 | `/party <query>` | Multi-agente paralelo (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
+| `/workflow <wf-id> <query>` | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
+| `/fabric <tarefa>` | Pipeline Architect com foco em Microsoft Fabric |
 | `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |
 | `/health` | Status das plataformas configuradas |
 | `/status` | Estado da sessão atual |
 | `/memory <query>` | Consulta à memória persistente |
+| `/sessions [all\|<id>]` | Lista sessões registradas (transcript + checkpoint) |
+| `/resume [last\|<id>]` | Retoma sessão anterior reconstruindo contexto do transcript |
 | `/export` | Exporta o histórico da sessão para HTML (abra no browser → Cmd+P para PDF) |
 
 ---
@@ -230,6 +236,7 @@ Hooks automáticos protegem todas as operações:
 | `workflow_tracker` | Rastreia delegações, Clarity Checkpoint e cascade PRD→SPEC |
 | `memory_hook` | Captura contexto da sessão para memória persistente |
 | `session_logger` | Registra métricas finais de custo/turns/duração por sessão |
+| `transcript_hook` | Persiste transcript completo por sessão em `logs/sessions/<id>.jsonl` (append-only) — usado pelo `/resume` |
 | `checkpoint` | Save/restore automático do estado da sessão |
 | `session_lifecycle` | Injeção de memórias no início, config snapshot ao encerrar |
 

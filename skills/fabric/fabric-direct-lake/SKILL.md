@@ -1,3 +1,9 @@
+---
+name: fabric-direct-lake
+description: Direct Lake mode para Semantic Models no Fabric — leitura direta de Parquet Delta via OneLake (VertiPaq).
+updated_at: 2026-01-15
+---
+
 # SKILL: Microsoft Fabric — Direct Lake Mode
 
 > **Fonte:** Microsoft Learn (learn.microsoft.com/fabric/fundamentals/direct-lake-overview)

@@ -32,6 +32,7 @@ import json
 import logging
 import os
 import traceback
+from decimal import Decimal
 from typing import Any
 
 logger = logging.getLogger("migration_source_mcp")
@@ -234,6 +235,8 @@ def _serialize_row(row: Any) -> list:
             result.append(val.hex())
         elif isinstance(val, float) and val != val:
             result.append(None)
+        elif isinstance(val, Decimal):
+            result.append(str(val))
         else:
             result.append(val)
     return result
@@ -604,7 +607,7 @@ def migration_source_describe_table(schema: str, table: str, source: str | None 
                 db_type,
                 "SELECT indexname, indexdef FROM pg_indexes "
                 "WHERE schemaname = %s AND tablename = %s "
-                "AND indexname NOT LIKE '%_pkey'",
+                "AND RIGHT(indexname, 5) != '_pkey'",
                 (schema, table),
             )
         indexes = [_serialize_row(r) for r in idx_rows]

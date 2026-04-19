@@ -1,3 +1,9 @@
+---
+name: fabric-cross-platform
+description: Integração cross-platform Fabric + Databricks via Mirroring, Shortcut OneLake e Delta Lake compartilhado.
+updated_at: 2026-01-15
+---
+
 # SKILL: Microsoft Fabric + Databricks — Integração Cross-Platform
 
 > **Fonte:** Microsoft Learn + Microsoft Fabric Blog + Databricks Documentation

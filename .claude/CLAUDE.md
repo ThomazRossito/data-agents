@@ -307,10 +307,13 @@ MEMORY_CAPTURE_ENABLED=true
 | `/python <tarefa>` | python-expert | Python puro: pacotes, testes, APIs, CLIs, automação |
 | `/genie <tarefa>` | semantic-modeler | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | semantic-modeler | Criar/publicar AI/BI Dashboards |
+| `/monitor <pergunta>` | business-monitor | Q&A sobre alertas do daemon de monitoramento |
 | `/review <artefato>` | Supervisor | Review de código/pipeline |
 | `/health` | — | Status das plataformas configuradas |
 | `/status` | — | Estado da sessão atual |
 | `/memory <query>` | — | Consulta memória persistente |
+| `/sessions [all\|<id>]` | — | Lista sessões registradas (transcript + checkpoint) |
+| `/resume [last\|<id>]` | — | Retoma sessão anterior reconstruindo contexto do transcript |
 | `/party <query>` | — | Multi-agente paralelo: perspectivas independentes (flags: --quality, --arch, --engineering, --migration, --full) |
 | `/workflow <wf-id> <query>` | — | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
 | `/geral <pergunta>` | — | Resposta direta sem Supervisor (zero agentes, ~95% mais barato) |
