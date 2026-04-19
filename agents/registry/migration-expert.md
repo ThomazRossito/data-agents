@@ -110,6 +110,44 @@ Para cada tabela, aplicar os mapeamentos canônicos da `kb/migration/index.md`.
 - Particionamento por `_ingestion_date` no Bronze
 - Delegar geração de jobs complexos ao `spark-expert`
 
+**Protocolo de credenciais da fonte (obrigatório antes de gerar qualquer notebook JDBC):**
+
+As credenciais da fonte de origem estão em `MIGRATION_SOURCES` no `.env` (lidas pelo MCP
+`migration_source`). O notebook Spark roda no cluster Databricks — não tem acesso ao `.env`
+local. Seguir este fluxo:
+
+1. **Verificar se o Secret Scope existe:**
+   ```python
+   # Via MCP Databricks (list_secret_scopes ou execute_sql não se aplica)
+   # Usar Bash com databricks CLI:
+   databricks secrets list-scopes
+   ```
+
+2. **Se o scope `migration-secrets` NÃO existir:**
+   - Criá-lo usando Bash + Databricks CLI:
+     ```bash
+     databricks secrets create-scope --scope migration-secrets
+     ```
+   - Popular as chaves com os valores de `MIGRATION_SOURCES` (disponíveis no settings):
+     ```bash
+     databricks secrets put-secret migration-secrets pg-host --string-value "<host>"
+     databricks secrets put-secret migration-secrets pg-port --string-value "<port>"
+     databricks secrets put-secret migration-secrets pg-database --string-value "<database>"
+     databricks secrets put-secret migration-secrets pg-user --string-value "<user>"
+     databricks secrets put-secret migration-secrets pg-password --string-value "<password>"
+     ```
+   - **NUNCA** exibir os valores em output de resposta. Usar as variáveis de ambiente
+     diretamente no comando Bash sem imprimir na tela.
+
+3. **Se o scope já existir:** verificar se as chaves necessárias estão presentes antes de
+   prosseguir.
+
+4. **Só então** gerar o notebook com `dbutils.secrets.get(scope="migration-secrets", ...)`.
+
+> **Regra PoC:** Se a CLI do Databricks não estiver disponível no ambiente, informar o
+> usuário dos comandos exatos para criar o scope manualmente — nunca bloquear a geração do
+> DDL, apenas a execução do notebook.
+
 **Para destino Fabric:**
 - DDL em T-SQL compatível com Fabric Lakehouse/Warehouse
 - Sem `IDENTITY` no Lakehouse (apenas no Warehouse)
