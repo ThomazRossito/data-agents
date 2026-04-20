@@ -1,0 +1,27 @@
+# litellm_config.yaml — Bridge entre Claude Agent SDK e Ollama
+#
+# O LiteLLM proxy converte o protocolo Anthropic (usado pelo SDK) para o
+# protocolo OpenAI (usado pelo Ollama), permitindo rodar modelos locais
+# como backend de todos os agentes no modo --local.
+#
+# Como usar:
+#   1. Instalar: pip install litellm
+#   2. Baixar o modelo: ollama pull qwen2.5-coder:32b
+#   3. Iniciar o proxy: litellm --config litellm_config.yaml --port 4000
+#   4. Iniciar o projeto: python main.py --local
+
+model_list:
+  - model_name: qwen2.5-coder:32b
+    litellm_params:
+      model: ollama_chat/qwen2.5-coder:32b
+      api_base: http://localhost:11434
+
+# Configurações do servidor proxy
+litellm_settings:
+  # Timeout para modelos locais (mais lentos que a API Anthropic)
+  request_timeout: 300
+  # Drop params que o Ollama não suporta (ex: parâmetros Anthropic-específicos)
+  drop_params: true
+
+general_settings:
+  master_key: "local-dev-key"

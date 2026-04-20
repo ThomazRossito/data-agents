@@ -28,6 +28,26 @@ class Settings(BaseSettings):
     # URL base do proxy (ex: Flow LiteLLM). Vazio = usa api.anthropic.com padrão.
     anthropic_base_url: str = ""
 
+    # --- Local LLM via Ollama + LiteLLM proxy ---
+    # Quando USE_LOCAL_LLM=true (ou flag --local no CLI), os agentes T2 e T3
+    # são roteados para um modelo local rodando no Ollama via LiteLLM proxy.
+    # O LiteLLM atua como bridge: traduz o protocolo Anthropic SDK → Ollama.
+    #
+    # Setup (uma vez):
+    #   pip install litellm
+    #   ollama pull qwen2.5-coder:32b
+    #   litellm --model ollama_chat/qwen2.5-coder:32b --port 4000  # em outro terminal
+    #
+    # Override via .env: USE_LOCAL_LLM=true
+    use_local_llm: bool = False
+    # URL do LiteLLM proxy — deve estar rodando antes de iniciar o projeto
+    local_llm_proxy_url: str = "http://localhost:4000"
+    # Modelos locais por tier (nomes que o LiteLLM proxy conhece)
+    # T1 permanece na Anthropic por padrão — agentes críticos (sql, spark, pipeline)
+    local_llm_model_t1: str = "qwen2.5-coder:32b"  # sql-expert, spark-expert, pipeline-architect
+    local_llm_model_t2: str = "qwen2.5-coder:32b"  # data-quality, governance, dbt, semantic
+    local_llm_model_t3: str = "qwen2.5-coder:32b"  # geral, business-analyst
+
     # --- Databricks ---
     databricks_host: str = ""
     databricks_token: str = ""

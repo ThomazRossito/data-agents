@@ -1207,10 +1207,75 @@ async def run_single_query(prompt: str) -> None:
             log_session_result(message, prompt_preview=prompt[:100], session_type="single_query")
 
 
+def _configure_local_mode() -> None:
+    """
+    Ativa o modo local: roteia agentes T2/T3 para Ollama via LiteLLM proxy.
+
+    O LiteLLM proxy (localhost:4000) age como bridge entre o Claude Agent SDK
+    (protocolo Anthropic) e o Ollama (protocolo OpenAI). O campo
+    `anthropic_base_url` redireciona o SDK para o proxy local.
+
+    T1 permanece na Anthropic por padrão — agentes críticos (sql-expert,
+    spark-expert, pipeline-architect, migration-expert) onde qualidade máxima
+    é mais importante do que custo.
+
+    Setup necessário (rodar antes de iniciar com --local):
+        pip install litellm
+        ollama pull qwen2.5-coder:32b
+        litellm --model ollama_chat/qwen2.5-coder:32b --port 4000
+    """
+    # Redireciona o Anthropic SDK para o proxy LiteLLM local
+    settings.anthropic_base_url = settings.local_llm_proxy_url
+
+    # Monta o tier_model_map apenas para os tiers com modelo local definido
+    local_map: dict[str, str] = {}
+    if settings.local_llm_model_t1:
+        local_map["T1"] = settings.local_llm_model_t1
+    if settings.local_llm_model_t2:
+        local_map["T2"] = settings.local_llm_model_t2
+    if settings.local_llm_model_t3:
+        local_map["T3"] = settings.local_llm_model_t3
+
+    # Merge com tier_model_map existente (.env), priorizando .env
+    merged = {**local_map, **settings.tier_model_map}
+    settings.tier_model_map = merged
+
+    console.print(
+        Panel(
+            f"[bold green]🦙 Modo Local Ativado[/bold green]\n\n"
+            f"[dim]Proxy:[/dim]  {settings.local_llm_proxy_url}\n"
+            f"[dim]T1   :[/dim]  {local_map.get('T1', '[dim]Anthropic (mantido)[/dim]')}\n"
+            f"[dim]T2   :[/dim]  {local_map.get('T2', '[dim]não configurado[/dim]')}\n"
+            f"[dim]T3   :[/dim]  {local_map.get('T3', '[dim]não configurado[/dim]')}\n\n"
+            "[yellow]⚠️  Certifique-se que Ollama e LiteLLM estão rodando.[/yellow]",
+            title="[bold]Local LLM Mode[/bold]",
+            border_style="green",
+        )
+    )
+
+
 def main() -> None:
-    """Entry point principal do Data Agents."""
-    if len(sys.argv) > 1:
-        prompt = " ".join(sys.argv[1:])
+    """Entry point principal do Data Agents.
+
+    Flags disponíveis:
+      --local   Roteia agentes T2/T3 para Ollama via LiteLLM proxy (custo zero).
+                Requer: ollama + litellm rodando localmente.
+
+    Exemplos:
+      python main.py                        # modo Anthropic (padrão)
+      python main.py --local                # modo local interativo
+      python main.py --local "liste tabelas"  # single-query em modo local
+    """
+    args = sys.argv[1:]
+
+    # Detecta e remove a flag --local antes de processar o prompt
+    use_local = "--local" in args
+    if use_local:
+        args = [a for a in args if a != "--local"]
+        _configure_local_mode()
+
+    if args:
+        prompt = " ".join(args)
         asyncio.run(run_single_query(prompt))
     else:
         asyncio.run(run_interactive())
