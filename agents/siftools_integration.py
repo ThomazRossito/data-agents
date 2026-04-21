@@ -1,24 +1,24 @@
-"""Optional semantic tool pruning via the sift library.
+"""Optional semantic tool pruning via the siftools library.
 
-Gated by env var ``SIFT_PRUNING_ENABLED`` — off by default, no behavior
+Gated by env var ``SIFTOOLS_PRUNING_ENABLED`` — off by default, no behavior
 change until opted in.
 
 When enabled:
-    1. A sift ToolIndex is built once per process from ``.cache/sift/tools.json``.
+    1. A siftools ToolIndex is built once per process from ``.cache/siftools/tools.json``.
     2. On each agent load, the agent's declared MCP tool list is pruned:
        the router ranks ALL indexed tools by similarity to the agent's role
        description, then we intersect with the agent's declared set and keep
-       the top ``SIFT_TOP_K`` MCP tools.
+       the top ``SIFTOOLS_TOP_K`` MCP tools.
     3. Native tools (Read, Bash, Grep, ...) are preserved verbatim.
 
-Safe failure: any exception in sift returns the original tool list
+Safe failure: any exception in siftools returns the original tool list
 unchanged, logged at WARNING level. Production path never fails because
-of sift.
+of siftools.
 
 Rebuilding the artifact:
-    python -m agents.sift_integration rebuild
+    python -m agents.siftools_integration rebuild
 
-This spawns every configured MCP server and writes ``.cache/sift/tools.json``
+This spawns every configured MCP server and writes ``.cache/siftools/tools.json``
 with real server-provided descriptions (falling back to name-derived for
 MCPs without credentials).
 """
@@ -31,10 +31,10 @@ import os
 from pathlib import Path
 from typing import Any
 
-logger = logging.getLogger("data_agents.sift_integration")
+logger = logging.getLogger("data_agents.siftools_integration")
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-CACHE_DIR = PROJECT_ROOT / ".cache" / "sift"
+CACHE_DIR = PROJECT_ROOT / ".cache" / "siftools"
 TOOLS_ARTIFACT = CACHE_DIR / "tools.json"
 
 _index_singleton: Any = None
@@ -43,18 +43,18 @@ _index_failed = False
 
 
 def is_enabled() -> bool:
-    return os.getenv("SIFT_PRUNING_ENABLED", "").lower() in ("1", "true", "yes")
+    return os.getenv("SIFTOOLS_PRUNING_ENABLED", "").lower() in ("1", "true", "yes")
 
 
 def _top_k() -> int:
     try:
-        return max(1, int(os.getenv("SIFT_TOP_K", "15")))
+        return max(1, int(os.getenv("SIFTOOLS_TOP_K", "15")))
     except ValueError:
         return 15
 
 
 def _get_index() -> Any | None:
-    """Load the sift index lazily. Returns None on any failure."""
+    """Load the siftools index lazily. Returns None on any failure."""
     global _index_singleton, _index_failed
     if _index_singleton is not None:
         return _index_singleton
@@ -62,15 +62,15 @@ def _get_index() -> Any | None:
         return None
 
     try:
-        from sift import ToolIndex
+        from siftools import ToolIndex
     except ImportError:
-        logger.warning("sift not installed — pruning disabled. pip install -e <sift-path>")
+        logger.warning("siftools not installed — pruning disabled. pip install siftools")
         _index_failed = True
         return None
 
     if not TOOLS_ARTIFACT.exists():
         logger.warning(
-            "sift tools artifact missing at %s — run: python -m agents.sift_integration rebuild",
+            "siftools tools artifact missing at %s — run: python -m agents.siftools_integration rebuild",
             TOOLS_ARTIFACT,
         )
         _index_failed = True
@@ -79,10 +79,10 @@ def _get_index() -> Any | None:
     try:
         tools = json.loads(TOOLS_ARTIFACT.read_text(encoding="utf-8"))
         _index_singleton = ToolIndex.build(tools)
-        logger.info("sift index built: %d tools from %s", len(tools), TOOLS_ARTIFACT)
+        logger.info("siftools index built: %d tools from %s", len(tools), TOOLS_ARTIFACT)
         return _index_singleton
     except Exception as e:
-        logger.warning("sift index build failed: %s", e)
+        logger.warning("siftools index build failed: %s", e)
         _index_failed = True
         return None
 
@@ -92,10 +92,10 @@ def prune_agent_tools(
     agent_description: str,
     top_k: int | None = None,
 ) -> list[str]:
-    """Return a pruned copy of ``tools`` using sift, or the original on any failure.
+    """Return a pruned copy of ``tools`` using siftools, or the original on any failure.
 
     Only MCP tools (``mcp__*`` prefix) are subject to pruning. Native
-    tools pass through unchanged. If the declared MCP set is already ≤ top_k,
+    tools pass through unchanged. If the declared MCP set is already <= top_k,
     returns the input unchanged (no work to do).
     """
     if not is_enabled():
@@ -116,7 +116,7 @@ def prune_agent_tools(
     try:
         global _router_singleton
         if _router_singleton is None:
-            from sift import RouterConfig, ToolRouter
+            from siftools import RouterConfig, ToolRouter
 
             _router_singleton = ToolRouter(
                 index,
@@ -128,7 +128,7 @@ def prune_agent_tools(
 
         pruned = native + chosen
         logger.info(
-            "sift pruning: %d → %d tools (%d MCP → %d); agent_desc=%r",
+            "siftools pruning: %d -> %d tools (%d MCP -> %d); agent_desc=%r",
             len(tools),
             len(pruned),
             len(mcp_declared),
@@ -137,15 +137,15 @@ def prune_agent_tools(
         )
         return pruned
     except Exception as e:
-        logger.warning("sift pruning error (returning full list): %s", e)
+        logger.warning("siftools pruning error (returning full list): %s", e)
         return tools
 
 
-# ─── Rebuild CLI ──────────────────────────────────────────────────────────────
+# --- Rebuild CLI -------------------------------------------------------------
 #
-# Running ``python -m agents.sift_integration rebuild`` spawns every MCP server
-# and writes tools.json with real descriptions. This keeps the runtime path
-# lightweight (just reads the artifact) and makes rebuilds an explicit,
+# Running ``python -m agents.siftools_integration rebuild`` spawns every MCP
+# server and writes tools.json with real descriptions. This keeps the runtime
+# path lightweight (just reads the artifact) and makes rebuilds an explicit,
 # auditable action.
 
 
@@ -154,8 +154,6 @@ def _rebuild_tools_artifact() -> None:
     import asyncio
     import sys as _sys
 
-    # Reuse the extraction logic already proven in sift/benchmarks/extract_tools_v2.py
-    # but inlined here so data-agents doesn't depend on the sift repo layout.
     from mcp import ClientSession, StdioServerParameters
     from mcp.client.stdio import stdio_client
 
@@ -227,7 +225,6 @@ def _rebuild_tools_artifact() -> None:
     for name in sorted(declared):
         if name in real:
             raw = real[name]
-            # First sentence of cleaned description, prefixed with name-hint
             clean = raw.split("\n\n", 1)[0].strip()
             for marker in ("\nArgs:", "\n    Args:", "\nReturns:"):
                 i = clean.find(marker)
@@ -260,7 +257,7 @@ def _main() -> None:
     import sys
 
     if len(sys.argv) < 2 or sys.argv[1] != "rebuild":
-        print("usage: python -m agents.sift_integration rebuild", file=sys.stderr)
+        print("usage: python -m agents.siftools_integration rebuild", file=sys.stderr)
         sys.exit(2)
 
     try:
