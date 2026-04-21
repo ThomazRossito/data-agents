@@ -35,7 +35,7 @@
 ## Como Funciona
 
 <p align="center">
-  <img src="img/readme/architecture_v1.svg" alt="Arquitetura Data Agents v1" width="100%">
+  <img src="img/readme/architecture_v1.svg" alt="Arquitetura Data Agents" width="100%">
 </p>
 
 Você envia uma mensagem — seja pelo terminal, pela interface web ou com um comando slash. O **Supervisor** lê a solicitação, consulta as bases de conhecimento do projeto, planeja a solução e delega para os agentes especialistas certos. Cada agente usa as ferramentas MCP para operar diretamente no Databricks ou no Microsoft Fabric e devolve o resultado para o Supervisor consolidar.
