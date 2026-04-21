@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from config.settings import settings
+from hooks.checkpoint import _redact_secrets
 
 logger = logging.getLogger("data_agents.session_logger")
 
@@ -54,7 +55,7 @@ def log_session_result(
         log_entry: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "session_type": session_type,
-            "prompt_preview": prompt_preview[:100],
+            "prompt_preview": _redact_secrets(prompt_preview[:100]),
             "total_cost_usd": total_cost_usd,
             "num_turns": num_turns,
             "duration_ms": duration_ms,

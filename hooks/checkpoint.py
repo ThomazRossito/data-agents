@@ -16,6 +16,7 @@ Arquivo de checkpoint: logs/checkpoint.json (sobrescrito a cada save).
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -26,6 +27,19 @@ logger = logging.getLogger("data_agents.checkpoint")
 
 CHECKPOINT_PATH: Path = Path(settings.audit_log_path).parent / "checkpoint.json"
 SESSIONS_DIR: Path = Path(settings.audit_log_path).parent / "sessions"
+
+# Matches `key=value` onde key aparenta conter credencial. Complementa
+# _SECRET_FLAG_PATTERN do audit_hook (que cobre `--flag value` em Bash).
+_PROMPT_SECRET_PATTERN = re.compile(
+    r"\b(password|passwd|pwd|token|api[_-]?key|secret|pat|auth|credential|cred|bearer)"
+    r"\s*[:=]\s*\S+",
+    re.IGNORECASE,
+)
+
+
+def _redact_secrets(text: str) -> str:
+    """Mascara pares `chave=valor`/`chave: valor` que aparentam credenciais em prompts livres."""
+    return _PROMPT_SECRET_PATTERN.sub(lambda m: f"{m.group(1)}=***", text)
 
 
 def save_checkpoint(
@@ -67,7 +81,7 @@ def save_checkpoint(
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "session_id": sid,
         "reason": reason,
-        "last_prompt": last_prompt[:500],
+        "last_prompt": _redact_secrets(last_prompt[:500]),
         "cost_usd": cost_usd,
         "turns": turns,
         "output_files": output_files,

@@ -40,7 +40,11 @@ from mcp_servers.databricks_genie.server_config import (
     DATABRICKS_GENIE_MCP_TOOLS,
     DATABRICKS_GENIE_MCP_READONLY_TOOLS,
 )
-from mcp_servers.fabric.server_config import FABRIC_MCP_TOOLS
+from mcp_servers.fabric.server_config import (
+    FABRIC_MCP_TOOLS,
+    FABRIC_OFFICIAL_MCP_TOOLS,
+    FABRIC_OFFICIAL_MCP_READONLY_TOOLS,
+)
 from mcp_servers.fabric_rti.server_config import (
     FABRIC_RTI_MCP_TOOLS,
     FABRIC_RTI_READONLY_TOOLS,
@@ -99,6 +103,9 @@ MCP_TOOL_SETS: dict[str, list[str]] = {
         for t in FABRIC_MCP_TOOLS
         if any(kw in t for kw in ["list_", "get_", "download_", "sample_"])
     ],
+    # fabric_official: OneLake file ops + API specs via @microsoft/fabric-mcp
+    "fabric_official_all": FABRIC_OFFICIAL_MCP_TOOLS,
+    "fabric_official_readonly": FABRIC_OFFICIAL_MCP_READONLY_TOOLS,
     "fabric_rti_all": FABRIC_RTI_MCP_TOOLS,
     "fabric_rti_readonly": FABRIC_RTI_READONLY_TOOLS,
     "fabric_sql_all": FABRIC_SQL_MCP_TOOLS,
