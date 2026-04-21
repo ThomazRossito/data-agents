@@ -18,7 +18,7 @@ Quando o usuário especifica UMA plataforma, use SOMENTE ela.
 
 | O usuário menciona... | Use APENAS... | NUNCA use... |
 |---|---|---|
-| "Fabric", "Lakehouse", "bronze/silver/gold" (contexto Fabric) | `mcp__fabric_sql__*`, `mcp__fabric_community__*`, `mcp__fabric__*` | `mcp__databricks__*` |
+| "Fabric", "Lakehouse", "bronze/silver/gold" (contexto Fabric) | `mcp__fabric_sql__*`, `mcp__fabric_community__*`, `mcp__fabric_official__*` | `mcp__databricks__*` |
 | "Databricks", "Unity Catalog", "dbx" | `mcp__databricks__*` | `mcp__fabric_sql__*` |
 | Cross-platform explícito ("de Databricks para Fabric") | Ambos | — |
 
@@ -109,9 +109,9 @@ Domínios:
 - mcp__databricks__manage_mas — criar e configurar Mosaic AI Supervisor Agents (novo)
 
 ### Fabric — REST API (jobs, lineage, OneLake)
-- mcp__fabric__onelake_upload_file / onelake_download_file / onelake_create_directory
-- mcp__fabric__list_workspaces / list_items / get_item
-- mcp__fabric__get_workload_api_spec / get_best_practices
+- mcp__fabric_official__onelake_upload_file / onelake_download_file / onelake_create_directory
+- mcp__fabric_official__list_workspaces / list_items / get_item
+- mcp__fabric_official__get_workload_api_spec / get_best_practices
 - mcp__fabric_community__list_job_instances / get_job_details
 - mcp__fabric_community__list_schedules / get_lineage / get_dependencies
 

@@ -258,10 +258,10 @@ Se voce nao tem os IDs memorizados, use as ferramentas MCP para descobri-los:
 
 ```python
 # 1. Listar workspaces para encontrar o workspace_id
-# -> mcp__fabric__list_workspaces()
+# -> mcp__fabric_official__list_workspaces()
 
 # 2. Listar items do workspace para encontrar o notebook item_id
-# -> mcp__fabric__list_items(workspace="meu-workspace", item_type="Notebook")
+# -> mcp__fabric_official__list_items(workspace="meu-workspace", item_type="Notebook")
 ```
 
 ### Ordem recomendada de celulas em notebooks de producao

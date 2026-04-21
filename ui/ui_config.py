@@ -47,9 +47,9 @@ TOOL_LABELS: dict[str, str] = {
     "mcp__databricks_genie__genie_start_conversation": "💬 Iniciando conversa Genie",
     "mcp__databricks_genie__genie_query": "💬 Query no Genie",
     # Microsoft Fabric
-    "mcp__fabric__list_workspaces": "📋 Workspaces do Fabric",
-    "mcp__fabric__get_workspace": "📋 Detalhes do workspace",
-    "mcp__fabric__list_items": "📋 Itens do workspace",
+    "mcp__fabric_official__list_workspaces": "📋 Workspaces do Fabric",
+    "mcp__fabric_official__get_workspace": "📋 Detalhes do workspace",
+    "mcp__fabric_official__list_items": "📋 Itens do workspace",
     "mcp__fabric_community__list_items": "📋 Itens do Fabric workspace",
     "mcp__fabric_community__list_tables": "📋 Tabelas via Community MCP",
     "mcp__fabric_community__get_lineage": "🔗 Linhagem de dados Fabric",

@@ -385,7 +385,7 @@ class TestAuditHookClassification:
 
     def test_write_ops_classified_correctly(self):
         assert _classify_operation("mcp__databricks__execute_sql") == "write"
-        assert _classify_operation("mcp__fabric__onelake_upload_file") == "write"
+        assert _classify_operation("mcp__fabric_official__onelake_upload_file") == "write"
         assert _classify_operation("Write") == "write"
 
     def test_read_ops_classified_correctly(self):

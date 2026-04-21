@@ -129,22 +129,22 @@ FABRIC_MCP_TOOLS = [
 # agentes via aliases `fabric_official_all` / `fabric_official_readonly`.
 FABRIC_OFFICIAL_MCP_TOOLS = [
     # OneLake — Operações de arquivo
-    "mcp__fabric__onelake_download_file",
-    "mcp__fabric__onelake_upload_file",
-    "mcp__fabric__onelake_delete_file",
-    "mcp__fabric__onelake_create_directory",
-    "mcp__fabric__onelake_list_files",
+    "mcp__fabric_official__onelake_download_file",
+    "mcp__fabric_official__onelake_upload_file",
+    "mcp__fabric_official__onelake_delete_file",
+    "mcp__fabric_official__onelake_create_directory",
+    "mcp__fabric_official__onelake_list_files",
     # Workspaces & Items
-    "mcp__fabric__list_workspaces",
-    "mcp__fabric__get_workspace",
-    "mcp__fabric__list_items",
-    "mcp__fabric__get_item",
+    "mcp__fabric_official__list_workspaces",
+    "mcp__fabric_official__get_workspace",
+    "mcp__fabric_official__list_items",
+    "mcp__fabric_official__get_item",
     # API Specs & Best Practices (documentação local)
-    "mcp__fabric__list_workload_types",
-    "mcp__fabric__get_workload_api_spec",
-    "mcp__fabric__get_core_api_spec",
-    "mcp__fabric__get_item_schema",
-    "mcp__fabric__get_best_practices",
+    "mcp__fabric_official__list_workload_types",
+    "mcp__fabric_official__get_workload_api_spec",
+    "mcp__fabric_official__get_core_api_spec",
+    "mcp__fabric_official__get_item_schema",
+    "mcp__fabric_official__get_best_practices",
 ]
 
 # Subset readonly do oficial — exclui as 3 operações destrutivas em OneLake

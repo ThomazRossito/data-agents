@@ -342,7 +342,10 @@ class TestCompressToolOutputListTool:
     @pytest.mark.asyncio
     async def test_works_with_fabric_list_tools(self):
         output = _make_list_items(MAX_LIST_ITEMS + 5)
-        for tool in ("mcp__fabric__list_workspaces", "mcp__fabric__list_lakehouses"):
+        for tool in (
+            "mcp__fabric_official__list_workspaces",
+            "mcp__fabric_official__list_lakehouses",
+        ):
             input_data = _make_hook_input(tool, output)
             result = await compress_tool_output(input_data, tool_use_id="list-3", context=None)
             assert "hookSpecificOutput" in result, f"{tool} não comprimiu"

@@ -147,10 +147,10 @@ TOOL_LABELS: dict[str, str] = {
     "mcp__databricks__start_pipeline": "🚀 Iniciando Pipeline Databricks",
     "mcp__databricks__get_pipeline": "📊 Consultando status do Pipeline",
     # Ferramentas MCP — Fabric
-    "mcp__fabric__list_workspaces": "📋 Listando workspaces do Fabric",
-    "mcp__fabric__list_lakehouses": "📋 Listando Lakehouses",
-    "mcp__fabric__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
-    "mcp__fabric__onelake_list_files": "📂 Listando arquivos no OneLake",
+    "mcp__fabric_official__list_workspaces": "📋 Listando workspaces do Fabric",
+    "mcp__fabric_official__list_lakehouses": "📋 Listando Lakehouses",
+    "mcp__fabric_official__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
+    "mcp__fabric_official__onelake_list_files": "📂 Listando arquivos no OneLake",
     # Ferramentas MCP — Fabric RTI
     "mcp__fabric_rti__kusto_query": "🔍 Executando query KQL",
     "mcp__fabric_rti__kusto_command": "⚙️  Executando comando KQL",

@@ -624,7 +624,7 @@ try:
 except requests.exceptions.HTTPError as e:
     if e.response.status_code == 404:
         print("Notebook nao encontrado. Verifique workspace_id e item_id.")
-        # Use mcp__fabric__list_items para buscar IDs corretos
+        # Use mcp__fabric_official__list_items para buscar IDs corretos
 ```
 
 ### 4.3 Indice fora do range

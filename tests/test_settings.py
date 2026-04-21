@@ -213,16 +213,16 @@ class TestMcpRegistryCompleteness:
         from mcp_servers.fabric.server_config import FABRIC_OFFICIAL_MCP_READONLY_TOOLS
 
         destructive = [
-            "mcp__fabric__onelake_upload_file",
-            "mcp__fabric__onelake_delete_file",
-            "mcp__fabric__onelake_create_directory",
+            "mcp__fabric_official__onelake_upload_file",
+            "mcp__fabric_official__onelake_delete_file",
+            "mcp__fabric_official__onelake_create_directory",
         ]
         for tool in destructive:
             assert tool not in FABRIC_OFFICIAL_MCP_READONLY_TOOLS, (
                 f"{tool} é destrutivo e não deveria estar no readonly set"
             )
         # E deve conter pelo menos o download (leitura) para o alias ter utilidade
-        assert "mcp__fabric__onelake_download_file" in FABRIC_OFFICIAL_MCP_READONLY_TOOLS
+        assert "mcp__fabric_official__onelake_download_file" in FABRIC_OFFICIAL_MCP_READONLY_TOOLS
 
     def test_fabric_official_aliases_registered_in_loader(self):
         """agents/loader.py deve expor os aliases fabric_official_all/readonly."""

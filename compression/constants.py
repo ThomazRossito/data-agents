@@ -69,10 +69,10 @@ LIST_TOOLS: frozenset[str] = frozenset(
         "mcp__databricks__list_volume_files",
         "mcp__databricks__get_query_history",
         # Fabric
-        "mcp__fabric__list_workspaces",
-        "mcp__fabric__list_items",
-        "mcp__fabric__list_lakehouses",
-        "mcp__fabric__onelake_list_files",
+        "mcp__fabric_official__list_workspaces",
+        "mcp__fabric_official__list_items",
+        "mcp__fabric_official__list_lakehouses",
+        "mcp__fabric_official__onelake_list_files",
         # Fabric RTI
         "mcp__fabric_rti__kusto_list_databases",
         "mcp__fabric_rti__kusto_list_tables",

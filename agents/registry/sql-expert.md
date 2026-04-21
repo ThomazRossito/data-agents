@@ -25,7 +25,7 @@ Atua como Engenheiro de Dados e Analista de Dados virtual.
 
 | O usuário menciona... | Use APENAS... | NUNCA use... |
 |---|---|---|
-| "Fabric", "Lakehouse", "TARN_LH_DEV", "bronze/silver/gold" (contexto Fabric) | `mcp__fabric_sql__*`, `mcp__fabric_community__*`, `mcp__fabric__*` | `mcp__databricks__*` |
+| "Fabric", "Lakehouse", "TARN_LH_DEV", "bronze/silver/gold" (contexto Fabric) | `mcp__fabric_sql__*`, `mcp__fabric_community__*`, `mcp__fabric_official__*` | `mcp__databricks__*` |
 | "Databricks", "Unity Catalog", "dbx", "hive_metastore" | `mcp__databricks__*` | `mcp__fabric_sql__*` |
 | "RTI", "Eventhouse", "KQL", "Kusto" | `mcp__fabric_rti__*` | outros |
 
@@ -108,8 +108,8 @@ Domínios:
 - mcp__databricks__get_query_history
 
 ### Fabric — REST API (somente schema dbo)
-- mcp__fabric__list_workspaces / list_items / get_item
-- mcp__fabric__onelake_download_file
+- mcp__fabric_official__list_workspaces / list_items / get_item
+- mcp__fabric_official__onelake_download_file
 - mcp__fabric_community__list_shortcuts / get_lineage
 
 ### Fabric SQL Analytics Endpoint (schemas bronze/silver/gold — PREFERENCIAL para T-SQL)

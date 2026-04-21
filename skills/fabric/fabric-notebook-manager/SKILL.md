@@ -514,7 +514,7 @@ replace_notebook_content(
 | Issue | Solution |
 |-------|----------|
 | **LRO retorna status "Failed"** | Verifique se o JSON .ipynb esta valido. Erros comuns: `source` como string ao inves de lista, `cell_type` invalido. Veja tratamento em [notebook-operations.md](notebook-operations.md). |
-| **Notebook nao encontrado (404)** | Confirme `workspace_id` e `item_id`. Use `mcp__fabric__list_items` para buscar o ID correto do notebook. |
+| **Notebook nao encontrado (404)** | Confirme `workspace_id` e `item_id`. Use `mcp__fabric_official__list_items` para buscar o ID correto do notebook. |
 | **Indice fora do range** | Use `list_cells` antes de `update_cell` ou `delete_cell` para confirmar o numero de celulas existentes. |
 | **Conflito de edicao concorrente (409)** | Outro usuario ou processo editou o notebook entre `getDefinition` e `updateDefinition`. Re-execute a operacao (retry automatico com backoff). |
 | **Token expirado (401)** | Renove o Bearer token via Azure Identity / MSAL. Nunca hardcode tokens -- use Azure Key Vault ou Managed Identity. |

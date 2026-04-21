@@ -73,7 +73,7 @@ Domínios:
 - mcp__databricks__execute_sql (para queries em System Tables de auditoria)
 
 ### Fabric (Leitura e Metadados)
-- mcp__fabric__list_workspaces / list_items / get_item
+- mcp__fabric_official__list_workspaces / list_items / get_item
 - mcp__fabric_community__list_tables / get_table_schema
 - mcp__fabric_community__list_shortcuts
 - mcp__fabric_community__get_lineage (linhagem de dados no Fabric)
