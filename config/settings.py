@@ -409,6 +409,16 @@ class Settings(BaseSettings):
                 },
                 "required": ["AZURE_TENANT_ID", "FABRIC_WORKSPACE_ID"],
             },
+            "fabric_official": {
+                # MCP oficial Microsoft — usa cache `az login` local em runtime,
+                # não recebe env vars. Gating aqui é apenas indicativo de "setup Fabric
+                # existe"; a autenticação real acontece na primeira tool call.
+                "fields": {
+                    "AZURE_TENANT_ID": self.azure_tenant_id,
+                    "FABRIC_WORKSPACE_ID": self.fabric_workspace_id,
+                },
+                "required": ["AZURE_TENANT_ID", "FABRIC_WORKSPACE_ID"],
+            },
             "fabric_sql": {
                 # SQL Analytics Endpoint — resolve limitação do schema dbo da REST API
                 # Considera configurado se tiver registry OU variáveis legadas

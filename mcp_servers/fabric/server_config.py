@@ -1,20 +1,26 @@
 """
 Configuração dos MCP Servers para Microsoft Fabric.
 
-Servidor ativo por padrão:
-  Fabric Community MCP (Python) — REST API wrapper:
-  https://github.com/Augustab/microsoft_fabric_mcp
-  Capabilities: lakehouses, schemas Delta, jobs, schedules, lineage,
-  compute usage, dependências entre items.
+Servidores registrados aqui:
 
-Servidor opcional (documentação local, sem conexão ao tenant):
-  Fabric MCP Server oficial (Microsoft) — local-first:
-  https://github.com/microsoft/mcp/tree/main/servers/Fabric.Mcp.Server
-  Não requer credenciais. Fornece: OpenAPI specs, schemas de items, best practices.
-  Para ativar: adicione manualmente ao .mcp.json após build do binário.
+1. Fabric Community MCP (Python) — REST API wrapper
+   https://github.com/Augustab/microsoft_fabric_mcp
+   Capabilities: lakehouses, schemas Delta, jobs, schedules, lineage,
+   compute usage, dependências entre items. 28 tools (metadata-heavy).
+
+2. Fabric Official MCP (Microsoft, Node.js) — OneLake file ops + API specs
+   https://github.com/microsoft/mcp  (pacote npm `@microsoft/fabric-mcp`)
+   Capabilities exclusivas: `onelake_upload_file`, `onelake_download_file`,
+   `onelake_list_files`, `onelake_delete_file`, `onelake_create_directory` —
+   não existem no community MCP. Autenticação via cache `az login` ou
+   credencial Azure default chain; não recebe env vars do `.env`.
+   14 tools.
 
 Pré-requisitos:
   pip install -e ".[dev]"  (inclui microsoft-fabric-mcp via pyproject.toml)
+  npm / npx disponível no PATH (para o official via `npx @microsoft/fabric-mcp`)
+  `az login` ativo no host para acesso ao OneLake
+
   Credenciais no .env: AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET,
                        FABRIC_WORKSPACE_ID, FABRIC_API_BASE_URL
 
@@ -46,6 +52,29 @@ def get_fabric_mcp_config() -> dict:
                 "FABRIC_API_BASE_URL": settings.fabric_api_base_url,
             },
         },
+    }
+
+
+def get_fabric_official_mcp_config() -> dict:
+    """Retorna a configuração MCP para o servidor oficial Microsoft Fabric (OneLake).
+
+    Usa `npx @microsoft/fabric-mcp@latest` em modo `all`, que habilita OneLake
+    file ops + API specs + best practices. Autenticação via cache `az login` —
+    não recebemos env vars para evitar conflito com a DefaultAzureCredential chain.
+    """
+    return {
+        "fabric_official": {
+            "type": "stdio",
+            "command": "npx",
+            "args": [
+                "-y",
+                "@microsoft/fabric-mcp@latest",
+                "server",
+                "start",
+                "--mode",
+                "all",
+            ],
+        }
     }
 
 
@@ -95,10 +124,9 @@ FABRIC_MCP_TOOLS = [
     "mcp__fabric_community__clear_name_resolution_cache",
 ]
 
-# Tools do servidor oficial Microsoft (opcional — local-first, sem conexão ao tenant)
-# Ref: https://github.com/microsoft/mcp/tree/main/servers/Fabric.Mcp.Server
-# Não está ativo por padrão. Para ativar, adicione ao .mcp.json após build/npx.
-# Listado aqui como referência; não é injetado nos agentes via aliases padrão.
+# Tools do servidor oficial Microsoft (@microsoft/fabric-mcp, modo `all`).
+# Registrado como server `fabric_official` em ALL_MCP_CONFIGS; injeção nos
+# agentes via aliases `fabric_official_all` / `fabric_official_readonly`.
 FABRIC_OFFICIAL_MCP_TOOLS = [
     # OneLake — Operações de arquivo
     "mcp__fabric__onelake_download_file",
@@ -117,6 +145,19 @@ FABRIC_OFFICIAL_MCP_TOOLS = [
     "mcp__fabric__get_core_api_spec",
     "mcp__fabric__get_item_schema",
     "mcp__fabric__get_best_practices",
+]
+
+# Subset readonly do oficial — exclui as 3 operações destrutivas em OneLake
+# (upload_file, delete_file, create_directory). Usado pelo alias
+# `fabric_official_readonly` em agents/loader.py para agentes com escopo
+# de leitura (sql-expert, governance-auditor, data-quality-steward).
+_DESTRUCTIVE_OFFICIAL_SUFFIXES = (
+    "onelake_upload_file",
+    "onelake_delete_file",
+    "onelake_create_directory",
+)
+FABRIC_OFFICIAL_MCP_READONLY_TOOLS = [
+    t for t in FABRIC_OFFICIAL_MCP_TOOLS if not t.endswith(_DESTRUCTIVE_OFFICIAL_SUFFIXES)
 ]
 
 # Alias legado — preservado para imports existentes. Aponta para o mesmo set ativo.

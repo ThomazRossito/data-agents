@@ -144,3 +144,94 @@ class TestPlatformCredentials:
         assert "databricks" in available
         assert "fabric" not in available
         assert "fabric_rti" not in available
+
+    def test_fabric_official_ready_with_azure_credentials(self):
+        """fabric_official pronto quando tenant_id e workspace_id configurados."""
+        s = Settings(
+            azure_tenant_id="tenant-123",
+            fabric_workspace_id="ws-456",
+        )
+        status = s.validate_platform_credentials()
+        assert status["fabric_official"]["ready"]
+
+    def test_fabric_official_not_ready_without_azure(self):
+        """fabric_official not ready quando credenciais Azure ausentes."""
+        s = Settings(azure_tenant_id="", fabric_workspace_id="")
+        status = s.validate_platform_credentials()
+        assert not status["fabric_official"]["ready"]
+
+
+class TestMcpRegistryCompleteness:
+    """Guards contra regressões de migração parcial de MCPs para factory Python.
+
+    Motivação: commit 0a446c8 migrou fabric_community para ALL_MCP_CONFIGS mas
+    silenciosamente deixou fabric_official para trás (zero env no .mcp.json
+    depois de esvaziar o arquivo). Resultado: server sumiu, tools OneLake
+    ficaram ghost por semanas. Estes testes quebram o CI se alguma migração
+    parcial futura tentar remover um server do registry Python.
+    """
+
+    def test_all_mcp_configs_contains_expected_servers(self):
+        """ALL_MCP_CONFIGS deve conter todos os MCP servers esperados."""
+        from config.mcp_servers import ALL_MCP_CONFIGS
+
+        expected = {
+            "databricks",
+            "databricks_genie",
+            "fabric",
+            "fabric_official",
+            "fabric_sql",
+            "fabric_rti",
+            "fabric_semantic",
+            "context7",
+            "tavily",
+            "github",
+            "firecrawl",
+            "postgres",
+            "memory_mcp",
+            "migration_source",
+        }
+        missing = expected - set(ALL_MCP_CONFIGS.keys())
+        assert not missing, f"MCP servers ausentes do registry: {missing}"
+
+    def test_fabric_official_config_has_correct_shape(self):
+        """fabric_official deve usar npx com o pacote oficial Microsoft."""
+        from mcp_servers.fabric.server_config import get_fabric_official_mcp_config
+
+        config = get_fabric_official_mcp_config()
+        assert "fabric_official" in config
+
+        server = config["fabric_official"]
+        assert server["type"] == "stdio"
+        assert server["command"] == "npx"
+        args = server["args"]
+        assert "@microsoft/fabric-mcp@latest" in args
+        assert "--mode" in args and "all" in args
+
+    def test_fabric_official_readonly_excludes_destructive_tools(self):
+        """Readonly alias deve excluir upload/delete/create_directory em OneLake."""
+        from mcp_servers.fabric.server_config import FABRIC_OFFICIAL_MCP_READONLY_TOOLS
+
+        destructive = [
+            "mcp__fabric__onelake_upload_file",
+            "mcp__fabric__onelake_delete_file",
+            "mcp__fabric__onelake_create_directory",
+        ]
+        for tool in destructive:
+            assert tool not in FABRIC_OFFICIAL_MCP_READONLY_TOOLS, (
+                f"{tool} é destrutivo e não deveria estar no readonly set"
+            )
+        # E deve conter pelo menos o download (leitura) para o alias ter utilidade
+        assert "mcp__fabric__onelake_download_file" in FABRIC_OFFICIAL_MCP_READONLY_TOOLS
+
+    def test_fabric_official_aliases_registered_in_loader(self):
+        """agents/loader.py deve expor os aliases fabric_official_all/readonly."""
+        from agents.loader import MCP_TOOL_SETS
+
+        assert "fabric_official_all" in MCP_TOOL_SETS
+        assert "fabric_official_readonly" in MCP_TOOL_SETS
+        # Readonly deve ser subset estrito do all
+        all_tools = set(MCP_TOOL_SETS["fabric_official_all"])
+        ro_tools = set(MCP_TOOL_SETS["fabric_official_readonly"])
+        assert ro_tools.issubset(all_tools)
+        assert ro_tools != all_tools, "readonly deve ser estritamente menor que all"

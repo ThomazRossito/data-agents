@@ -21,7 +21,10 @@ import logging
 from mcp_servers.context7.server_config import get_context7_mcp_config
 from mcp_servers.databricks.server_config import get_databricks_mcp_config
 from mcp_servers.databricks_genie.server_config import get_databricks_genie_mcp_config
-from mcp_servers.fabric.server_config import get_fabric_mcp_config
+from mcp_servers.fabric.server_config import (
+    get_fabric_mcp_config,
+    get_fabric_official_mcp_config,
+)
 from mcp_servers.fabric_rti.server_config import get_fabric_rti_mcp_config
 from mcp_servers.fabric_semantic.server_config import get_fabric_semantic_mcp_config
 from mcp_servers.fabric_sql.server_config import get_fabric_sql_mcp_config
@@ -44,6 +47,11 @@ ALL_MCP_CONFIGS: dict = {
     #         + DATABRICKS_GENIE_SPACES (JSON registry com nomes amigáveis para space_ids)
     "databricks_genie": get_databricks_genie_mcp_config,
     "fabric": get_fabric_mcp_config,
+    # fabric_official: MCP oficial Microsoft (npx @microsoft/fabric-mcp) —
+    # OneLake file ops (upload/download/list/delete) + API specs.
+    # Autenticação via cache `az login` local (sem env vars), mesmo tenant do
+    # fabric_community. Restaura capacidade OneLake que foi perdida em 0a446c8.
+    "fabric_official": get_fabric_official_mcp_config,
     # fabric_sql: MCP customizado que conecta ao SQL Analytics Endpoint via TDS (pyodbc + AAD)
     # Resolve limitação da REST API que só enxerga o schema dbo.
     # Requer: FABRIC_SQL_ENDPOINT + FABRIC_LAKEHOUSE_NAME no .env
