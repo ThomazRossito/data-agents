@@ -124,15 +124,43 @@ def prune_agent_tools(
             )
         result = _router_singleton.route(agent_description)
         declared_set = set(mcp_declared)
-        chosen = [t for t in result.tools if t in declared_set][:k]
+        ranked_declared = [t for t in result.tools if t in declared_set]
+
+        # Piso por servidor MCP: garante que nenhum servidor declarado pelo
+        # agente desapareça inteiramente via pruning global. Sem isso, um agente
+        # multi-plataforma (ex: sql-expert com Databricks + Fabric) pode perder
+        # todas as tools de uma plataforma quando as outras dominam o ranking.
+        min_per_server = max(1, int(os.getenv("SIFTOOLS_MIN_PER_SERVER", "2")))
+        by_server: dict[str, list[str]] = {}
+        for tool in ranked_declared:
+            parts = tool.split("__", 2)
+            server = parts[1] if len(parts) >= 2 else ""
+            by_server.setdefault(server, []).append(tool)
+
+        chosen: list[str] = []
+        for server_tools in by_server.values():
+            chosen.extend(server_tools[:min_per_server])
+
+        # Preenche o restante do orçamento k com o ranking global, sem duplicar.
+        # Se o piso por servidor já estourou k, mantemos o piso (k vira referência,
+        # não teto rígido) para preservar a garantia de cobertura multi-servidor.
+        seen = set(chosen)
+        for tool in ranked_declared:
+            if len(chosen) >= k:
+                break
+            if tool not in seen:
+                chosen.append(tool)
+                seen.add(tool)
 
         pruned = native + chosen
         logger.info(
-            "siftools pruning: %d -> %d tools (%d MCP -> %d); agent_desc=%r",
+            "siftools pruning: %d -> %d tools (%d MCP -> %d, %d servers w/ floor=%d); agent_desc=%r",
             len(tools),
             len(pruned),
             len(mcp_declared),
             len(chosen),
+            len(by_server),
+            min_per_server,
             agent_description[:60],
         )
         return pruned

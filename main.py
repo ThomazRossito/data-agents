@@ -11,6 +11,19 @@ Uso:
   python main.py "Analise a tabela X"     # single-query
 """
 
+# Carrega .env no os.environ antes de qualquer import que leia envs via
+# os.getenv(). A UI Chainlit já faz isso automaticamente ao ser importada; este
+# bloco dá paridade ao CLI — sem ele flags como SIFTOOLS_PRUNING_ENABLED ficam
+# invisíveis para módulos que não passam pelo Pydantic Settings.
+from pathlib import Path as _Path  # noqa: E402
+
+try:
+    from dotenv import load_dotenv as _load_dotenv
+
+    _load_dotenv(_Path(__file__).parent / ".env")
+except ImportError:
+    pass
+
 import asyncio
 import atexit
 import hashlib
