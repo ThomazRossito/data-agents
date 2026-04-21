@@ -13,53 +13,52 @@
 
   <!-- Background -->
   <rect width="1200" height="240" fill="url(#bg)" rx="12"/>
-
-  <!-- Accent bar top -->
   <rect x="0" y="0" width="1200" height="4" fill="url(#accent)" rx="2"/>
 
   <!-- Left section: title -->
   <text x="60" y="90" font-size="48" font-weight="700" fill="#F0F6FC" letter-spacing="-1">Data Agents</text>
-  <text x="62" y="126" font-size="15" fill="#8B949E" letter-spacing="0.5">Sistema Multi-Agentes para Engenharia de Dados</text>
+  <text x="62" y="126" font-size="15" fill="#8B949E" letter-spacing="0.5">Sistema Multi-Agente para Engenharia de Dados</text>
   <text x="62" y="148" font-size="15" fill="#8B949E" letter-spacing="0.5">Databricks · Microsoft Fabric · Claude SDK</text>
 
   <!-- Divider -->
   <line x1="480" y1="50" x2="480" y2="190" stroke="#30363D" stroke-width="1"/>
 
-  <!-- Right section: platform badges -->
-  <!-- Databricks -->
-  <rect x="530" y="52" width="180" height="44" rx="8" fill="#1C1C2E" stroke="#FF3621" stroke-width="1.5"/>
-  <text x="620" y="79" font-size="14" font-weight="600" fill="#FF3621" text-anchor="middle">Databricks MCP</text>
+  <!-- Platform badges: 3 badges × w=200, gap=40, starting x=500 -->
+  <rect x="500" y="52" width="200" height="44" rx="8" fill="#1C1C2E" stroke="#FF3621" stroke-width="1.5"/>
+  <text x="600" y="79" font-size="14" font-weight="600" fill="#FF3621" text-anchor="middle">Databricks MCP</text>
 
-  <!-- Fabric -->
-  <rect x="730" y="52" width="180" height="44" rx="8" fill="#1C1C2E" stroke="#0078D4" stroke-width="1.5"/>
-  <text x="820" y="79" font-size="14" font-weight="600" fill="#0078D4" text-anchor="middle">Microsoft Fabric MCP</text>
+  <rect x="740" y="52" width="200" height="44" rx="8" fill="#1C1C2E" stroke="#0078D4" stroke-width="1.5"/>
+  <text x="840" y="79" font-size="14" font-weight="600" fill="#0078D4" text-anchor="middle">Microsoft Fabric MCP</text>
 
-  <!-- Anthropic -->
-  <rect x="930" y="52" width="200" height="44" rx="8" fill="#1C1C2E" stroke="#D97757" stroke-width="1.5"/>
-  <text x="1030" y="79" font-size="14" font-weight="600" fill="#D97757" text-anchor="middle">Anthropic Claude SDK</text>
+  <rect x="980" y="52" width="200" height="44" rx="8" fill="#1C1C2E" stroke="#D97757" stroke-width="1.5"/>
+  <text x="1080" y="79" font-size="14" font-weight="600" fill="#D97757" text-anchor="middle">Anthropic Claude SDK</text>
 
-  <!-- Stats row -->
-  <rect x="530" y="114" width="100" height="44" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <text x="580" y="133" font-size="11" fill="#8B949E" text-anchor="middle">Agentes</text>
-  <text x="580" y="152" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">10</text>
+  <!-- Stats row: 6 boxes × w=107, gap=8, starting x=500 -->
+  <rect x="500" y="110" width="107" height="42" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <text x="553" y="128" font-size="11" fill="#8B949E" text-anchor="middle">Agentes</text>
+  <text x="553" y="147" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">13</text>
 
-  <rect x="642" y="114" width="100" height="44" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <text x="692" y="133" font-size="11" fill="#8B949E" text-anchor="middle">MCPs</text>
-  <text x="692" y="152" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">12</text>
+  <rect x="615" y="110" width="107" height="42" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <text x="668" y="128" font-size="11" fill="#8B949E" text-anchor="middle">MCPs</text>
+  <text x="668" y="147" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">15</text>
 
-  <rect x="754" y="114" width="100" height="44" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <text x="804" y="133" font-size="11" fill="#8B949E" text-anchor="middle">Plataformas</text>
-  <text x="804" y="152" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">2</text>
+  <rect x="730" y="110" width="107" height="42" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <text x="783" y="128" font-size="11" fill="#8B949E" text-anchor="middle">Comandos</text>
+  <text x="783" y="147" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">25</text>
 
-  <rect x="866" y="114" width="100" height="44" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <text x="916" y="133" font-size="11" fill="#8B949E" text-anchor="middle">Commands</text>
-  <text x="916" y="152" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">16</text>
+  <rect x="845" y="110" width="107" height="42" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <text x="898" y="128" font-size="11" fill="#8B949E" text-anchor="middle">Hooks</text>
+  <text x="898" y="147" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">11</text>
 
-  <rect x="978" y="114" width="152" height="44" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
-  <text x="1054" y="133" font-size="11" fill="#8B949E" text-anchor="middle">Python</text>
-  <text x="1054" y="152" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">3.12+</text>
+  <rect x="960" y="110" width="107" height="42" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <text x="1013" y="128" font-size="11" fill="#8B949E" text-anchor="middle">Workflows</text>
+  <text x="1013" y="147" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">5</text>
 
-  <!-- Version badge -->
+  <rect x="1075" y="110" width="105" height="42" rx="8" fill="#161B22" stroke="#30363D" stroke-width="1"/>
+  <text x="1127" y="128" font-size="11" fill="#8B949E" text-anchor="middle">Python</text>
+  <text x="1127" y="147" font-size="20" font-weight="700" fill="#F0F6FC" text-anchor="middle">3.12+</text>
+
+  <!-- Version badges (bottom left) -->
   <rect x="60" y="174" width="80" height="24" rx="12" fill="#238636"/>
   <text x="100" y="191" font-size="12" font-weight="600" fill="#FFFFFF" text-anchor="middle">v1.0.0</text>
 
