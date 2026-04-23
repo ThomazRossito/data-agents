@@ -1,26 +1,31 @@
 ---
 name: databricks-zerobus-ingest
 description: "Build Zerobus Ingest clients for near real-time data ingestion into Databricks Delta tables via gRPC. Use when creating producers that write directly to Unity Catalog tables without a message bus, working with the Zerobus Ingest SDK in Python/Java/Go/TypeScript/Rust, generating Protobuf schemas from UC tables, or implementing stream-based ingestion with ACK handling and retry logic."
+updated_at: 2026-04-23
+source: web_search
 ---
 
 # Zerobus Ingest
 
 Build clients that ingest data directly into Databricks Delta tables via the Zerobus gRPC API.
 
-**Status:** GA (Generally Available since February 2026; billed under Lakeflow Jobs Serverless SKU)
+**Status:** GA (Generally Available since February 2026; billed under **Jobs Serverless** SKU on AWS / **Automated Serverless** SKU on Azure)
+
+> ⚠️ **Nota de billing por cloud (confirmado Abr/2026):** No AWS o SKU é `"Jobs Serverless"`; no Azure o SKU é `"Automated Serverless"`. A interface OpenTelemetry (OTLP), em Beta, ainda não é cobrada em nenhuma cloud.
 
 **Documentation:**
 - [Zerobus Overview](https://docs.databricks.com/aws/en/ingestion/zerobus-overview)
 - [Zerobus Ingest SDK](https://docs.databricks.com/aws/en/ingestion/zerobus-ingest)
 - [Zerobus Limits](https://docs.databricks.com/aws/en/ingestion/zerobus-limits)
+- [Zerobus OTLP (Beta)](https://docs.databricks.com/aws/en/ingestion/opentelemetry/configure)
 
 ---
 
 ## What Is Zerobus Ingest?
 
-Zerobus Ingest is a serverless connector that enables direct, record-by-record data ingestion into Delta tables via gRPC. It eliminates the need for message bus infrastructure (Kafka, Kinesis, Event Hub) for lakehouse-bound data. The service validates schemas, materializes data to target tables, and sends durability acknowledgments back to the client.
+Zerobus Ingest is a serverless connector that enables direct, record-by-record data ingestion into Delta tables. It supports three interfaces: **gRPC** (via SDKs, máximo throughput), **REST** (Beta, ideal para frotas de dispositivos "chatty" de baixo volume), e **OpenTelemetry / OTLP** (Beta, para pipelines OTel já existentes sem bibliotecas customizadas). Elimina a necessidade de message bus (Kafka, Kinesis, Event Hub) para dados com destino único ao lakehouse. O serviço valida schemas, materializa dados nas tabelas-alvo e devolve ACKs de durabilidade ao cliente.
 
-**Core pattern:** SDK init -> create stream -> ingest records -> handle ACKs -> flush -> close
+**Core pattern (gRPC/SDK):** SDK init -> create stream -> ingest records -> handle ACKs -> flush -> close
 
 ---
 
@@ -30,12 +35,15 @@ Zerobus Ingest is a serverless connector that enables direct, record-by-record d
 |----------|----------|---------------|-----------|
 | Quick prototype / test harness | Python | JSON | [2-python-client.md](2-python-client.md) |
 | Production Python producer | Python | Protobuf | [2-python-client.md](2-python-client.md) + [4-protobuf-schema.md](4-protobuf-schema.md) |
-| JVM microservice | Java | Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
-| Go service | Go | JSON or Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
+| JVM microservice *(Public Preview)* | Java | Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
+| Go service (Go 1.21+) | Go | JSON or Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
 | Node.js / TypeScript app | TypeScript | JSON | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
 | High-performance system service | Rust | JSON or Protobuf | [3-multilanguage-clients.md](3-multilanguage-clients.md) |
 | Schema generation from UC table | Any | Protobuf | [4-protobuf-schema.md](4-protobuf-schema.md) |
 | Retry / reconnection logic | Any | Any | [5-operations-and-limits.md](5-operations-and-limits.md) |
+| OTel observability / telemetry (traces, logs, metrics) | Any OTLP collector | OTLP (Beta) | [Zerobus OTLP docs](https://docs.databricks.com/aws/en/ingestion/opentelemetry/configure) |
+
+> ⚠️ **Java SDK em Public Preview:** O SDK Java ainda não é GA. Minor versions podem conter breaking changes. Use com cautela em produção e monitore o CHANGELOG.
 
 If not specified, default to python.
 
@@ -43,42 +51,51 @@ If not specified, default to python.
 
 ## Common Libraries
 
-These libraries are essential for ZeroBus data ingestion:
+Estas bibliotecas são essenciais para ingestão via Zerobus:
 
-- **databricks-sdk>=0.85.0**: Databricks workspace client for authentication and metadata
-- **databricks-zerobus-ingest-sdk>=1.0.0**: ZeroBus SDK for high-performance streaming ingestion
-- **grpcio-tools**
-These are typically NOT pre-installed on Databricks. Install them using `execute_code` tool:
-- `code`: "%pip install databricks-sdk>=VERSION databricks-zerobus-ingest-sdk>=VERSION"
+- **databricks-sdk>=0.85.0**: Databricks workspace client para autenticação e metadados
+- **databricks-zerobus-ingest-sdk>=1.1.0**: SDK Python para ingestão de alta performance (PyO3/Rust-backed; requer Python 3.9+)
+  - A versão 0.3.0 foi **yanked** do PyPI por conter breaking changes. Sempre use `>=1.1.0`.
+- **grpcio-tools** *(apenas se precisar compilar arquivos `.proto` customizados)*: não é necessário para operar o SDK Python padrão.
 
-Save the returned `cluster_id` and `context_id` for subsequent calls.
+Tipicamente NÃO estão pré-instaladas no Databricks. Instale com `execute_code`:
 
-Smart Installation Approach
+```python
+# Instalar SDK principal (obrigatório)
+%pip install databricks-sdk>=0.85.0 databricks-zerobus-ingest-sdk>=1.1.0
 
-# Check protobuf version first, then install compatible
-grpcio-tools
+# Instalar grpcio-tools apenas se for compilar .proto customizados
+# Verifique a versão do protobuf em runtime antes de instalar:
 import google.protobuf
 runtime_version = google.protobuf.__version__
 print(f"Runtime protobuf version: {runtime_version}")
 
-if runtime_version.startswith("5.26") or
-runtime_version.startswith("5.29"):
+if runtime_version.startswith("5.26") or runtime_version.startswith("5.29"):
     %pip install grpcio-tools==1.62.0
 else:
-    %pip install grpcio-tools  # Use latest for newer protobuf
-versions
+    %pip install grpcio-tools  # Use latest para versões de protobuf mais novas
+```
+
+> ⚠️ **Breaking change SDK Python (yanked v0.3.0 → v1.0.0):** A versão `0.3.0` foi removida do PyPI por breaking changes. O pin mínimo correto é `>=1.1.0` (lançada Mar 2026, estável).
+
+Salve o `cluster_id` e `context_id` retornados para chamadas subsequentes.
+
 ---
 
 ## Prerequisites
 
-You must never execute the skill without confirming the below objects are valid:
+Nunca execute a skill sem confirmar que os objetos abaixo são válidos:
 
-1. **A Unity Catalog managed Delta table** to ingest into
-2. **A service principal id and secret** with `MODIFY` and `SELECT` on the target table
-3. **The Zerobus server endpoint** for your workspace region
-4. **The Zerobus Ingest SDK** installed for your target language
+1. **Uma Delta table gerenciada no Unity Catalog** como destino da ingestão
+2. **Um service principal (client_id + secret)** com `MODIFY` e `SELECT` na tabela-alvo
+3. **O endpoint Zerobus** do workspace (formato varia por cloud — veja abaixo)
+4. **O Zerobus Ingest SDK** instalado para seu language-alvo
 
-See [1-setup-and-authentication.md](1-setup-and-authentication.md) for complete setup instructions.
+**Formatos de endpoint por cloud:**
+- AWS: `https://<id>.zerobus.<região>.cloud.databricks.com`
+- Azure: `https://<id>.zerobus.<região>.azuredatabricks.net`
+
+See [1-setup-and-authentication.md](1-setup-and-authentication.md) para instruções completas.
 
 ---
 
@@ -86,8 +103,13 @@ See [1-setup-and-authentication.md](1-setup-and-authentication.md) for complete 
 
 ```python
 import json
+import logging
 from zerobus.sdk.sync import ZerobusSdk
 from zerobus.sdk.shared import RecordType, StreamConfigurationOptions, TableProperties
+
+# Logging recomendado para debug de conexão e ACKs
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 
 sdk = ZerobusSdk(server_endpoint, workspace_url)
 options = StreamConfigurationOptions(record_type=RecordType.JSON)
@@ -102,17 +124,19 @@ finally:
     stream.close()
 ```
 
+> O SDK Python usa PyO3 bindings para o Rust SDK, entregando até 40× maior throughput que Python puro. Suporta sync (`zerobus.sdk.sync`) e async (`zerobus.sdk.aio`), e 3 métodos de ingestão: **future-based**, **offset-based** e **fire-and-forget**.
+
 ---
 
 ## Detailed guides
 
 | Topic | File | When to Read |
 |-------|------|--------------|
-| Setup & Auth | [1-setup-and-authentication.md](1-setup-and-authentication.md) | Endpoint formats, service principals, SDK install |
-| Python Client | [2-python-client.md](2-python-client.md) | Sync/async Python, JSON and Protobuf flows, reusable client class |
-| Multi-Language | [3-multilanguage-clients.md](3-multilanguage-clients.md) | Java, Go, TypeScript, Rust SDK examples |
-| Protobuf Schema | [4-protobuf-schema.md](4-protobuf-schema.md) | Generate .proto from UC table, compile, type mappings |
-| Operations & Limits | [5-operations-and-limits.md](5-operations-and-limits.md) | ACK handling, retries, reconnection, throughput limits, constraints |
+| Setup & Auth | [1-setup-and-authentication.md](1-setup-and-authentication.md) | Endpoint formats por cloud, service principals, SDK install |
+| Python Client | [2-python-client.md](2-python-client.md) | Sync/async Python, JSON e Protobuf, 3 métodos de ingestão, reusable client class |
+| Multi-Language | [3-multilanguage-clients.md](3-multilanguage-clients.md) | Java (Public Preview), Go (1.21+), TypeScript, Rust |
+| Protobuf Schema | [4-protobuf-schema.md](4-protobuf-schema.md) | Gerar .proto a partir de UC table, compilar, type mappings |
+| Operations & Limits | [5-operations-and-limits.md](5-operations-and-limits.md) | ACK handling, retries, reconnection, throughput limits, quotas |
 
 ---
 
@@ -121,19 +145,21 @@ You must always follow all the steps in the Workflow
 ## Workflow
 0. **Display the plan of your execution**
 1. **Determinate the type of client**
-2. **Get schema** Always use 4-protobuf-schema.md. Execute using the `execute_code` MCP tool
-3. **Write Python code to a local file follow the instructions in the relevant guide to ingest with zerobus** in the project (e.g., `scripts/zerobus_ingest.py`).
+2. **Get schema** Always use 4-protobuf-schema.md. Execute usando o MCP tool `execute_code`
+3. **Write Python code to a local file** seguindo o guia relevante (e.g., `scripts/zerobus_ingest.py`)
 4. **Execute on Databricks** using the `execute_code` MCP tool (with `file_path` parameter)
 5. **If execution fails**: Edit the local file to fix the error, then re-execute
-6. **Reuse the context** for follow-up executions by passing the returned `cluster_id` and `context_id`
+6. **Reuse the context** for follow-up executions passing `cluster_id` and `context_id`
 
 ---
 
 ## Important
 - Never install local packages
 - Always validate MCP server requirement before execution
-- **Serverless limitation**: The Zerobus SDK cannot pip-install on serverless compute. Use classic compute clusters, or use the [Zerobus REST API](https://docs.databricks.com/aws/en/ingestion/zerobus-rest-api) (Beta) for notebook-based ingestion without the SDK.
+- **Serverless limitation**: The Zerobus SDK cannot pip-install on serverless compute. Use classic compute clusters, or use the [Zerobus REST API](https://docs.databricks.com/aws/en/ingestion/zerobus-ingest) (Beta) for notebook-based ingestion without the SDK.
 - **Explicit table grants**: Service principals need explicit `MODIFY` and `SELECT` grants on the target table. Schema-level inherited permissions may not be sufficient for the `authorization_details` OAuth flow.
+- **Compliance workspaces not supported**: Zerobus Ingest não é suportado em workspaces com compliance security profile (FedRAMP, HIPAA, PCI-DSS).
+- **Catalog commits incompatível**: Não use Zerobus Ingest em Delta tables com catalog commits habilitado.
 
 ---
 
@@ -176,7 +202,7 @@ When execution fails:
 Databricks provides Spark, pandas, numpy, and common data libraries by default. **Only install a library if you get an import error.**
 
 Use `execute_code` tool:
-- `code`: "%pip install databricks-zerobus-ingest-sdk>=1.0.0"
+- `code`: "%pip install databricks-zerobus-ingest-sdk>=1.1.0"
 - `cluster_id`: "<cluster_id>"
 - `context_id`: "<context_id>"
 
@@ -193,12 +219,20 @@ The timestamp generation must use microseconds for Databricks.
 
 ## Key Concepts
 
-- **gRPC + Protobuf**: Zerobus uses gRPC as its transport protocol. Any application that can communicate via gRPC and construct Protobuf messages can produce to Zerobus.
-- **JSON or Protobuf serialization**: JSON for quick starts; Protobuf for type safety, forward compatibility, and performance.
-- **At-least-once delivery**: The connector provides at-least-once guarantees. Design consumers to handle duplicates.
-- **Durability ACKs**: Each ingested record returns a `RecordAcknowledgment`. Use `flush()` to ensure all buffered records are durably written, or use `wait_for_offset(offset)` for offset-based tracking.
-- **No table management**: Zerobus does not create or alter tables. You must pre-create your target table and manage schema evolution yourself.
-- **Single-AZ durability**: The service runs in a single availability zone. Plan for potential zone outages.
+- **gRPC + Protobuf**: Zerobus usa gRPC como protocolo primário. Qualquer aplicação que suporte gRPC e Protobuf pode produzir para o Zerobus.
+- **3 interfaces disponíveis**:
+  - **gRPC SDK** (GA): alta performance, conexões persistentes, melhor throughput — "connection tax" (cada stream conta contra cotas de concorrência).
+  - **REST API** (Beta): stateless, handshake por request — "throughput tax" — ideal para frotas massivas de dispositivos que reportam com baixa frequência.
+  - **OpenTelemetry / OTLP** (Beta, não cobrado ainda): para ambientes já instrumentados com OTel; ingere traces, logs e métricas em tabelas Delta com schemas pré-definidos, sem bibliotecas customizadas.
+- **JSON or Protobuf serialization**: JSON para prototipação; Protobuf para type safety, forward compatibility e performance em produção.
+- **At-least-once delivery**: O conector garante at-least-once. Projete consumidores para tolerar duplicatas.
+- **Durability ACKs**: Cada registro ingerido retorna um `RecordAcknowledgment`. Use `flush()` para garantir que todos os registros bufferizados foram escritos de forma durável, ou `wait_for_offset(offset)` para rastreamento por offset.
+- **No table management**: Zerobus não cria nem altera tabelas. Você deve pré-criar a tabela-alvo e gerenciar evolução de schema por conta própria.
+- **Schema evolution (parcial)**: Colunas Delta **nullable** adicionadas à tabela são aceitas sem falha — campos ausentes são preenchidos com NULL. Colunas obrigatórias adicionadas ou remoções de colunas são breaking changes.
+- **Rejected data on schema-break**: Se houver uma breaking change no schema da tabela após o Zerobus tornar os dados duráveis mas antes de publicá-los, os dados são salvos em `_zerobus/table_rejected_parquets/` dentro do storage root da tabela.
+- **Single-AZ durability**: O serviço opera em uma única availability zone. Planeje para possíveis indisponibilidades de zona.
+- **Liquid clustered tables (Beta)**: Escrita em liquid clustered tables está em Beta. Mantenha predictive optimization habilitado na tabela-alvo.
+- **Partition limit**: Máximo de 1000 partições por janela de 5 segundos ao escrever em tabelas particionadas.
 
 ---
 
@@ -206,15 +240,20 @@ The timestamp generation must use microseconds for Databricks.
 
 | Issue | Solution |
 |-------|----------|
-| **Connection refused** | Verify server endpoint format matches your cloud (AWS vs Azure). Check firewall allowlists. |
-| **Authentication failed** | Confirm service principal client_id/secret. Verify GRANT statements on the target table. |
-| **Schema mismatch** | Ensure record fields match the target table schema exactly. Regenerate .proto if table changed. |
-| **Stream closed unexpectedly** | Implement retry with exponential backoff and stream reinitialization. See [5-operations-and-limits.md](5-operations-and-limits.md). |
-| **Throughput limits hit** | Max 100 MB/s and 15,000 rows/s per stream. Open multiple streams or contact Databricks. |
-| **Region not supported** | Check supported regions in [5-operations-and-limits.md](5-operations-and-limits.md). |
-| **Table not found** | Ensure table is a managed Delta table in a supported region with correct three-part name. |
-| **SDK install fails on serverless** | The Zerobus SDK cannot be pip-installed on serverless compute. Use classic compute clusters or the REST API (Beta) from notebooks. |
-| **Error 4024 / authorization_details** | Service principal lacks explicit table-level grants. Grant `MODIFY` and `SELECT` directly on the target table — schema-level inherited grants may be insufficient. |
+| **Connection refused** | Verifique o formato do endpoint (AWS vs Azure). Adicione o IP ao allowlist do firewall. |
+| **Authentication failed** | Confirme client_id/secret do service principal. Verifique os GRANTs explícitos na tabela. |
+| **Schema mismatch** | Garanta que os campos do record correspondem exatamente ao schema da tabela. Regenere o .proto se a tabela mudou. |
+| **Stream closed unexpectedly** | Implemente retry com exponential backoff e reinicialização do stream. Veja [5-operations-and-limits.md](5-operations-and-limits.md). |
+| **Throughput limits hit** | Máx 100 MB/s e 15.000 rows/s por stream. Abra múltiplos streams ou contate o Databricks. |
+| **Region not supported** | Verifique regiões suportadas em [5-operations-and-limits.md](5-operations-and-limits.md). |
+| **Table not found** | Garanta que a tabela é uma Delta table gerenciada numa região suportada com nome three-part correto. |
+| **SDK install fails on serverless** | O Zerobus SDK não pode ser instalado via pip em serverless compute. Use classic compute clusters ou a REST API (Beta). |
+| **Error 4024 / authorization_details** | Service principal sem grants explícitos no nível da tabela. Conceda `MODIFY` e `SELECT` diretamente na tabela-alvo — grants herdados do schema podem ser insuficientes. |
+| **Data disappeared after table schema change** | Dados rejeitados por breaking schema change ficam em `_zerobus/table_rejected_parquets/` no storage root da tabela. |
+| **SDK version 0.3.0 import errors** | Versão yanked do PyPI por breaking changes. Faça upgrade para `>=1.1.0`. |
+| **Compliance workspace error** | Zerobus Ingest não é suportado em workspaces FedRAMP, HIPAA ou PCI-DSS. Use um workspace sem compliance security profile. |
+| **Catalog commits error** | Desabilite catalog commits na tabela-alvo antes de usar Zerobus Ingest. |
+| **OTel token expires** | OAuth tokens expiram em 1h. Para aplicações de longa duração, use um OpenTelemetry Collector com `oauth2clientauthextension` para refresh automático. |
 
 ---
 
@@ -231,3 +270,6 @@ The timestamp generation must use microseconds for Databricks.
 - [Zerobus Overview](https://docs.databricks.com/aws/en/ingestion/zerobus-overview)
 - [Zerobus Ingest SDK](https://docs.databricks.com/aws/en/ingestion/zerobus-ingest)
 - [Zerobus Limits](https://docs.databricks.com/aws/en/ingestion/zerobus-limits)
+- [Zerobus OTLP (Beta) - Configure](https://docs.databricks.com/aws/en/ingestion/opentelemetry/configure)
+- [Zerobus OTLP - Table Reference](https://docs.databricks.com/aws/en/ingestion/opentelemetry/table-reference)
+- [GA Announcement Blog](https://www.databricks.com/blog/announcing-general-availability-zerobus-ingest-part-lakeflow-connect)

@@ -1,8 +1,8 @@
 ---
 name: databricks-unstructured-pdf-generation
 description: "Generate PDF documents from HTML and upload to Unity Catalog volumes. Use for creating test PDFs, demo documents, reports, or evaluation datasets. Covers MCP tool usage, WeasyPrint engine, Volumes SDK, Medallion pipeline patterns, and RAG ingestion."
-updated_at: 2026-04-16
-source: context7
+updated_at: 2026-04-23
+source: web_search
 ---
 
 # PDF Generation from HTML
@@ -14,6 +14,8 @@ Convert HTML content to PDF documents and upload them to Unity Catalog Volumes.
 The `generate_and_upload_pdf` MCP tool converts HTML to PDF and uploads to a Unity Catalog Volume. You (the LLM) generate the HTML content, and the tool handles conversion and upload.
 
 The underlying engine is **WeasyPrint** — a Python library that renders HTML/CSS to PDF with full CSS3 support. WeasyPrint runs server-side in the Databricks cluster; no browser or headless Chrome is required.
+
+> ⚠️ **Breaking change em WeasyPrint 68.0 (2026-01-19 — CVE-2025-68616):** `default_url_fetcher()` está **deprecated** e será removido na v69.0. Migre para a nova classe `URLFetcher`. Além disso, **Python 3.10+ é obrigatório** — Python 3.9 não é mais suportado. Se você usa um URL fetcher customizado com `allowed_protocols`, atualize imediatamente para ≥ 68.1 para corrigir o bypass de SSRF via redirect HTTP. Clusters Databricks com Python 3.9 precisam ser atualizados antes de instalar WeasyPrint ≥ 68.0.
 
 ## Tool Signature
 
@@ -135,21 +137,24 @@ Always include the full HTML structure:
 
 ### CSS Features Supported
 
-WeasyPrint supports modern CSS3 and CSS Paged Media:
-- Flexbox and Grid layouts
+WeasyPrint suporta CSS3 moderno e CSS Paged Media. Na v67+, novos recursos foram adicionados:
+- Flexbox e Grid layouts (Flex significativamente melhorado na v66+)
 - CSS variables (`--var-name`)
-- Web fonts (system fonts recommended; avoid external font URLs)
-- Colors, backgrounds, borders
-- Tables with styling
-- `@page` rule for page size, margins, and headers/footers
+- Web fonts (use system fonts; evite URLs externas de CDN)
+- Colors, backgrounds, borders, **CMYK** (v67+), `light-dark()` (v67+)
+- Tables com styling
+- `@page` rule para page size, margins, headers/footers
 - `page-break-before` / `page-break-after` / `break-before` / `break-after`
+- CSS layers (v66+)
+- `::first-line` (v67+)
+- `calc()` (v67+)
 
 ### CSS to Avoid
 
-- Animations and transitions (static PDF — ignored silently)
-- Interactive elements (forms, hover effects — rendered as static)
-- External resources via URL — use embedded base64 for images
-- CSS `position: fixed` — not supported in paged media context
+- Animations e transitions (PDF estático — ignorados silenciosamente)
+- Interactive elements (forms, hover effects — renderizados como estáticos)
+- External resources via URL — use base64 embutido para imagens
+- CSS `position: fixed` — não suportado em paged media context
 
 ### Page Control with @page (WeasyPrint)
 
@@ -252,7 +257,7 @@ WeasyPrint supports modern CSS3 and CSS Paged Media:
     </table>
 
     <div class="footer">
-        Generated on 2025-04-16 | Confidential
+        Generated on 2026-04-23 | Confidential
     </div>
 </body>
 </html>
@@ -364,11 +369,13 @@ When asked to generate multiple PDFs:
 
 ## Generating PDFs Programmatically via Python SDK
 
-When you need to generate PDFs inside a Databricks notebook or Job (not via MCP tool), use WeasyPrint directly and upload via `w.files.upload()`.
+When you need to generate PDFs inside a Databricks notebook ou Job (not via MCP tool), use WeasyPrint directly e faça upload via `w.files.upload()`.
+
+> ⚠️ **Requisitos WeasyPrint ≥ 68.0:** Python 3.10+ obrigatório no cluster. Instale `weasyprint>=68.1` para incluir a correção de segurança CVE-2025-68616.
 
 ```python
 # Install in cluster init script or notebook:
-# %pip install weasyprint
+# %pip install "weasyprint>=68.1"
 
 import io
 from weasyprint import HTML
@@ -394,14 +401,14 @@ html = """<!DOCTYPE html>
 
 path = generate_and_upload(
     html_content=html,
-    volume_path="/Volumes/my_catalog/my_schema/raw_data/reports/report_2025.pdf",
+    volume_path="/Volumes/my_catalog/my_schema/raw_data/reports/report_2026.pdf",
 )
 print(f"Uploaded: {path}")
 ```
 
 ### Batch Generation with Parallel Uploads (SDK)
 
-For large batches, use `ThreadPoolExecutor` to parallelize both PDF rendering and upload:
+For large batches, use `ThreadPoolExecutor` to parallelize both PDF rendering and upload. `w.files.upload()` já usa paralelismo interno por padrão (SDK v0.72.0+) — não é necessário configurar `use_parallel=True` explicitamente:
 
 ```python
 import io
@@ -412,8 +419,8 @@ from databricks.sdk import WorkspaceClient
 w = WorkspaceClient()
 
 documents = [
-    {"filename": "doc_001.pdf", "html": "<html>...</html>", "folder": "batch_2025"},
-    {"filename": "doc_002.pdf", "html": "<html>...</html>", "folder": "batch_2025"},
+    {"filename": "doc_001.pdf", "html": "<html>...</html>", "folder": "batch_2026"},
+    {"filename": "doc_002.pdf", "html": "<html>...</html>", "folder": "batch_2026"},
     # ...
 ]
 
@@ -423,6 +430,7 @@ def render_and_upload(doc: dict) -> dict:
     try:
         pdf_bytes = HTML(string=doc["html"]).write_pdf()
         path = f"{BASE_VOLUME}/{doc['folder']}/{doc['filename']}"
+        # use_parallel=True é o default no SDK v0.72.0+; part_size é configurável
         w.files.upload(file_path=path, contents=io.BytesIO(pdf_bytes), overwrite=True)
         return {"filename": doc["filename"], "success": True, "path": path}
     except Exception as e:
@@ -449,6 +457,8 @@ When generated PDFs serve as a source for downstream pipelines (e.g., RAG datase
 
 ### Bronze → Silver: Extraindo texto dos PDFs gerados
 
+> ⚠️ **Breaking change em ai_parse_document (setembro 2025):** O schema de saída padrão mudou. Workloads criados antes de 22/09/2025 devem passar `map('version', '2.0')` explicitamente e migrar a leitura de `pages` para `elements`. O parâmetro `version` e os demais (`imageOutputPath`, `descriptionElementTypes`, `pageRange`) são opcionais no `map`. Requer **Databricks Runtime 17.1+** (AWS) ou **17.3+** (Azure).
+
 After generating PDFs into the bronze volume, parse them with `ai_parse_document` in a DLT pipeline:
 
 ```python
@@ -466,12 +476,14 @@ def silver_parsed_pdf_text():
             .option("recursiveFileLookup", "true")
             .load(BRONZE_PATH)
         .repartition(8, expr("crc32(path) % 8"))
+        # version='2.0' é obrigatório para o schema com elements (pós-set/2025)
+        # descriptionElementTypes: '*' e 'figure' são equivalentes na v2.0
         .withColumn("parsed", expr("""
-            ai_parse_document(content, map('version', '2.0', 'descriptionElementTypes', '*'))
+            ai_parse_document(content, map('version', '2.0', 'descriptionElementTypes', 'figure'))
         """))
         .withColumn("text", expr("""
             concat_ws('\n\n', transform(
-                try_cast(parsed:document:elements AS ARRAY),
+                try_cast(parsed:document:elements AS ARRAY<VARIANT>),
                 e -> try_cast(e:content AS STRING)
             ))
         """))
@@ -480,6 +492,8 @@ def silver_parsed_pdf_text():
         .select("path", "text", "parse_error", "ingested_at")
     )
 ```
+
+> **Nota:** Na v2.0, os dados estruturados estão no array `elements` — **não** em `pages`. Cada elemento representa uma unidade discreta de conteúdo (parágrafo, tabela, figura, marcador de layout).
 
 ### Silver → Gold: Chunking para Vector Search
 
@@ -558,7 +572,8 @@ for r in results.result.data_array:
 - Unity Catalog schema must exist
 - Volume must exist (default: `raw_data`)
 - User must have `WRITE VOLUME` permission on the volume
-- WeasyPrint must be installed on the cluster (add `weasyprint` to cluster libraries or init script) when using the Python SDK path
+- WeasyPrint **≥ 68.1** instalado no cluster (Python 3.10+ obrigatório) quando usar o caminho Python SDK
+- `ai_parse_document` requer Databricks Runtime 17.1+ (AWS) / 17.3+ (Azure) e disponibilidade regional
 
 ## Troubleshooting
 
@@ -571,6 +586,9 @@ for r in results.result.data_array:
 | Font missing / garbled text | Use system fonts (Arial, Helvetica, Georgia) — avoid Google Fonts CDN URLs |
 | External image not rendered | Embed images as base64 `data:image/png;base64,...` — WeasyPrint does not fetch external URLs in sandboxed clusters |
 | `@page` footer not showing | Ensure `@page` rule is inside `<style>` tag in `<head>`, not inline |
-| WeasyPrint import error on cluster | Install via init script: `pip install weasyprint` or add to cluster libraries |
-| Large PDF upload slow | Use `w.files.upload_from()` with `use_parallel=True` (SDK v0.72.0+) for files > 100 MB |
-| `explode()` fails on parsed VARIANT | Use `variant_get(doc, '$.document.elements', 'ARRAY<VARIANT>')` to cast before exploding |
+| WeasyPrint import error on cluster | Instale via init script: `pip install "weasyprint>=68.1"`; exige Python 3.10+ |
+| `DeprecationWarning: default_url_fetcher` | Migre para a classe `URLFetcher` (WeasyPrint ≥ 68.0); `default_url_fetcher` será removido na v69.0 |
+| Large PDF upload slow | `w.files.upload()` usa `use_parallel=True` por padrão desde SDK v0.72.0 — ajuste `part_size` se necessário |
+| `explode()` fails on parsed VARIANT | Use `variant_get(doc, '$.document.elements', 'ARRAY<VARIANT>')` para fazer cast antes do explode |
+| `ai_parse_document` retorna schema antigo | Passe `map('version', '2.0')` explicitamente; workloads pré-set/2025 usavam `pages`, agora use `elements` |
+| `ai_parse_document` indisponível na região | Verifique disponibilidade regional e habilite cross-geography routing se necessário |

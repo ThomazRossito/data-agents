@@ -1,12 +1,13 @@
 ---
-updated_at: 2026-04-16
-source: kb-crossref + skills-crossref
+name: fabric-workspace-manager
+updated_at: 2026-04-23
+source: web_search
 ---
 
 # SKILL: fabric-workspace-manager
 
 > **Fonte:** Microsoft Fabric REST API (api.fabric.microsoft.com/v1)
-> **Atualizado:** 2026-04-16
+> **Atualizado:** 2026-04-23
 > **Uso:** Leia este arquivo ANTES de gerenciar workspaces Fabric programaticamente via REST API.
 
 ---
@@ -28,10 +29,11 @@ Esta skill encapsula operações de workspace completas:
 
 - Listagem, criação, atualização e exclusão de workspaces
 - Atribuições de função para Users, Groups, ServicePrincipals via RBAC
-- Listagem, criação, atualização e remoção de role assignments
+- Listagem, criação, atualização e remoção de role assignments (com paginação via `continuationToken`)
 - Vinculação e desvinculação de capacidade (com polling para LRO)
+- Aplicação e remoção de **tags** de workspace (novidade março/2026)
 - Resolução de workspaces por nome ou ID
-- Validação e tratamento de erros nas respostas de status 202 (aceito), 409 (conflito) e 422 (entidade invalida)
+- Validação e tratamento de erros nas respostas de status 201 (criado), 202 (aceito), 409 (conflito) e 422 (entidade invalida)
 
 **Resultado:** Automação completa do ciclo de vida de workspaces sem chamar REST manualmente.
 
@@ -63,7 +65,8 @@ add_workspace_role_assignment(
     user_type="User",
     role="Admin"
 )
-# Retorno: {"status": "success", "principal": {...}, "role": "Admin"}
+# Retorno: {"id": "...", "principal": {...}, "role": "Admin"}
+# Status HTTP: 201 Created (não 200)
 ```
 
 ---
@@ -72,17 +75,29 @@ add_workspace_role_assignment(
 
 ### 1. `list_workspaces` -- Listar todos os workspaces
 
-Leitura somente. Suporta paginação automática.
+Leitura somente. Suporta paginação automática via `continuationToken`.
 
 **Parametros:**
 
 | Parametro | Tipo | Obrigatorio | Descricao |
 |-----------|------|-------------|-----------|
 | `df` | bool | Nao | Se True, retorna DataFrame; se False, lista de dicts |
+| `roles` | str | Nao | Filtra por papel do principal no workspace (ex: `Admin`, `Member`) |
+| `prefer_workspace_specific_endpoints` | bool | Nao | Se True, retorna `apiEndpoint` por workspace no response |
 
 **Fluxo interno:**
-1. `GET /v1/workspaces` (com paginação via `continuationToken`)
-2. Retorna lista de workspaces com campos: id, displayName, description, capacityId, type
+1. `GET /v1/workspaces?roles={roles}&continuationToken={token}&preferWorkspaceSpecificEndpoints={bool}` (com paginação via `continuationToken`)
+2. Retorna lista de workspaces com campos: `id`, `displayName`, `description`, `capacityId`, `type`, e opcionalmente `apiEndpoint`
+
+**Campos de retorno relevantes (por workspace):**
+
+| Campo | Descricao |
+|-------|-----------|
+| `id` | UUID do workspace |
+| `displayName` | Nome do workspace |
+| `type` | `Workspace`, `Personal`, `AdminWorkspace` |
+| `capacityId` | UUID da capacidade vinculada (ausente se nenhuma) |
+| `apiEndpoint` | Endpoint específico do workspace (retornado quando `preferWorkspaceSpecificEndpoints=True`) |
 
 **Exemplo:**
 
@@ -100,6 +115,8 @@ for ws in ws_list:
 
 Cria workspace com nome, descrição e capacidade opcionais.
 
+> ℹ️ Service Principals podem criar workspaces — requer permissão habilitada pelo Fabric Admin. Veja: *Service principals can create workspaces, connections, and deployment pipelines*.
+
 **Parametros:**
 
 | Parametro      | Tipo   | Obrigatorio | Descricao                                   |
@@ -109,9 +126,9 @@ Cria workspace com nome, descrição e capacidade opcionais.
 | `description`  | str    | Nao         | Descricao do workspace                      |
 
 **Fluxo interno:**
-1. Construir payload com displayName, capacityId (resolvido), description
+1. Construir payload com `displayName`, `capacityId` (resolvido), `description`
 2. `POST /v1/workspaces` com payload
-3. Retorna detalhes do workspace criado (id, displayName, etc)
+3. Retorna objeto workspace com `id`, `displayName`, `description`, `type`
 
 **Exemplo:**
 
@@ -144,6 +161,7 @@ Atualiza nome e/ou descrição de um workspace existente.
 1. Resolver workspace para ID
 2. `PATCH /v1/workspaces/{workspaceId}` com payload
 3. Validar que pelo menos uma propriedade foi fornecida
+4. Retorna objeto workspace atualizado (inclui `domainId` se o workspace estiver associado a um domínio)
 
 **Exemplo:**
 
@@ -189,6 +207,8 @@ delete_workspace(workspace="Analytics-Temp-2026")
 
 Atribui papel (Admin/Contributor/Member/Viewer) a usuario/grupo/SPN em workspace.
 
+> ℹ️ O endpoint retorna **HTTP 201 Created** (não 200) com o objeto de atribuição e o header `Location` apontando para a URL do novo recurso.
+
 **Parametros:**
 
 | Parametro    | Tipo   | Obrigatorio | Descricao                                          |
@@ -199,9 +219,9 @@ Atribui papel (Admin/Contributor/Member/Viewer) a usuario/grupo/SPN em workspace
 | `role`       | str    | Nao         | Admin, Contributor, Member, Viewer (padrao: Admin) |
 
 **Fluxo interno:**
-1. Validar user_type e role contra listas de valores permitidos
-2. `POST /v1/workspaces/{workspaceId}/roleAssignments` com principal e role
-3. Retorna detalhes da atribuicao
+1. Validar `user_type` e `role` contra listas de valores permitidos
+2. `POST /v1/workspaces/{workspaceId}/roleAssignments` com payload `{ principal: { id, type }, role }`
+3. Retorna objeto `{ "id": "...", "principal": { "id", "type" }, "role": "..." }` com status **201**
 
 **Exemplo:**
 
@@ -229,7 +249,7 @@ add_workspace_role_assignment(
 
 ### 6. `list_workspace_role_assignments` -- Listar atribuicoes de funcao
 
-Lista todas as atribuições de papel no workspace.
+Lista todas as atribuições de papel no workspace. Suporta paginação via `continuationToken`.
 
 **Parametros:**
 
@@ -239,8 +259,8 @@ Lista todas as atribuições de papel no workspace.
 
 **Fluxo interno:**
 1. Resolver workspace para ID
-2. `GET /v1/workspaces/{workspaceId}/roleAssignments`
-3. Retorna array de `{ "id": "...", "principal": {...}, "role": "..." }`
+2. `GET /v1/workspaces/{workspaceId}/roleAssignments?continuationToken={token}`
+3. Retorna array paginado de `{ "id": "...", "principal": { "displayName", "id", "type", "userDetails"|"servicePrincipalDetails" }, "role": "..." }`
 
 **Exemplo:**
 
@@ -263,14 +283,14 @@ Muda o papel de um usuario/grupo/SPN em um workspace.
 | Parametro   | Tipo | Obrigatorio | Descricao                  |
 |-------------|------|-------------|----------------------------|
 | `workspace` | str  | Sim         | ID ou nome do workspace    |
-| `user_uuid` | str  | Sim         | ID do principal            |
+| `user_uuid` | str  | Sim         | ID do principal (= `workspaceRoleAssignmentId`) |
 | `role`      | str  | Nao         | Novo papel (default: Admin) |
 
 **Fluxo interno:**
 1. Resolver workspace para ID
 2. Validar role
-3. `PATCH /v1/workspaces/{workspaceId}/roleAssignments/{userUuid}` com payload role
-4. Retorna atribuicao atualizada
+3. `PATCH /v1/workspaces/{workspaceId}/roleAssignments/{workspaceRoleAssignmentId}` com payload `{ "role": "..." }`
+4. Retorna objeto atribuição atualizado (inclui `displayName`, `userDetails` ou `servicePrincipalDetails` no `principal`)
 
 **Exemplo:**
 
@@ -296,11 +316,11 @@ Remove papel de um usuario/grupo/SPN no workspace.
 | Parametro   | Tipo | Obrigatorio | Descricao               |
 |-------------|------|-------------|-------------------------|
 | `workspace` | str  | Sim         | ID ou nome do workspace |
-| `user_uuid` | str  | Sim         | ID do principal         |
+| `user_uuid` | str  | Sim         | ID do principal (= `workspaceRoleAssignmentId`) |
 
 **Fluxo interno:**
 1. Resolver workspace para ID
-2. `DELETE /v1/workspaces/{workspaceId}/roleAssignments/{userUuid}`
+2. `DELETE /v1/workspaces/{workspaceId}/roleAssignments/{workspaceRoleAssignmentId}`
 3. Retorna 200 OK em sucesso
 
 **Exemplo:**
@@ -320,6 +340,9 @@ delete_workspace_role_assignment(
 
 Vincula ou desvincula workspace de uma capacidade. Operação assíncrona (LRO).
 
+Use o campo `capacityAssignmentProgress` do `GET /workspaces/{workspaceId}` para monitorar o estado
+do vínculo — mais confiável do que checar apenas `capacityId`.
+
 **Parametros (assign_to_capacity):**
 
 | Parametro   | Tipo | Obrigatorio | Descricao               |
@@ -335,7 +358,7 @@ Vincula ou desvincula workspace de uma capacidade. Operação assíncrona (LRO).
 
 **Fluxo interno:**
 1. Resolver workspace e capacidade para IDs
-2. `POST /v1/workspaces/{workspaceId}/assignToCapacity` ou `/unassignFromCapacity`
+2. `POST /v1/workspaces/{workspaceId}/assignToCapacity` com `{ "capacityId": "..." }` ou `/unassignFromCapacity`
 3. Aguardar status 202 (aceito) — LRO iniciada; workspace vinculado em ~10-30s em background
 
 **Exemplo:**
@@ -349,11 +372,82 @@ assign_to_capacity(
     capacity="premium-capacity"
 )
 
-# Desvincullar de capacidade
+# Desvincular de capacidade
 unassign_from_capacity(
     workspace="Sales-Q2-2026"
 )
 ```
+
+---
+
+### 10. `apply_workspace_tags` e `remove_workspace_tags` -- Gerenciar tags (novidade março/2026)
+
+> ℹ️ **Novidade (março/2026):** Workspace Tags permitem adicionar metadados compartilhados (ex: time, projeto, centro de custo) a workspaces, facilitando descoberta e governança via API. Tags são definidas uma vez no tenant e aplicadas a workspaces. **Limite: 10 tags por workspace.**
+
+Tags de workspace são retornadas no campo `tags` de `GET /v1/workspaces/{workspaceId}` e ficam visíveis na lista de workspaces e no OneLake Catalog Explorer.
+
+**Parametros (apply_workspace_tags):**
+
+| Parametro    | Tipo      | Obrigatorio | Descricao                              |
+|--------------|-----------|-------------|----------------------------------------|
+| `workspace`  | str       | Sim         | ID ou nome do workspace                |
+| `tag_ids`    | list[str] | Sim         | Lista de UUIDs das tags a aplicar      |
+
+**Parametros (remove_workspace_tags):**
+
+| Parametro    | Tipo      | Obrigatorio | Descricao                              |
+|--------------|-----------|-------------|----------------------------------------|
+| `workspace`  | str       | Sim         | ID ou nome do workspace                |
+| `tag_ids`    | list[str] | Sim         | Lista de UUIDs das tags a remover      |
+
+**Fluxo interno:**
+1. Resolver workspace para ID
+2. `POST /v1/workspaces/{workspaceId}/applyTags` ou `/removeTags` com payload `{ "tagIds": [...] }`
+3. Tags são gerenciadas no nível de tenant — crie-as primeiro via Admin API de Tags antes de aplicar
+
+**Exemplo:**
+
+```python
+from workspace_manager import apply_workspace_tags, remove_workspace_tags
+
+# Aplicar tags "Finance" e "Production" ao workspace
+apply_workspace_tags(
+    workspace="Sales-Q2-2026",
+    tag_ids=[
+        "b3f2c8e9-4d8e-4a7c-9a32-f8c1b2e4d6af",  # Finance
+        "6f1a8d3b-92c4-4f67-8c2d-1e5a9b7f4a23"   # Production
+    ]
+)
+
+# Remover tag
+remove_workspace_tags(
+    workspace="Sales-Q2-2026",
+    tag_ids=["6f1a8d3b-92c4-4f67-8c2d-1e5a9b7f4a23"]
+)
+```
+
+---
+
+## Campos de Retorno: GET /v1/workspaces/{workspaceId}
+
+A resposta completa do endpoint agora inclui campos adicionais importantes:
+
+| Campo | Tipo | Descricao |
+|-------|------|-----------|
+| `id` | str | UUID do workspace |
+| `displayName` | str | Nome do workspace |
+| `description` | str | Descricao |
+| `type` | str | `Workspace`, `Personal`, `AdminWorkspace` |
+| `capacityId` | str | UUID da capacidade vinculada |
+| `capacityAssignmentProgress` | str | Estado do vínculo de capacidade: `Completed`, `Failed`, `InProgress` — use para polling de LRO |
+| `capacityRegion` | str | Região da capacidade (ex: `East US`) |
+| `domainId` | str | UUID do domínio Fabric associado (se houver) |
+| `workspaceIdentity` | obj | `{ applicationId, servicePrincipalId }` — identidade gerenciada do workspace para autenticação em shortcuts e pipelines |
+| `oneLakeEndpoints` | obj | `{ blobEndpoint, dfsEndpoint }` — endpoints OneLake (padrão = regionais; específicos se `preferWorkspaceSpecificEndpoints=True`) |
+| `apiEndpoint` | str | Endpoint de API específico do workspace (retornado quando `preferWorkspaceSpecificEndpoints=True`) |
+| `tags` | array | Tags aplicadas: `[{ "id": "...", "displayName": "..." }]` |
+
+> **Polling de capacidade:** Prefira checar `capacityAssignmentProgress == "Completed"` em vez de apenas `capacityId` após `assignToCapacity`. O campo pode estar preenchido antes do vínculo estar totalmente ativo.
 
 ---
 
@@ -391,8 +485,8 @@ for team in TEAMS:
 
 ## Padrão: LRO Polling Manual para assignToCapacity
 
-Quando `assign_to_capacity` retorna 202, o vínculo ocorre em background. Para confirmar
-conclusão antes de prosseguir:
+Quando `assign_to_capacity` retorna 202, o vínculo ocorre em background. Use o campo
+`capacityAssignmentProgress` (mais confiável que checar apenas `capacityId`) para confirmar conclusão:
 
 ```python
 import time
@@ -411,13 +505,16 @@ def wait_for_capacity_assignment(workspace_id: str, capacity_id: str, token: str
     if resp.status_code not in (200, 202):
         raise RuntimeError(f"Falha ao atribuir capacidade: {resp.status_code} {resp.text}")
 
-    # Polling via GET workspace até capacityId estar preenchido
+    # Polling via GET workspace usando capacityAssignmentProgress
     for attempt in range(max_retries):
         time.sleep(5)
         ws = requests.get(f"{base_url}/workspaces/{workspace_id}", headers=headers).json()
-        if ws.get("capacityId") == capacity_id:
+        progress = ws.get("capacityAssignmentProgress")
+        if progress == "Completed" and ws.get("capacityId") == capacity_id:
             return True
-        print(f"Aguardando vínculo de capacidade... tentativa {attempt + 1}/{max_retries}")
+        if progress == "Failed":
+            raise RuntimeError(f"Vínculo de capacidade falhou: {ws}")
+        print(f"Aguardando vínculo de capacidade... tentativa {attempt + 1}/{max_retries} | progress={progress}")
 
     raise TimeoutError("Timeout: capacidade não foi vinculada dentro do tempo esperado.")
 ```
@@ -470,21 +567,38 @@ Workspaces são a unidade base do ciclo ALM completo. O fluxo recomendado é:
 | **user_type invalido** | Use apenas: User, Group, ServicePrincipal, ServicePrincipalProfile. |
 | **Role invalida** | Use apenas: Admin, Contributor, Member, Viewer. |
 | **Capacidade nao encontrada** | Verifique que capacity existe via `list_capacities()`. |
-| **Status 202 (LRO)** | Operacao de capacidade iniciada. O workspace sera vinculado em background; polling recomendado. |
+| **Status 201 (Created)** | Retorno correto de `add_workspace_role_assignment` — trate como sucesso (não apenas 200). |
+| **Status 202 (LRO)** | Operacao de capacidade iniciada. Faça polling por `capacityAssignmentProgress == "Completed"`. |
 | **Status 409 (Conflito)** | Nome de workspace duplicado ou conflito de estado. Workspace com mesmo displayName ja existe — use nome diferente. |
 | **Status 422 (Entidade invalida)** | Workspace ja tem essa capacidade ou validacao de negocio falhou. Aguarde alguns segundos e retry. |
 | **Token expirado (401)** | Renove token via Azure Identity. Nunca hardcode -- use Key Vault. |
-| **Permissao insuficiente (403)** | Usuario autenticado nao tem permissao Admin no workspace para RBAC. |
-| **Rate limit (429)** | Muitas requisicoes. Implemente backoff exponencial; adicione `time.sleep(1)` entre operacoes em lote. |
+| **Permissao insuficiente (403)** | Usuario autenticado nao tem permissao Admin no workspace para RBAC. Para criar workspace via SPN, verifique permissão habilitada no Fabric Admin. |
+| **Rate limit (429)** | Muitas requisicoes. Implemente backoff exponencial; adicione `time.sleep(1)` entre operacoes em lote. Admin API tem limite de 200 req/hora. |
 | **Workspace em Trial/Free capacity** | Git Integration e Deployment Pipelines requerem F-SKU ou P-SKU. Mova para capacidade paga antes de usar ALM. |
+| **Mais de 10 tags por workspace** | API retorna erro — limite de 10 tags aplicadas por workspace. Remova tags antes de adicionar novas. |
+| **capacityAssignmentProgress = "Failed"** | Vínculo de capacidade falhou. Verifique permissões (contributor ou Admin na capacity) e retry. |
 
 ---
 
-## Notas de Versao (2026-04)
+## Notas de Versao
 
+### 2026-04 (atual)
+- **Novos campos em GET /workspaces/{id}:** `capacityAssignmentProgress`, `capacityRegion`, `domainId`, `workspaceIdentity`, `oneLakeEndpoints`, `apiEndpoint`, `tags` — todos documentados e retornados pela API estável.
+- **`preferWorkspaceSpecificEndpoints` (query param):** Disponível em `GET /v1/workspaces` e `GET /v1/workspaces/{id}`. Quando `True`, retorna endpoints específicos por workspace em `oneLakeEndpoints` e `apiEndpoint`.
+- **Paginação em roleAssignments:** `GET /v1/workspaces/{id}/roleAssignments` agora suporta `continuationToken` para listas grandes.
+- **add_workspace_role_assignment retorna 201:** Status correto é `201 Created` com header `Location`. Código que testa apenas `== 200` deve ser atualizado.
+
+### 2026-03
+- **Workspace Tags via API (novidade):** `POST /v1/workspaces/{id}/applyTags` e `/removeTags` disponíveis. Tags adicionam metadados compartilhados (time, projeto, cost center). Limite de 10 tags por workspace. Tags visíveis no OneLake Catalog Explorer e na lista de workspaces.
+- **Workspace Identity:** Campo `workspaceIdentity` retornado em GET workspace — identidade gerenciada usável para autenticação em shortcuts OneLake e pipelines sem necessidade de SPN externo.
+
+### 2026-02
+- **Fabric Identities por tenant:** Limite padrão aumentado de 1.000 para 10.000 identidades (inclui workspace identities). Configurável via Admin REST API (`Update Tenant Setting`).
+
+### 2026-04 (anterior — mantido)
 - **Delete workspace via API:** Endpoint `DELETE /v1/workspaces/{workspaceId}` disponivel — use com cautela em producao.
-- **List/Delete role assignments:** Endpoints `GET` e `DELETE /v1/workspaces/{workspaceId}/roleAssignments/{userUuid}` agora documentados e estaveis.
-- **Tipo de workspace no retorno:** Campo `type` agora retornado em `GET /workspaces` (valores: `Workspace`, `AdminWorkspace`, `PersonalWorkspace`).
-- **Paginacao via continuationToken:** `GET /v1/workspaces` agora usa `continuationToken` (nao mais `$skip`) para paginacao consistente em listas grandes.
-- **ALM integrado:** A partir de 2025H2, Deployment Pipelines geram commits automaticos em ADO/GitHub ao promover entre stages (dev → test → prod). Workspaces precisam estar conectados ao Git para este recurso.
+- **List/Delete role assignments:** Endpoints `GET` e `DELETE /v1/workspaces/{workspaceId}/roleAssignments/{id}` documentados e estaveis.
+- **Tipo de workspace no retorno:** Campo `type` retornado em `GET /workspaces` (valores: `Workspace`, `AdminWorkspace`, `PersonalWorkspace`).
+- **Paginacao via continuationToken:** `GET /v1/workspaces` usa `continuationToken` (nao mais `$skip`) para paginacao consistente.
+- **ALM integrado:** A partir de 2025H2, Deployment Pipelines geram commits automaticos em ADO/GitHub ao promover entre stages. Workspaces precisam estar conectados ao Git para este recurso.
 - **Capacidade F-SKU obrigatoria:** Git Integration e Deployment Pipelines requerem F-SKU ou P-SKU (Trial e Free nao suportados).

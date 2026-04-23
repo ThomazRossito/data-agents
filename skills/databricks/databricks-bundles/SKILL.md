@@ -1,13 +1,16 @@
 ---
 name: databricks-bundles
-updated_at: 2026-04-16
-source: kb-internal + known-docs
+updated_at: 2026-04-23
+source: web_search
 description: "Create and configure Declarative Automation Bundles (formerly Asset Bundles) with best practices for multi-environment deployments (CICD). Use when working with: (1) Creating new DAB projects, (2) Adding resources (dashboards, pipelines, jobs, alerts), (3) Configuring multi-environment deployments, (4) Setting up permissions, (5) Deploying or running bundle resources"
 ---
 
 # DABs Writer
 
 ## Overview
+
+> ⚠️ **Renomeação em março de 2026**: "Databricks Asset Bundles (DABs)" foi oficialmente renomeado para **Declarative Automation Bundles**. A sigla DABs e a estrutura de arquivos permanecem idênticas — apenas o nome de marketing mudou. Toda a documentação oficial (`docs.databricks.com`) já usa o novo nome.
+
 Create DABs for multi-environment deployment (dev/staging/prod).
 
 ## Reference Files
@@ -29,6 +32,8 @@ project/
 ```yaml
 bundle:
   name: project-name
+  # Optional: pin minimum CLI version required by this bundle
+  databricks_cli_version: ">= 0.279.0"
 
 include:
   - resources/*.yml
@@ -77,7 +82,7 @@ targets:
 
 ### Dashboard Resources
 
-**Support for dataset_catalog and dataset_schema parameters added in Databricks CLI 0.281.0  (January 2026)**
+**Support for dataset_catalog and dataset_schema parameters added in Databricks CLI 0.281.0 (January 2026)**
 
 ```yaml
 resources:
@@ -99,9 +104,13 @@ resources:
 
 **See [SDP_guidance.md](SDP_guidance.md)** for pipeline configuration
 
+> Pipeline `run_as` is now supported at the top level (CLI 0.267.0). Use the same `run_as` pattern as jobs.
+
 ### SQL Alerts
 
-**See [alerts_guidance.md](alerts_guidance.md)** - Alert schema differs significantly from other resources
+**See [alerts_guidance.md](alerts_guidance.md)** — Alert schema differs significantly from other resources
+
+> Native `sql_alerts` resource support added in CLI 0.279.0.
 
 ### Jobs Resources
 
@@ -211,6 +220,58 @@ resources:
       #     - "1 week"
 ```
 
+### Lakebase Resources (Postgres)
+
+**Added in Databricks CLI 0.287.0**
+
+DABs can manage Lakebase (Autoscaling Postgres) projects, branches, and compute endpoints. Resources follow a strict parent-child hierarchy: Project → Branch → Endpoint.
+
+```yaml
+resources:
+  postgres_projects:
+    my_app:
+      project_id: "my-app"
+      display_name: "My Application"
+      pg_version: 17
+
+  postgres_branches:
+    dev_branch:
+      parent: ${resources.postgres_projects.my_app.id}
+      branch_id: "dev"
+      no_expiry: true
+
+  postgres_endpoints:
+    dev_endpoint:
+      parent: ${resources.postgres_branches.dev_branch.id}
+      endpoint_id: "primary"
+      endpoint_type: "ENDPOINT_TYPE_READ_WRITE"
+      autoscaling_limit_min_cu: 0.5
+      autoscaling_limit_max_cu: 2
+```
+
+> ⚠️ **`postgres_projects` não suporta o campo `permissions`** — permissões (CAN_USE, CAN_MANAGE) não podem ser declaradas em bundle para projetos Lakebase; gerencie via UI/API diretamente.
+
+> Use `postgres_projects` para novos projetos Lakebase. O recurso `database_instances` (mais antigo, CLI 0.265.0) ainda funciona mas o Databricks recomenda migrar para `postgres_projects`.
+
+### Scripts
+
+**Added in Databricks CLI 0.259.0**
+
+Scripts podem ser definidos no bundle e executados via `bundle run` usando as credenciais de autenticação do bundle.
+
+```yaml
+# Em databricks.yml ou resource file
+scripts:
+  my_setup_script:
+    content: |
+      echo "Running setup..."
+      python scripts/setup.py
+```
+
+```bash
+databricks bundle run my_setup_script -t dev
+```
+
 ### Path Resolution
 
 ⚠️ **Critical**: Paths depend on file location:
@@ -221,6 +282,8 @@ resources:
 | `databricks.yml` targets | `./src/...` | `./src/dashboards/file.json` |
 
 **Why**: `resources/` files are one level deep, so use `../` to reach bundle root. `databricks.yml` is at root, so use `./`
+
+> ⚠️ **Breaking change em CLI 0.266.0**: O mecanismo de fallback para resolução de paths relativos entre arquivos de configuração foi removido. Em CLI 0.266+, se o path especificado não existir, ocorre um erro. Apenas paths relativos diretos são suportados — corrija todos os paths antes de fazer upgrade.
 
 ### Volume Resources
 
@@ -374,15 +437,19 @@ databricks bundle deploy -t prod --var="catalog=prod_catalog" --var="num_workers
 
 ### Other Resources
 
-DABs supports schemas, models, experiments, clusters, warehouses, registered_models, and more. Use `databricks bundle schema` to inspect the full schema.
+DABs supports schemas, models, experiments, clusters, warehouses, registered_models, e mais. Use `databricks bundle schema` para inspecionar o schema completo.
 
-**Full resource type list** (as of 2026):
+**Full resource type list** (as of April 2026):
 - `jobs`, `pipelines`, `dashboards`, `apps`
 - `model_serving_endpoints`, `quality_monitors`
 - `schemas`, `volumes`
 - `clusters`, `warehouses`
 - `registered_models`, `experiments` (MLflow)
 - `sql_alerts`, `sql_queries`, `sql_dashboards` (legacy DBSQL)
+- `postgres_projects`, `postgres_branches`, `postgres_endpoints` (Lakebase — CLI 0.287.0+)
+- `database_instances`, `database_catalogs`, `synced_database_tables` (Lakebase legacy — CLI 0.265.0+)
+- `vector_search_endpoints` (CLI 0.297.x+)
+- `scripts` (CLI 0.259.0+)
 
 **Reference**: [DABs Resource Types](https://docs.databricks.com/dev-tools/bundles/resources)
 
@@ -398,6 +465,7 @@ databricks bundle validate -t prod           # Validate specific target
 ```bash
 databricks bundle plan                        # Preview changes for default target
 databricks bundle plan -t prod               # Preview changes for prod — always run before prod deploy
+databricks bundle plan -o json               # JSON output (direct engine only) — useful for CI diffs
 ```
 
 > Always run `bundle plan` before deploying to staging or prod. It shows exactly which resources will be created, updated, or deleted.
@@ -418,6 +486,9 @@ databricks bundle run pipeline_name -t prod  # Run in specific environment
 
 # Apps require bundle run to start after deployment
 databricks bundle run app_resource_key -t dev    # Start/deploy the app
+
+# Scripts (CLI 0.259.0+)
+databricks bundle run my_setup_script -t dev     # Run a script with bundle auth
 ```
 
 ### Summary
@@ -433,6 +504,37 @@ databricks bundle generate job --existing-job-id 12345 --key my_job
 databricks bundle generate pipeline --existing-pipeline-id abc-123 --key my_pipeline
 databricks bundle generate app --existing-app-name my-app --key my_app --profile DEFAULT
 ```
+
+### Direct Deployment Engine (CLI 0.279.0+)
+
+> ⚠️ **Terraform será depreciado**: O engine padrão atual é Terraform, mas o **direct deployment engine** (sem dependência de Terraform) será o padrão em 2026 e o Terraform será removido. Adote o direct engine para novos projetos e migre os existentes.
+
+**Para novos bundles (nunca deployados):**
+```bash
+# Definir a variável de ambiente antes do deploy
+DATABRICKS_BUNDLE_ENGINE=direct databricks bundle deploy -t dev
+```
+
+**Para migrar bundles existentes:**
+```bash
+# Passo 1: garantir que o deploy atual está completo
+databricks bundle deploy -t my_target
+
+# Passo 2: migrar o state file (terraform.tfstate → resources.json)
+databricks bundle deployment migrate -t my_target
+
+# Passo 3: verificar que não há mudanças pendentes
+databricks bundle plan -t my_target
+
+# Passo 4: deploy para sincronizar o state
+databricks bundle deploy -t my_target
+```
+
+**Benefícios do direct engine:**
+- Sem download de Terraform ou `terraform-provider-databricks`
+- Sem problemas com firewalls/proxies/registries corporativos
+- `bundle plan -o json` com diff detalhado
+- Novos resource types disponíveis mais rápido (sem alinhar com release do Terraform)
 
 ### Monitoring & Logs
 
@@ -466,6 +568,8 @@ databricks bundle destroy -t dev
 databricks bundle destroy -t prod --auto-approve
 ```
 
+> ⚠️ **Lakebase resources**: O CLI exibe confirmação antes de destruir recursos Lakebase (projetos, branches, postgres endpoints) — não há `--auto-approve` silencioso para esses recursos.
+
 ---
 
 ## Common Issues
@@ -476,6 +580,7 @@ databricks bundle destroy -t prod --auto-approve
 | **App not connecting to Unity Catalog** | Check logs for backend connection errors; verify warehouse ID and permissions |
 | **Wrong permission level** | Dashboards: CAN_READ/RUN/EDIT/MANAGE; Jobs: CAN_VIEW/MANAGE_RUN/MANAGE |
 | **Path resolution fails** | Use `../src/` in resources/*.yml, `./src/` in databricks.yml |
+| **Path error após CLI 0.266** | Fallback de path removido — corrija todos os paths para serem diretos e existentes |
 | **Catalog doesn't exist** | Create catalog first or update variable; use `schemas` resource to auto-create |
 | **"admins" group error on jobs** | Cannot modify admins permissions on jobs |
 | **Volume permissions** | Use `grants` not `permissions` for volumes |
@@ -487,6 +592,9 @@ databricks bundle destroy -t prod --auto-approve
 | **Unknown resource changes** | Run `bundle summary` to see current deployed state before making changes |
 | **Variable not resolved** | Check `type` matches usage; use `bundle validate` to catch unresolved references |
 | **Service principal auth** | Add `run_as` block to jobs for service principal execution in prod |
+| **Terraform download bloqueado por firewall** | Migre para o direct engine (`DATABRICKS_BUNDLE_ENGINE=direct`) — elimina dependência do Terraform |
+| **postgres_projects permissions error** | `permissions` não é suportado em `postgres_projects`; gerencie permissões via UI |
+| **Lakebase deploy imediato** | Ao fazer deploy de `database_instances` ou `postgres_projects`, o recurso inicia imediatamente e gera custo |
 
 ## Key Principles
 
@@ -498,6 +606,7 @@ databricks bundle destroy -t prod --auto-approve
 6. **Plan before prod**: Always run `bundle plan -t prod` before deploying to production
 7. **Serverless Tasks**: Prefer `environment_key` over `job_cluster_key` for job tasks
 8. **run_as**: Set `run_as.service_principal_name` in production jobs for predictable identity
+9. **Direct engine**: Use `DATABRICKS_BUNDLE_ENGINE=direct` for new bundles; migre existentes com `bundle deployment migrate`
 
 ## Related Skills
 
@@ -513,5 +622,7 @@ databricks bundle destroy -t prod --auto-approve
 - [Bundle Resources Reference](https://docs.databricks.com/dev-tools/bundles/resources)
 - [Bundle Configuration Reference](https://docs.databricks.com/dev-tools/bundles/settings)
 - [Supported Resource Types](https://docs.databricks.com/aws/en/dev-tools/bundles/resources#resource-types)
+- [Direct Deployment Engine](https://docs.databricks.com/aws/en/dev-tools/bundles/direct)
+- [Declarative Automation Bundles Release Notes](https://docs.databricks.com/aws/en/release-notes/dev-tools/bundles)
 - [Examples Repository 1](https://github.com/databricks-solutions/databricks-dab-examples)
 - [Example Repository 2](https://github.com/databricks/bundle-examples)

@@ -1,11 +1,16 @@
 ---
 name: databricks-aibi-dashboards
 description: "Create Databricks AI/BI dashboards. Use when creating, updating, or deploying Lakeview dashboards. CRITICAL: You MUST test ALL SQL queries via execute_sql BEFORE deploying. Follow guidelines strictly."
+updated_at: 2026-04-23
+source: web_search
 ---
 
 # AI/BI Dashboard Skill
 
 Create Databricks AI/BI dashboards (formerly Lakeview dashboards). **Follow these guidelines strictly.**
+
+> ⚠️ **Breaking change (janeiro 2026): Legacy dashboards (Databricks SQL dashboards) atingiram End of Life.**
+> Desde 12 de janeiro de 2026, legacy dashboards e suas APIs não estão mais acessíveis diretamente. A página de migração esteve disponível até 2 de março de 2026. Não é mais possível criar ou clonar legacy dashboards via UI ou API. Use exclusivamente AI/BI dashboards para todo desenvolvimento novo.
 
 ## CRITICAL: MANDATORY VALIDATION WORKFLOW
 
@@ -87,9 +92,41 @@ manage_dashboard(action="list")
 - **One dataset per domain** (e.g., orders, customers, products)
 - **Exactly ONE valid SQL query per dataset** (no multiple queries separated by `;`)
 - Always use **fully-qualified table names**: `catalog.schema.table_name`
+  - Alternativa disponível desde 2025: selecione catalog/schema no dataset editor e use apenas o nome da tabela — mas prefira nomes qualificados em código para máxima portabilidade.
 - SELECT must include all dimensions needed by widgets and all derived columns via `AS` aliases
 - Put ALL business logic (CASE/WHEN, COALESCE, ratios) into the dataset SELECT with explicit aliases
 - **Contract rule**: Every widget `fieldName` must exactly match a dataset column or alias
+
+#### Tipos de dataset disponíveis (novos em 2025/2026)
+
+Além do SQL puro, o editor de datasets agora suporta:
+
+| Opção | Quando usar |
+|-------|-------------|
+| `Create from SQL` | Padrão — query SQL completa sobre qualquer fonte |
+| `Add data source` | Selecionar tabela/view do Unity Catalog com `SELECT *` editável |
+| `Metric view` (Public Preview) | Usar Unity Catalog metric view como fonte gerenciada |
+| `Create a metric view` (Public Preview, 2026) | **Dashboard local metric view** — define dimensões, medidas e joins diretamente no dashboard sem publicar no UC primeiro |
+| `Upload a file` | Upload de CSV/Excel para Unity Catalog; requer MANAGE no schema |
+
+**Dashboard local metric views** (Public Preview, 2026): permitem prototipar métricas sem passar pelo processo de publicação no Unity Catalog. Quando estiver pronto, exporte para UC como metric view governada. Requer que o preview "Dashboard Local Metric Views" esteja habilitado no workspace pelo admin.
+
+#### Custom Calculations (novos em 2025)
+
+Em vez de colocar toda lógica derivada no SQL da query, você pode criar **calculated measures** e **calculated dimensions** diretamente no dataset editor (aba Data → `+ Add custom calculation`). Use ANSI SQL; suporta CASE WHEN, CONCAT, COALESCE, funções de janela e expressões Level of Detail (LOD).
+
+- **Calculated measures**: valores agregados (SUM, AVG, COUNT), computados dinamicamente com o GROUP BY da visualização. Aparecem na seção Measures com ícone `fx`. Filtros (`WHERE`/`HAVING`) **não são suportados** em calculated measures.
+- **Calculated dimensions**: valores não-agregados (categorização, formatação de strings). Podem usar scalar window functions com `OVER (PARTITION BY ...)`.
+- Custom calculations podem referenciar outras custom calculations do mesmo dataset.
+- Use custom calculations para evitar múltiplos datasets quando a diferença é apenas uma métrica derivada.
+
+```sql
+-- Exemplo de calculated measure no editor (expressão):
+fare_amount / NULLIF(trip_distance, 0)   -- "cost_per_mile"
+
+-- Exemplo com LOD fixo (total de vendas por região, independente do filtro):
+SUM(sales) OVER (PARTITION BY region)   -- "all_region_sales"
+```
 
 ### 2) WIDGET FIELD EXPRESSIONS
 
@@ -139,13 +176,18 @@ Allowed expressions in widget queries (you CANNOT use CAST or other SQL in expre
 {"name": "category", "expression": "`category`"}
 ```
 
-If you need conditional logic or multi-field formulas, compute a derived column in the dataset SQL first.
+If you need conditional logic or multi-field formulas, compute a derived column in the dataset SQL first — ou use **Custom Calculations** no dataset editor para evitar duplicação de datasets.
 
 ### 3) SPARK SQL PATTERNS
 
 - Date math: `date_sub(current_date(), N)` for days, `add_months(current_date(), -N)` for months
 - Date truncation: `DATE_TRUNC('DAY'|'WEEK'|'MONTH'|'QUARTER'|'YEAR', column)`
 - **AVOID** `INTERVAL` syntax - use functions instead
+- Metric view measures em queries SQL devem ser acessadas via função agregada `MEASURE()`:
+  ```sql
+  -- Ao referenciar uma metric view em SQL:
+  SELECT region, MEASURE(total_revenue) FROM catalog.schema.my_metric_view GROUP BY region
+  ```
 
 ### 4) LAYOUT (6-Column Grid, NO GAPS)
 
@@ -163,6 +205,8 @@ Each widget has a position: `{"x": 0, "y": 0, "width": 2, "height": 4}`
 | Pie chart | 3 | **5-6** | Needs space for legend |
 | Full-width chart | 6 | 5-7 | For detailed time series |
 | Table | 6 | 5-8 | Full width for readability |
+
+> **Nota (2026):** Text box widgets agora suportam alinhamento vertical (top, center, bottom). Considere isso ao projetar cabeçalhos e descrições. Linhas em line charts podem ser estilizadas como tracejadas ou pontilhadas via painel de configuração (Pattern).
 
 **Standard dashboard structure:**
 ```text
@@ -188,9 +232,31 @@ y=12: Table (w=6, h=6) - Detailed data
 **Before creating any chart with color/grouping:**
 1. Check column cardinality (use `get_table_stats_and_schema` to see distinct values)
 2. If >10 distinct values, aggregate to higher level OR use TOP-N + "Other" bucket
+   - Bar charts agora suportam exibição de Top/Bottom N categorias nativamente (desde 2025) — configure via kebab menu do eixo categórico → "Default number of categories".
 3. For high-cardinality dimensions, use a table widget instead of a chart
 
-### 6) QUALITY CHECKLIST
+### 6) NOVOS RECURSOS RELEVANTES (2025–2026)
+
+Estes recursos estão disponíveis na plataforma e podem ser referenciados ao orientar usuários ou gerar dashboards mais ricos:
+
+| Recurso | Status | Descrição |
+|---------|--------|-----------|
+| **Custom Calculations** (measures + dimensions) | GA | Métricas derivadas definidas no editor de datasets sem alterar o SQL base |
+| **LOD expressions** | GA (fev/2026) | Controle preciso de granularidade de agregação em custom calculations, independente do agrupamento do gráfico |
+| **AI Forecast em line charts** | Public Preview | Gera previsão via `ai_forecast` diretamente sobre line charts com eixo temporal |
+| **Dashboard local metric views** | Public Preview (2026) | Define metric views com joins, medidas e dimensões dentro do dashboard, sem publicar no UC |
+| **Git folders para dashboards** | Public Preview | Dashboards versionados em Databricks Git folders para CI/CD |
+| **Dashboard como tarefa em Jobs** | GA (abr/2025) | Adicione refresh de dashboard como task em Databricks Workflows |
+| **Filtros globais multi-página** | GA | Filtros que se aplicam a todas as páginas do dashboard |
+| **Bulk apply de filtros** | GA | Aplique múltiplos filtros simultaneamente antes de atualizar o dashboard |
+| **Counter com sparkline e comparação** | GA | Counters KPI com série temporal inline e comparação período-a-período |
+| **Subscriptions para Microsoft Teams** | Public Preview | Snapshots agendados enviados a canais Teams (PNG + PDF) |
+| **Embedding externo** | GA (2026) | Embed de dashboards para usuários externos sem conta Databricks |
+| **Sankey visualization** | GA (abr/2025) | Novo tipo de chart para fluxos e jornadas |
+| **Mobile layout** | GA (2026) | Dashboards renderizam automaticamente em layout mobile no Databricks One |
+| **Tabular attachments em email subscriptions** | GA (2026) | Emails de subscription incluem attachments tabulares |
+
+### 7) QUALITY CHECKLIST
 
 Before deploying, verify:
 1. All widget names use only alphanumeric + hyphens + underscores
@@ -203,6 +269,8 @@ Before deploying, verify:
 8. Percent values are 0-1 (not 0-100)
 9. SQL uses Spark syntax (date_sub, not INTERVAL)
 10. **All SQL queries tested via `execute_sql` and return expected data**
+11. Se usar metric view como fonte de dataset em SQL, acessar medidas via `MEASURE()` aggregate function
+12. Calculated measures não suportam cláusulas de filtro (`WHERE`/`HAVING`) — mova filtros para o SQL da query base
 
 ---
 
@@ -210,4 +278,4 @@ Before deploying, verify:
 
 - **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - for querying the underlying data and system tables
 - **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - for building the data pipelines that feed dashboards
-- **[databricks-jobs](../databricks-jobs/SKILL.md)** - for scheduling dashboard data refreshes
+- **[databricks-jobs](../databricks-jobs/SKILL.md)** - for scheduling dashboard data refreshes (now supports dashboard refresh as a native Jobs task)
