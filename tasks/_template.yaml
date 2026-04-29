@@ -1,0 +1,17 @@
+# Template de arquivo de tarefa
+# Renomeie para o nome da sua tarefa e coloque na subpasta correta.
+# Campos opcionais: context_files, output, params
+
+agent: auto   # auto | spark_expert | sql_expert | pipeline_architect | data_quality |
+               # naming_guard | governance_auditor | dbt_expert | python_expert |
+               # fabric_expert | databricks_ai | devops_engineer | lakehouse_engineer | geral
+
+task: |
+  Descreva aqui a tarefa com todo o contexto necessário.
+  Pode ser multilinha.
+
+# context_files:           # Arquivos injetados como contexto adicional
+#   - resources/naming convention.md
+#   - docs/schema_pedidos.md
+
+# output: output/reviews/resultado.md   # Salvar resultado neste arquivo

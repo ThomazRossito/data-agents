@@ -1,0 +1,22 @@
+agent: devops_engineer
+
+task: |
+  Configure um Databricks Asset Bundle (DAB) para o projeto de vendas com:
+
+  Environments:
+  - dev: cluster small, runs manuais, sem notificações
+  - staging: cluster medium, runs agendados (diário 06h), notificação em falha para email da equipe
+  - prod: cluster large (spot), runs agendados (diário 03h), alertas críticos
+
+  Jobs incluídos:
+  - ingest_bronze: notebooks/01_bronze/ingest_pedidos.py (dep: nenhuma)
+  - transform_silver: notebooks/02_silver/transform_pedidos.py (dep: ingest_bronze)
+  - build_gold: notebooks/03_gold/star_schema.py (dep: transform_silver)
+  - quality_check: notebooks/04_quality/run_expectations.py (dep: transform_silver)
+
+  Extras:
+  - Tagging por camada e ambiente
+  - Permissões via grupo AD (data-engineers-dev, data-engineers-prod)
+  - Parâmetros de data passados em runtime
+
+output: output/devops/dab_config_vendas.md

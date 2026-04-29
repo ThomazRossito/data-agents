@@ -1,120 +1,146 @@
-"""
-workflow.executor — Leitura e sumarização de eventos de workflow.
+"""workflow.executor — Executa workflows colaborativos multi-agente."""
+from __future__ import annotations
 
-Lê `logs/workflows.jsonl` (gerado por `workflow.tracker`) e produz um dicionário
-agregado consumido pelo dashboard de monitoramento.
-
-Exportado:
-  - `WORKFLOWS_LOG_PATH` (constante do caminho do log)
-  - `load_workflow_history()` → `list[dict]`
-  - `get_workflow_summary()`  → `dict[str, Any]` com métricas agregadas
-"""
-
-import json
+import hashlib
 import logging
 from pathlib import Path
-from typing import Any
 
-from config.settings import settings
+from agents.base import AgentResult, BaseAgent
+from workflow.dag import WorkflowDef, WorkflowStep
 
 logger = logging.getLogger("data_agents.workflow.executor")
 
-WORKFLOWS_LOG_PATH: Path = Path(settings.audit_log_path).parent / "workflows.jsonl"
+OUTPUT_DIR = Path(__file__).parent.parent / "output" / "workflows"
+OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def load_workflow_history() -> list[dict]:
-    """Lê todos os eventos de `logs/workflows.jsonl`."""
-    events: list[dict] = []
-    if not WORKFLOWS_LOG_PATH.exists():
-        return events
-    try:
-        with open(WORKFLOWS_LOG_PATH, encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    events.append(json.loads(line))
-                except json.JSONDecodeError:
-                    continue
-    except OSError:
-        pass
-    return events
-
-
-def get_workflow_summary() -> dict[str, Any]:
+def execute_workflow(
+    workflow: WorkflowDef,
+    task: str,
+    agents: dict[str, BaseAgent],
+    fallback_agent: BaseAgent,
+    *,
+    fail_fast: bool = True,
+) -> AgentResult:
     """
-    Calcula resumo agregado de workflows e delegações para o dashboard.
+    Executa um workflow multi-agente com handoff automático.
 
-    Returns:
-        Dict com métricas de workflows, delegações por agente, Clarity Checkpoint
-        e specs gerados.
+    fail_fast=True (padrão): para na primeira etapa que falhar e retorna o
+    resultado parcial acumulado até então.
+    fail_fast=False: continua nas etapas seguintes, registrando o erro da etapa
+    no contexto como placeholder.
     """
-    events = load_workflow_history()
+    logger.info(
+        "Iniciando workflow %s (%s) | %d etapas",
+        workflow.id,
+        workflow.name,
+        len(workflow.steps),
+    )
 
-    summary: dict[str, Any] = {
-        "total_events": len(events),
-        "total_delegations": 0,
-        "delegations_by_agent": {},
-        "workflows_triggered": {},
-        "workflow_steps": [],
-        "clarity_checks": [],
-        "clarity_pass_rate": 0.0,
-        "specs_generated": [],
-        "clarifications_requested": 0,
-        "events_by_date": {},
-        "prd_modifications": [],
-        "specs_needing_review": [],
-        "cascade_events": 0,
-    }
+    total_tokens = 0
+    total_tool_calls = 0
+    step_results: dict[str, str] = {}
+    step_log: list[str] = []
 
-    agent_counts: dict[str, int] = {}
-    wf_counts: dict[str, int] = {}
-    clarity_checks: list[dict] = []
-    date_counts: dict[str, int] = {}
+    step_log.append(f"# Workflow {workflow.id}: {workflow.name}")
+    step_log.append(f"\n**Tarefa original:** {task}\n")
 
-    for event in events:
-        event_type = event.get("event", "")
-        date_key = event.get("timestamp", "")[:10]
-        date_counts[date_key] = date_counts.get(date_key, 0) + 1
+    for i, step in enumerate(workflow.steps, start=1):
+        agent = agents.get(step.agent_name, fallback_agent)
+        context = _build_step_context(
+            workflow, step, i, len(workflow.steps), step_results
+        )
 
-        if event_type == "agent_delegation":
-            summary["total_delegations"] += 1
-            agent = event.get("agent", "unknown")
-            agent_counts[agent] = agent_counts.get(agent, 0) + 1
+        logger.info(
+            "[%d/%d] Delegando para %s: %s",
+            i,
+            len(workflow.steps),
+            step.agent_name,
+            step.description[:60],
+        )
 
-        elif event_type == "workflow_step":
-            summary["total_delegations"] += 1
-            agent = event.get("agent", "unknown")
-            agent_counts[agent] = agent_counts.get(agent, 0) + 1
-            wf = event.get("workflow", "unknown")
-            wf_counts[wf] = wf_counts.get(wf, 0) + 1
-            summary["workflow_steps"].append(event)
+        full_prompt = step.description + f"\n\nTarefa original: {task}"
+        try:
+            result = agent.run(full_prompt, context=context)
+        except Exception as exc:  # noqa: BLE001
+            err_msg = f"[ERRO na etapa {i}/{len(workflow.steps)} — {step.agent_name}]: {exc}"
+            logger.error(err_msg)
+            if fail_fast:
+                step_log.append(f"\n## ⛔ Etapa {i} falhou (fail_fast=True)\n{err_msg}\n")
+                partial_filename = f"{workflow.id.lower()}_partial.md"
+                partial_content = _build_summary(workflow, step_log, partial_filename)
+                return AgentResult(
+                    content=partial_content,
+                    tool_calls_count=total_tool_calls,
+                    tokens_used=total_tokens,
+                )
+            # fail_fast=False: registra erro e continua
+            step_results[step.output_key] = err_msg
+            step_log.append(
+                f"\n## Etapa {i}/{len(workflow.steps)}: {step.agent_name} ⚠️ ERRO\n"
+                f"*{step.description}*\n\n{err_msg}\n\n---"
+            )
+            continue
 
-        elif event_type == "clarity_checkpoint":
-            clarity_checks.append(event)
+        step_results[step.output_key] = result.content
+        total_tokens += result.tokens_used
+        total_tool_calls += result.tool_calls_count
 
-        elif event_type == "spec_generated":
-            summary["specs_generated"].append(event)
+        step_log.append(
+            f"\n## Etapa {i}/{len(workflow.steps)}: {step.agent_name}\n"
+            f"*{step.description}*\n\n"
+            f"{result.content}\n\n---"
+        )
 
-        elif event_type == "clarity_clarification_requested":
-            summary["clarifications_requested"] += 1
+    # Salvar resultado completo
+    output_file = (
+        OUTPUT_DIR / f"{workflow.id.lower()}_{hashlib.sha1(task.encode()).hexdigest()[:8]}.md"
+    )
+    output_file.write_text("\n".join(step_log), encoding="utf-8")
+    logger.info("Workflow %s concluído → %s", workflow.id, output_file.name)
 
-        elif event_type == "prd_modified":
-            summary["prd_modifications"].append(event)
-            summary["cascade_events"] += 1
+    # Resumo final
+    final_content = _build_summary(workflow, step_log, output_file.name)
 
-        elif event_type == "spec_needs_review":
-            summary["specs_needing_review"].append(event)
-            summary["cascade_events"] += 1
+    return AgentResult(
+        content=final_content,
+        tool_calls_count=total_tool_calls,
+        tokens_used=total_tokens,
+    )
 
-    summary["delegations_by_agent"] = dict(sorted(agent_counts.items(), key=lambda x: -x[1]))
-    summary["workflows_triggered"] = dict(sorted(wf_counts.items(), key=lambda x: -x[1]))
-    summary["clarity_checks"] = clarity_checks
-    summary["events_by_date"] = dict(sorted(date_counts.items()))
 
-    if clarity_checks:
-        passed = sum(1 for c in clarity_checks if c.get("passed", False))
-        summary["clarity_pass_rate"] = round(passed / len(clarity_checks) * 100, 1)
+def _build_step_context(
+    workflow: WorkflowDef,
+    step: WorkflowStep,
+    step_num: int,
+    total: int,
+    previous_results: dict[str, str],
+) -> str:
+    lines = [
+        "## Contexto do Workflow",
+        "",
+        f"- **Workflow:** {workflow.id} — {workflow.name}",
+        f"- **Etapa atual:** {step_num} de {total}",
+        "",
+    ]
 
-    return summary
+    if previous_results:
+        lines.append("### Resultados das Etapas Anteriores\n")
+        for key, content in previous_results.items():
+            preview = content[:2500] + ("..." if len(content) > 2500 else "")
+            lines.append(f"**{key}:**\n{preview}\n")
+
+    lines.append(f"### Sua Tarefa nesta Etapa\n{step.description}")
+    return "\n".join(lines)
+
+
+def _build_summary(
+    workflow: WorkflowDef,
+    step_log: list[str],
+    filename: str,
+) -> str:
+    return (
+        f"**Workflow {workflow.id} concluído:** {workflow.name}\n\n"
+        f"Resultado salvo em `output/workflows/{filename}`\n\n"
+        + "\n".join(step_log[2:])  # pula header e tarefa original
+    )

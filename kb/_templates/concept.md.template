@@ -1,0 +1,23 @@
+# Conceito: <Nome>
+
+## TL;DR
+
+<Uma frase explicando o conceito em termos diretos para engenheiros de dados.>
+
+## Quando usar
+
+<Condições em que este conceito se aplica — contexto de Databricks/Fabric.>
+
+## Anti-padrão
+
+<Exemplo do que NÃO fazer, com razão concreta.>
+
+## Exemplo mínimo
+
+```python
+# código mínimo e funcional
+```
+
+## Related
+
+- [<outro conceito>](<arquivo>.md)

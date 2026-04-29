@@ -1,0 +1,30 @@
+resources:
+  jobs:
+    data_agents_deploy_check:
+      name: "[${bundle.target}] data-agents health check"
+      description: "Verifica integridade do deploy em cada ambiente."
+
+      tasks:
+        - task_key: health_check
+          notebook_task:
+            notebook_path: /Shared/data-agents-copilot/health_check
+            base_parameters:
+              environment: "${bundle.target}"
+              catalog: "${var.catalog}"
+              schema: "${var.schema}"
+          job_cluster_key: default_cluster
+
+      job_clusters:
+        - job_cluster_key: default_cluster
+          new_cluster:
+            spark_version: "15.4.x-scala2.12"
+            num_workers: 1
+            node_type_id: Standard_DS3_v2
+            spark_conf:
+              spark.databricks.delta.preview.enabled: "true"
+
+      permissions:
+        - level: CAN_VIEW
+          group_name: users
+        - level: CAN_MANAGE_RUN
+          group_name: data-engineers

@@ -1,144 +1,26 @@
-"""
-Confidence Decay — Obsolescência automática de memórias.
-
-Cada tipo de memória tem uma taxa de decay diferente:
-  - USER: nunca decai (confidence permanece 1.0)
-  - FEEDBACK: decay lento (90 dias para chegar a 0.1)
-  - ARCHITECTURE: nunca decai (confidence permanece 1.0)
-  - PROGRESS: decay rápido (7 dias para chegar a 0.1)
-
-A função de decay é exponencial:
-  confidence = initial * exp(-λ * days_elapsed)
-  onde λ = -ln(target) / half_life_days
-
-Memórias abaixo do threshold (0.1) são marcadas como inativas
-e excluídas do retrieval (mas não deletadas — preserva histórico).
-"""
-
+"""memory.decay — Cálculo de confidence com decaimento temporal."""
 from __future__ import annotations
 
-import logging
-import math
-from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from memory.types import Memory, MemoryType
-
-logger = logging.getLogger("data_agents.memory.decay")
+from memory.types import DECAY_CONFIG, Memory
 
 
-def _get_decay_days(memory_type: MemoryType) -> float | None:
+def compute_decayed_confidence(memory: Memory, now: datetime | None = None) -> float:
     """
-    Retorna o número de dias para atingir confidence 0.1 para um tipo de memória.
+    Calcula a confidence decaída de uma memória.
 
-    Lê de settings para permitir override via .env sem alterar código.
-    USER e ARCHITECTURE nunca decaem (retorna None).
+    Tipos sem entrada em DECAY_CONFIG nunca decaem (retornam confidence original).
+    Tipos com decay perdem `rate * days_since_update` de confidence (mínimo 0.0).
     """
-    from config.settings import settings  # importação local — evita circular import
+    if now is None:
+        now = datetime.now(UTC)
 
-    if memory_type == MemoryType.USER:
-        return None
-    if memory_type == MemoryType.ARCHITECTURE:
-        return None
-    if memory_type == MemoryType.FEEDBACK:
-        return settings.memory_decay_feedback_days
-    if memory_type == MemoryType.PROGRESS:
-        return settings.memory_decay_progress_days
-    # Novos tipos com decay (DATA_ASSET, PLATFORM_DECISION, PIPELINE_STATUS)
-    if memory_type == MemoryType.PIPELINE_STATUS:
-        return settings.memory_decay_pipeline_status_days
-    # DATA_ASSET e PLATFORM_DECISION nunca decaem (decisões e ativos são duradouros)
-    return None
-
-
-def _compute_decay_rate(days_to_threshold: float, threshold: float = 0.1) -> float:
-    """
-    Calcula a taxa de decay (λ) para que confidence atinja threshold em N dias.
-
-    λ = -ln(threshold) / days_to_threshold
-    """
-    if days_to_threshold <= 0:
-        return 0.0
-    return -math.log(threshold) / days_to_threshold
-
-
-def compute_decayed_confidence(
-    memory: Memory,
-    now: datetime | None = None,
-) -> float:
-    """
-    Calcula a confidence atual de uma memória após aplicar o decay.
-
-    Args:
-        memory: Memória para calcular o decay.
-        now: Timestamp atual (UTC). Default: agora.
-
-    Returns:
-        Novo valor de confidence (0.0 a 1.0).
-    """
-    decay_days = _get_decay_days(memory.type)
-
-    # Tipos sem decay mantêm confidence original
-    if decay_days is None:
+    decay_rate = DECAY_CONFIG.get(memory.type)
+    if decay_rate is None:
         return memory.confidence
 
-    now = now or datetime.now(timezone.utc)
-    elapsed = (now - memory.created_at).total_seconds() / 86400  # dias
-
-    if elapsed <= 0:
-        return memory.confidence
-
-    rate = _compute_decay_rate(decay_days)
-    decayed = memory.confidence * math.exp(-rate * elapsed)
-
-    return max(0.0, min(1.0, decayed))
-
-
-def apply_decay(
-    memories: list[Memory],
-    now: datetime | None = None,
-    save_fn: Callable[[Memory], object] | None = None,
-) -> tuple[list[Memory], list[Memory]]:
-    """
-    Aplica decay a uma lista de memórias e retorna as ativas e expiradas.
-
-    Args:
-        memories: Lista de memórias para processar.
-        now: Timestamp atual (UTC). Default: agora.
-        save_fn: Função opcional para persistir memórias atualizadas.
-            Assinatura: save_fn(memory: Memory) -> None
-
-    Returns:
-        Tupla (ativas, expiradas) — memórias atualizadas.
-    """
-    now = now or datetime.now(timezone.utc)
-    active: list[Memory] = []
-    expired: list[Memory] = []
-
-    for mem in memories:
-        new_confidence = compute_decayed_confidence(mem, now)
-
-        # Só atualiza se mudou significativamente (evita rewrites desnecessários)
-        if abs(new_confidence - mem.confidence) > 0.01:
-            mem.confidence = round(new_confidence, 3)
-            mem.updated_at = now
-            if save_fn:
-                try:
-                    save_fn(mem)
-                except Exception as e:
-                    logger.warning(f"Erro ao salvar decay de {mem.id}: {e}")
-
-        if mem.is_active():
-            active.append(mem)
-        else:
-            expired.append(mem)
-
-    decayed_count = sum(
-        1 for mem in memories if abs(compute_decayed_confidence(mem, now) - mem.confidence) > 0.01
-    )
-    logger.info(
-        f"Decay aplicado: {len(active)} ativas, {len(expired)} expiradas, "
-        f"{decayed_count} atualizadas (tipos expiradas: {[m.type.value for m in expired]})"
-    )
-
-    return active, expired
+    delta = now - memory.updated_at.replace(tzinfo=UTC)
+    days = delta.total_seconds() / 86_400
+    decayed = memory.confidence - decay_rate * days
+    return max(0.0, decayed)

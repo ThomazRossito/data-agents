@@ -1,0 +1,24 @@
+agent: data_quality
+
+task: |
+  Gere um conjunto completo de expectativas de qualidade (DQX / Great Expectations)
+  para a tabela silver.pedidos_clean.
+
+  Schema esperado:
+  - pedido_id: BIGINT NOT NULL (PK)
+  - cliente_id: BIGINT NOT NULL (FK)
+  - produto_id: BIGINT NOT NULL (FK)
+  - quantidade: INT > 0
+  - valor_unitario: DECIMAL(10,2) >= 0
+  - valor_total: DECIMAL(10,2) calculado (quantidade * valor_unitario)
+  - status: STRING IN ('pendente', 'aprovado', 'cancelado', 'entregue')
+  - data_pedido: DATE NOT NULL (não pode ser futura)
+  - data_atualizacao: TIMESTAMP NOT NULL
+
+  Validações adicionais:
+  - Completude mínima: 95% para campos obrigatórios
+  - Sem duplicatas por pedido_id
+  - valor_total deve estar entre 0 e 1.000.000
+  - Código Python executável para Databricks (DQX ou pydeequ)
+
+output: output/quality/expectations_pedidos.md

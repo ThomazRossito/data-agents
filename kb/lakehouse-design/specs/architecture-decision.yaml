@@ -1,0 +1,53 @@
+name: lakehouse-design
+version: "1.0"
+updated: "2026-04-25"
+description: "ADR template e specs de arquitetura para implantação de Lakehouse"
+
+architecture_decision_record:
+  sections:
+    - title: Contexto
+      description: "Descrever o problema, contexto técnico e restrições relevantes"
+    - title: Decisão
+      description: "Plataforma escolhida (Databricks / Fabric / Híbrido) e justificativa"
+    - title: Alternativas consideradas
+      description: "Listar alternativas avaliadas com prós e contras"
+    - title: Consequências
+      description: "Impacto em custo, operação, governança e equipe"
+    - title: Aprovação
+      description: "Stakeholders que aprovaram a decisão"
+
+platform_selection_criteria:
+  databricks:
+    - "Volume > 1TB de dados processados por dia"
+    - "ML/MLflow como parte do pipeline"
+    - "Streaming com latência < 1 min"
+    - "Multi-cloud obrigatório"
+  fabric:
+    - "Power BI como ferramenta primária de BI"
+    - "Direct Lake necessário (performance Power BI)"
+    - "Stakeholders de negócio precisam de self-service"
+    - "Azure only aceitável"
+  hybrid:
+    - "Engenharia em Databricks + BI em Fabric"
+    - "Delta Sharing viável entre as plataformas"
+    - "Orçamento para licenciar ambas"
+
+medallion_defaults:
+  bronze:
+    format: delta
+    mode: append
+    partition_by: ingestion_date
+    retention_days: 90
+    optimize_write: true
+  silver:
+    format: delta
+    mode: merge
+    partition_by: event_date
+    retention_days: 365
+    z_order_by: []
+  gold:
+    format: delta
+    mode: overwrite
+    partition_by: []
+    retention_days: 730
+    vacuum_retain_hours: 168

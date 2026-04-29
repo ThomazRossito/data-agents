@@ -1,0 +1,49 @@
+decision_criteria:
+  databricks_workflows:
+    use_when:
+      - "Stack 100% Databricks"
+      - "Quero zero infra de orquestração"
+      - "Pipeline de ML com MLflow integrado"
+      - "Usar DABs para CI/CD"
+    avoid_when:
+      - "Precisar integrar fontes fora do Databricks de forma complexa"
+      - "Time já tem Airflow em produção"
+    cost: "Incluído no workspace (sem custo adicional)"
+    complexity: "Baixa"
+    scheduler: "Cron + webhook triggers"
+
+  airflow:
+    use_when:
+      - "Multi-plataforma (Databricks + Fabric + APIs externas)"
+      - "Time já usa Airflow"
+      - "Needs complex sensor logic (FileSensor, HTTP, custom)"
+      - "On-prem + cloud hybrid"
+      - "Audiência de orquestração além de Data Engineering"
+    avoid_when:
+      - "Stack puramente Databricks"
+      - "Pequena equipe sem expertise em Airflow"
+    cost: "Infra própria (EC2/MWAA) ou managed $$$"
+    complexity: "Alta"
+    scheduler: "Cron + sensors"
+
+  fabric_pipelines:
+    use_when:
+      - "Stack 100% Microsoft Fabric"
+      - "Time BI que precisa de pipelines simples"
+      - "Integração com Dataflow Gen2 e Copy Activity"
+    avoid_when:
+      - "Lógica complexa de branching/conditional"
+      - "Precisar de Spark transformations pesadas"
+    cost: "Incluído na capacidade Fabric (CU)"
+    complexity: "Baixa (GUI)"
+    scheduler: "Cron"
+
+retry_patterns:
+  simple: {retries: 3, retry_delay: "5m"}
+  exponential: {retries: 3, retry_delay: "5m/15m/45m"}
+  idempotent_requirement: "Toda task deve ser idempotente (re-run seguro)"
+
+fan_patterns:
+  fan_out: "1 task upstream → N tasks downstream em paralelo"
+  fan_in: "N tasks upstream → 1 task aggregadora (espera todos)"
+  recommended_max_parallelism: 10

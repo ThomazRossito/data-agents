@@ -1,82 +1,40 @@
-# ═══════════════════════════════════════════════════════════════════
-# Databricks Asset Bundles — Data Agents
-# Multi-environment: dev, staging, production
-# ═══════════════════════════════════════════════════════════════════
-
 bundle:
-  name: data_agents
+  name: data-agents-copilot
 
 include:
   - resources/*.yml
 
 variables:
   catalog:
-    default: "dev_vendas"
+    default: main
   schema:
-    default: "vendas"
-
-workspace:
-  host: ${workspace.host}
-
-# ─── Shared Resources ────────────────────────────────────────────
-
-resources:
-  jobs:
-    health_check_job:
-      name: "[${bundle.target}] Databricks Agents Health Check"
-      tasks:
-        - task_key: run_health_check
-          new_cluster:
-            spark_version: "14.3.x-scala2.12"
-            node_type_id: "Standard_DS3_v2"
-            num_workers: 0
-          spark_python_task:
-            python_file: ./tools/databricks_health_check.py
-
-# ─── Sync Configuration ──────────────────────────────────────────
-
-sync:
-  include:
-    - "skills/**"
-    - "agents/**"
-    - "config/**"
-    - "hooks/**"
-    - "commands/**"
-    - "mcp_servers/**"
-    - "main.py"
-    - "pyproject.toml"
-  exclude:
-    - "tests/**"
-    - ".github/**"
-    - "**/*.pyc"
-    - "**/__pycache__"
-
-# ─── Targets (Environments) ──────────────────────────────────────
+    default: data_agents
+  warehouse_id:
+    lookup:
+      warehouse: "Shared SQL Warehouse"
 
 targets:
-  # ─── Development ──────────────────────────────────────────────
   dev:
-    mode: development
     default: true
+    mode: development
+    workspace:
+      profile: dev-profile
+    variables:
+      catalog: dev_catalog
+      schema: data_agents_dev
 
-  # ─── Staging ──────────────────────────────────────────────────
   staging:
+    mode: development
     workspace:
-      root_path: /Shared/data-agents-staging
-    permissions:
-      - level: CAN_VIEW
-        group_name: data-agents-viewers
-      - level: CAN_MANAGE
-        group_name: data-agents-admins
+      profile: staging-profile
+    variables:
+      catalog: staging_catalog
+      schema: data_agents_staging
 
-  # ─── Production ──────────────────────────────────────────────
-  production:
+  prod:
+    mode: production
     workspace:
-      root_path: /Shared/data-agents-prod
-    permissions:
-      - level: CAN_VIEW
-        group_name: data-agents-viewers
-      - level: CAN_MANAGE
-        group_name: data-agents-admins
-    run_as:
-      service_principal_name: data-agents-sp
+      profile: prod-profile
+    variables:
+      catalog: prod_catalog
+      schema: data_agents_prod

@@ -1,0 +1,20 @@
+agent: naming_guard
+
+task: |
+  Audite as tabelas abaixo e:
+  1. Identifique violações de convenção de nomenclatura
+  2. Sugira os nomes corrigidos com SQL de rename
+  3. Gere um relatório de conformidade (% ok, lista de violações)
+
+  Tabelas auditadas:
+  - RAW_Customers (camada bronze)
+  - slv_Orders_Clean (camada silver)
+  - Gold_Revenue (camada gold)
+  - stg_products (sem camada definida)
+  - dim_Clientes_V2_Final_NOVO (camada gold)
+  - brz_pedidos_2024_jan (camada bronze — contém data no nome)
+
+context_files:
+  - resources/naming convention.md
+
+output: output/governance/naming_audit_report.md

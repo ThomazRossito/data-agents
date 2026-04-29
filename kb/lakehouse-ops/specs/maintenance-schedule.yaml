@@ -1,0 +1,66 @@
+name: lakehouse-ops
+version: "1.0"
+updated: "2026-04-25"
+description: "Schedule de manutenção padrão para Lakehouses em produção"
+
+maintenance_schedule:
+  bronze:
+    optimize:
+      frequency: daily
+      time: "03:00"
+      notes: "Executar após conclusão da ingestão diária"
+    vacuum:
+      frequency: weekly
+      day: sunday
+      time: "04:00"
+      retain_hours: 168
+    z_order: never
+  silver:
+    optimize:
+      frequency: daily
+      time: "04:00"
+    vacuum:
+      frequency: weekly
+      day: sunday
+      time: "05:00"
+      retain_hours: 168
+    z_order:
+      frequency: monthly
+      day: 1
+      time: "02:00"
+  gold:
+    optimize:
+      frequency: after_rebuild
+      notes: "Executar após cada rebuild completo da tabela Gold"
+    vacuum:
+      frequency: biweekly
+      retain_hours: 336
+    z_order:
+      frequency: monthly
+
+sla_defaults:
+  bronze_ingestao_latencia_max_min: 60
+  silver_processamento_latencia_max_min: 120
+  gold_disponibilidade_min: 99.5
+  alerta_small_files_threshold: 500
+  alerta_transaction_log_entries: 1000
+
+incident_severity:
+  P1:
+    definition: "Dados Gold indisponíveis ou corrompidos afetando produção"
+    sla_response_min: 15
+    sla_resolution_hours: 4
+  P2:
+    definition: "Pipeline Bronze/Silver atrasado > 50% do SLA"
+    sla_response_min: 30
+    sla_resolution_hours: 8
+  P3:
+    definition: "Performance degradada ou small files acumulando"
+    sla_response_hours: 4
+    sla_resolution_hours: 24
+
+retention_policy:
+  bronze_days: 90
+  silver_days: 365
+  gold_days: 730
+  audit_logs_days: 2555  # 7 anos (LGPD)

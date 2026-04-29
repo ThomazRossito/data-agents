@@ -1,0 +1,34 @@
+# pytest configuration para data-agents-copilot
+# Copiar seção relevante para pyproject.toml → [tool.pytest.ini_options]
+
+pytest:
+  addopts: "-v --tb=short"
+  testpaths: ["tests"]
+  python_files: ["test_*.py"]
+  python_classes: ["Test*"]
+  python_functions: ["test_*"]
+
+markers:
+  unit: "Testes unitários (sem cluster, sem Delta real)"
+  integration: "Testes de integração (requer Databricks Connect)"
+  slow: "Testes lentos (> 30s) — excluir de CI rápido"
+  spark: "Testes que usam SparkSession"
+
+coverage:
+  source: ["agents", "memory", "hooks", "workflow", "utils"]
+  min_coverage: 80
+  omit:
+    - "*/tests/*"
+    - "*/__init__.py"
+    - "*/conftest.py"
+
+# Comandos úteis:
+#
+# CI rápido (apenas unit):
+#   pytest -m "not integration and not slow"
+#
+# CI completo (unit + integration):
+#   pytest -m "unit or integration" --cov
+#
+# Paralelismo (requer pytest-xdist):
+#   pytest -n auto -m "not integration"

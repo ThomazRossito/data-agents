@@ -1,0 +1,13 @@
+# KB: <Nome do Domínio> — Índice
+
+> **Propósito:** <Uma frase sobre o que este domínio cobre.>
+>
+> **Rota rápida:** Consulte `quick-reference.md` para cheatsheets e tabelas de decisão.
+
+## Arquivos
+
+| Arquivo | Conteúdo |
+|---------|----------|
+| quick-reference.md | Tabelas de decisão, cheatsheets, common pitfalls |
+| patterns/<pattern>.md | <descrição do padrão> |
+| specs/<spec>.yaml | <descrição da spec> |

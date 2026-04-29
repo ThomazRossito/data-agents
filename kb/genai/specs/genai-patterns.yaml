@@ -1,0 +1,91 @@
+# GenAI Architecture Patterns — Especificações para data-agents-copilot
+
+confidence_thresholds:
+  CRITICAL:
+    value: 0.98
+    on_failure: REFUSE
+    examples:
+      - DROP TABLE / DROP DATABASE
+      - DELETE FROM sem WHERE
+      - Exposição de secrets / tokens
+      - rm -rf
+
+  IMPORTANT:
+    value: 0.95
+    on_failure: ASK_USER
+    examples:
+      - ALTER TABLE (schema change)
+      - Migrate / deploy em produção
+      - GRANT / REVOKE em Unity Catalog
+
+  STANDARD:
+    value: 0.90
+    on_failure: PROCEED_WITH_HEADER
+    examples:
+      - Pipeline logic (Bronze→Silver→Gold)
+      - Transformações PySpark
+      - Star Schema / dbt models
+
+  ADVISORY:
+    value: 0.80
+    on_failure: PROCEED
+    examples:
+      - Documentação
+      - Otimização de queries
+      - Perguntas conceituais
+
+agreement_matrix:
+  kb_hit_mcp_hit:
+    confidence: 0.95
+    decision: PROCEED
+  kb_hit_mcp_silent:
+    confidence: 0.75
+    decision: PROCEED
+  kb_silent_mcp_hit:
+    confidence: 0.85
+    decision: PROCEED
+  both_silent:
+    confidence: 0.50
+    decision: ASK_USER
+
+confidence_modifiers:
+  fresh_info_lt_1_month: +0.05
+  stale_info_gt_6_months: -0.05
+  breaking_change_known: -0.15
+  production_examples_exist: +0.05
+  exact_use_case_match: +0.05
+
+model_tiers:
+  T1:
+    model: claude-sonnet-4-6
+    max_turns: 20
+    use_for:
+      - orchestration
+      - complex_code
+      - architecture
+      - spark
+      - sql
+      - python
+      - pipeline
+  T2:
+    model: gpt-4.1
+    max_turns: 12
+    use_for:
+      - domain_audit
+      - dbt
+      - data_quality
+      - naming
+      - governance
+  T3:
+    model: gpt-4.1-mini
+    max_turns: 5
+    use_for:
+      - conceptual_qa
+      - faq
+      - cheap_routing
+
+eval_thresholds:
+  pass_score: 1.0
+  partial_score: 0.5
+  fail_score: 0.0
+  min_pass_rate_ci: 0.80

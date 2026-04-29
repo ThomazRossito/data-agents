@@ -1,95 +1,73 @@
-# =============================================================================
-# SECRETS & CREDENTIALS
-# =============================================================================
-.env
-.env.personal
-.env.flow
-*.pem
-*.key
+# Git Ignore for data-agents-copilot
 
-# =============================================================================
-# PYTHON
-# =============================================================================
+# Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-dist/
+*$py.class
+*.so
+.Python
 build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environments
 .venv/
+env/
 venv/
-.cache/
+ENV/
+env.bak/
+venv.bak/
 
-# =============================================================================
-# TESTES & QUALIDADE
-# =============================================================================
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-htmlcov/
-.coverage
-.files/
-
-# =============================================================================
-# LOGS & AUDITORIA
-# =============================================================================
-logs/
-*.log
-*.jsonl
-
-# =============================================================================
-# OUTPUT & ARTEFATOS GERADOS
-# =============================================================================
-output/
-!output/workflow-context/
-!output/workflow-context/.gitkeep
-memory/*
-!memory/*.py
-!memory/MEMORY_ARCHITECTURE.docx
-reports/
-
-# =============================================================================
-# INPUTS (documentos externos — não versionar)
-# =============================================================================
-Inputs/
-to_do/
-
-# =============================================================================
-# FERRAMENTAS DE DESENVOLVIMENTO
-# =============================================================================
-
-# IDEs
+# IDE
 .vscode/
 .idea/
-*.iml
-
-# OS
+*.swp
+*.swo
+*~
 .DS_Store
-Thumbs.db
+*.sublime-workspace
 
-# =============================================================================
-# PLATAFORMAS & MCPs
-# =============================================================================
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Project
+output/prd/
+logs/
+*.log
+.cache/
 
 # Databricks
-.databricks/
+.databricks_token
+*.tfstate*
+.terraform/
 
-# Microsoft Fabric — servidor MCP oficial (instalação local)
-mcp_servers/fabric/Fabric.Mcp.Server/
+# OS
+Thumbs.db
+.AppleDouble
+.LSOverride
 
-# =============================================================================
-# CLAUDE CODE (estado local — não relevante para outros contribuidores)
-# =============================================================================
-.claude/settings.local.json
-.claude/scheduled_tasks.json
-.claude/scheduled_tasks.lock
+# Pytest
+.pytest_cache/
+.coverage
+htmlcov/
 
-# =============================================================================
-# DOCUMENTAÇÃO INTERNA
-# =============================================================================
-docs/
-reports/
-
-# =============================================================================
-# OBSIDIAN
-# =============================================================================
-.obsidian/
+# Temp
+*.tmp
+*.bak

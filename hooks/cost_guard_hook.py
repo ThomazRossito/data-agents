@@ -1,145 +1,71 @@
-"""
-Hook de controle de custos — loga e alerta sobre execuções que podem gerar custo elevado.
-Aplicado como PostToolUse para monitoramento.
-
-Implementa:
-  - Classificação de custo por tier (HIGH, MEDIUM, LOW)
-  - Logging estruturado via módulo logging
-  - Contagem de operações por sessão para alertas acumulados
-"""
+"""Hook de controle de custo — classificação por operação e alerta de tokens."""
 
 import logging
-from typing import Any
 
-logger = logging.getLogger("data_agents.cost")
+from config.settings import settings
 
-# ─── Classificação de custo por tool ──────────────────────────────
+logger = logging.getLogger(__name__)
 
-COST_TIERS: dict[str, dict] = {
-    # HIGH: Operações que iniciam compute ou executam jobs
-    "mcp__databricks__run_job_now": {"tier": "HIGH", "description": "Execução de Job Databricks"},
-    "mcp__databricks__start_cluster": {"tier": "HIGH", "description": "Inicialização de Cluster"},
-    "mcp__databricks__start_pipeline": {
-        "tier": "HIGH",
-        "description": "Inicialização de Pipeline SDP",
-    },
-    "mcp__databricks__cancel_run": {"tier": "HIGH", "description": "Cancelamento de Job Run"},
-    # MEDIUM: Operações que consomem SQL Warehouse (DBUs)
-    "mcp__databricks__execute_sql": {"tier": "MEDIUM", "description": "Execução SQL no Warehouse"},
-    # LOW: Operações de leitura que podem ter custo marginal
-    "mcp__databricks__get_query_history": {
-        "tier": "LOW",
-        "description": "Consulta de histórico SQL",
-    },
-    "mcp__fabric_rti__kusto_query": {"tier": "LOW", "description": "Query KQL no Eventhouse"},
-}
+_HIGH_COST_PATTERNS = [
+    "execute_job", "start_cluster", "start_pipeline",
+    "create_pipeline", "create_job",
+]
+_MEDIUM_COST_PATTERNS = ["execute_sql", "run_query", "submit_run"]
 
-# Contadores de sessão (resetados a cada restart)
-_session_counters: dict[str, int] = {}
+_session_high_count = 0
+_session_total_tokens = 0
 
 
-def _extract_cost_context(tool_name: str, tool_input: dict[str, Any]) -> dict[str, str]:
-    """Extrai campos de contexto relevantes do tool_input para enriquecer logs de custo."""
-    context: dict[str, str] = {}
-    # Campos úteis por tipo de operação — máx 3 campos, valores truncados a 100 chars
-    candidates = [
-        "job_id",
-        "run_id",
-        "cluster_id",
-        "pipeline_id",
-        "query",
-        "sql",
-        "statement",
-        "warehouse_id",
-        "notebook_path",
-        "path",
-    ]
-    for key in candidates:
-        value = tool_input.get(key)
-        if value and isinstance(value, str):
-            context[key] = value[:100]
-            if len(context) >= 3:
-                break
-    return context
+def classify_operation(tool_name: str) -> str:
+    tl = tool_name.lower()
+    if any(p in tl for p in _HIGH_COST_PATTERNS):
+        return "HIGH"
+    if any(p in tl for p in _MEDIUM_COST_PATTERNS):
+        return "MEDIUM"
+    return "LOW"
 
 
-async def log_cost_generating_operations(
-    input_data: dict[str, Any],
-    tool_use_id: str | None,
-    context: Any,
-) -> dict[str, Any]:
-    """
-    Registra operações de custo elevado com classificação por tier e contexto enriquecido.
+def track(tool_name: str, tokens_used: int) -> None:
+    global _session_high_count, _session_total_tokens
 
-    Emite warnings para operações HIGH e alertas quando o acumulado
-    de operações HIGH ultrapassa 100 na mesma sessão.
-    """
-    # Proteção contra eventos de teardown do SDK
-    if not input_data or not isinstance(input_data, dict):
-        return {}
+    level = classify_operation(tool_name)
+    _session_total_tokens += tokens_used
 
-    tool_name = input_data.get("tool_name", "")
-
-    if tool_name not in COST_TIERS:
-        return {}
-
-    info = COST_TIERS[tool_name]
-    tier = info["tier"]
-    description = info["description"]
-    tool_input = input_data.get("tool_input") or {}
-
-    # Incrementar contador de sessão
-    _session_counters[tool_name] = _session_counters.get(tool_name, 0) + 1
-    count = _session_counters[tool_name]
-
-    # Total de operações HIGH na sessão
-    total_high = sum(
-        _session_counters.get(t, 0) for t, i in COST_TIERS.items() if i["tier"] == "HIGH"
-    )
-
-    # Contexto enriquecido para operações HIGH (diagnóstico de custo)
-    cost_ctx = _extract_cost_context(tool_name, tool_input) if tier == "HIGH" else {}
-
-    if tier == "HIGH":
-        ctx_str = f" ctx={cost_ctx}" if cost_ctx else ""
-        logger.warning(
-            f"[COST:HIGH] {description}: {tool_name} "
-            f"(uso #{count} nesta sessão, total HIGH={total_high}){ctx_str} "
-            f"tool_use_id={tool_use_id}"
-        )
-        if total_high >= 100:
+    if level == "HIGH":
+        _session_high_count += 1
+        if _session_high_count > 5:
             logger.warning(
-                f"[COST:ALERT] {total_high} operações de custo elevado nesta sessão. "
-                f"Considere revisar se todas são necessárias."
+                "ALERTA: %d operações HIGH nesta sessão. Verifique o custo.",
+                _session_high_count,
             )
-    elif tier == "MEDIUM":
-        logger.info(
-            f"[COST:MEDIUM] {description}: {tool_name} (uso #{count}) tool_use_id={tool_use_id}"
+
+    budget = settings.max_budget_tokens
+    pct = _session_total_tokens / budget if budget else 0
+    if pct >= 0.95:
+        logger.error(
+            "CRÍTICO: 95%% do budget de tokens atingido (%d/%d).",
+            _session_total_tokens, budget,
         )
-    else:
-        logger.debug(
-            f"[COST:LOW] {description}: {tool_name} (uso #{count}) tool_use_id={tool_use_id}"
+    elif pct >= 0.80:
+        logger.warning(
+            "AVISO: 80%% do budget de tokens atingido (%d/%d).",
+            _session_total_tokens, budget,
         )
 
-    return {}
+
+def session_summary() -> dict:
+    return {
+        "total_tokens": _session_total_tokens,
+        "high_ops": _session_high_count,
+        "budget": settings.max_budget_tokens,
+        "budget_pct": round(_session_total_tokens / settings.max_budget_tokens * 100, 1)
+        if settings.max_budget_tokens
+        else 0,
+    }
 
 
-def get_session_cost_summary() -> dict[str, Any]:
-    """
-    Retorna resumo de custos da sessão atual.
-    Útil para o comando /status ou para o template de síntese do DOMA.
-    """
-    summary: dict[str, Any] = {"total_operations": 0, "by_tier": {}, "by_tool": {}}
-
-    for tool_name, count in _session_counters.items():
-        tier = COST_TIERS.get(tool_name, {}).get("tier", "UNKNOWN")
-        summary["total_operations"] += count
-        summary["by_tier"][tier] = summary["by_tier"].get(tier, 0) + count
-        summary["by_tool"][tool_name] = count
-
-    return summary
-
-
-def reset_session_counters() -> None:
-    """Reseta os contadores de sessão. Chamado no início de cada nova sessão."""
-    _session_counters.clear()
+def reset() -> None:
+    """Reseta contadores de sessão. Útil em testes e ao iniciar nova sessão."""
+    global _session_high_count, _session_total_tokens
+    _session_high_count = 0
+    _session_total_tokens = 0

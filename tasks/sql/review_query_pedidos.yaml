@@ -1,0 +1,19 @@
+agent: sql_expert
+
+task: |
+  Revise a query abaixo e identifique problemas de performance.
+  Sugira otimizações com explicação do impacto de cada uma.
+
+  ```sql
+  SELECT *
+  FROM bronze.pedidos p
+  JOIN bronze.clientes c ON p.cliente_id = c.id
+  JOIN bronze.produtos prod ON p.produto_id = prod.id
+  WHERE p.data_pedido >= '2024-01-01'
+  ORDER BY p.data_pedido DESC
+  ```
+
+context_files:
+  - resources/naming convention.md
+
+output: output/reviews/review_query_pedidos.md

@@ -1,0 +1,35 @@
+cluster:
+  job_cluster:
+    spark_version: "14.3.x-scala2.12"
+    node_type_id: "Standard_DS3_v2"
+    autoscale:
+      min_workers: 2
+      max_workers: 8
+    driver_node_type_id: "Standard_DS3_v2"
+    autotermination_minutes: 30
+
+  spark_conf_critical:
+    spark.sql.adaptive.enabled: "true"
+    spark.databricks.delta.optimizeWrite.enabled: "true"
+    spark.databricks.delta.autoCompact.enabled: "true"
+    spark.sql.shuffle.partitions: "auto"  # com AQE ativo, deixar auto
+    spark.executor.memory: "8g"
+    spark.executor.cores: 4
+
+unity_catalog:
+  metastore_region: "eastus2"
+  default_catalog_naming: "{env}"
+  schema_naming: "{domain}_{cluster}"
+  table_naming: "{layer}_{entity}"
+  storage_credential_type: "AZURE_MANAGED_IDENTITY"
+
+runtime:
+  recommended_lts: "14.3.x-scala2.12"
+  ml_workloads: "14.3.x-ml-scala2.12"
+  serverless_compatible: "15.x"
+
+security:
+  secret_backend: "AZURE_KEYVAULT"
+  network_mode: "PRIVATE_LINK"
+  ip_access_list: true
+  enforce_user_isolation: true

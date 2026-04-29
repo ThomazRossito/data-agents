@@ -1,0 +1,17 @@
+agent: sql_expert
+
+task: |
+  Modele um star schema para um domínio de vendas com as seguintes entidades:
+  - Fatos: pedidos (quantidade, valor, desconto, data)
+  - Dimensões: cliente, produto, categoria, região, tempo (dia/mês/ano/trimestre)
+
+  Requisitos:
+  - Camada gold no Unity Catalog (catalog: main, schema: gold)
+  - Surrogate keys com BIGINT GENERATED ALWAYS AS IDENTITY
+  - SCD Type 2 para clientes e produtos
+  - Seguir convenções de nomenclatura do projeto
+
+context_files:
+  - resources/naming convention.md
+
+output: output/sql/star_schema_vendas.md

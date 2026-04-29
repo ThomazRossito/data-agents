@@ -1,0 +1,51 @@
+# Especificação de formatos de prompt para data-agents-copilot
+
+sections:
+  required:
+    - role           # Define persona e restrições do agente
+    - task           # Verbo explícito do que fazer
+    - context        # Dados ou descrição do problema
+    - output_format  # Estrutura esperada da resposta
+  recommended:
+    - examples       # Few-shot: 1–3 exemplos representativos
+    - constraints    # Guardrails e edge cases explícitos
+    - kb_reference   # Quais arquivos KB consultar antes de responder
+
+temperature_guide:
+  - task_type: data_extraction
+    temperature: 0.0
+  - task_type: pii_detection
+    temperature: 0.0
+  - task_type: sql_generation
+    temperature: 0.0
+  - task_type: pyspark_generation
+    temperature: 0.1
+  - task_type: schema_validation
+    temperature: 0.0
+  - task_type: audit_report
+    temperature: 0.2
+  - task_type: summarization
+    temperature: 0.4
+  - task_type: documentation
+    temperature: 0.6
+
+output_formats:
+  sql_ddl:
+    format: markdown_code_block
+    language: sql
+    required_sections: [table_ddl, comments]
+
+  pyspark:
+    format: markdown_code_block
+    language: python
+    required_sections: [imports, transformation, write]
+
+  audit_report:
+    format: markdown
+    required_sections: [executive_summary, findings_table, recommendations]
+    findings_table_columns: [item, severity, detail, recommendation]
+
+  schema_json:
+    format: json
+    validate_with: pydantic
+    schema_ref: validation-prompts.md

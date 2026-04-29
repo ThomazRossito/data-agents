@@ -1,0 +1,60 @@
+sku_consumption:
+  F2:
+    cu: 2
+    monthly_cost_usd: ~263
+    spark_jobs: limited
+    direct_lake_rows: 150M
+    notes: "Dev/sandbox only"
+  F4:
+    cu: 4
+    monthly_cost_usd: ~526
+    spark_jobs: small
+    direct_lake_rows: 300M
+  F8:
+    cu: 8
+    monthly_cost_usd: ~1053
+    spark_jobs: medium
+    direct_lake_rows: 300M
+  F16:
+    cu: 16
+    monthly_cost_usd: ~2106
+    spark_jobs: standard_prod
+    direct_lake_rows: 600M
+  F32:
+    cu: 32
+    monthly_cost_usd: ~4211
+    spark_jobs: heavy
+    direct_lake_rows: 1B
+  F64:
+    cu: 64
+    monthly_cost_usd: ~8422
+    spark_jobs: unlimited
+    direct_lake_rows: unlimited
+
+throttling:
+  policy: "smoothing_window_24h"
+  burst_allowed: true
+  max_burst_factor: 10
+  throttle_response: "429 Too Many Requests"
+  notes: "Jobs em background são priorizados; interactive tem SLA melhor"
+
+licensing:
+  capacity_items:
+    - Notebooks
+    - Pipelines
+    - Lakehouses
+    - Warehouses
+    - Eventstream
+    - KQL Database
+  per_user_items:
+    - Power BI Pro (relatórios distribuídos)
+    - Fabric Free (leitura workspace)
+  notes: "Capacity-based = F-SKU paga tudo; per-user = necessário para consumo externo"
+
+item_cu_consumption:
+  Notebook: "varia por cluster size + duração"
+  Dataflow_Gen2: "~0.5x CU do SKU durante execução"
+  Copy_Activity: "fixo por GB transferido"
+  Warehouse_query: "proporcional ao scan de dados"
+  Direct_Lake_refresh: "baixo (leitura direta)"
+  Eventstream: "proporcional ao throughput de eventos"

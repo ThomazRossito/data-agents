@@ -1,0 +1,70 @@
+bundle:
+  name: "REQUIRED: nome kebab-case do projeto"
+  uuid: "OPTIONAL: UUID para evitar conflito de nomes"
+
+workspace:
+  host: "${var.databricks_host}"
+  root_path: "~/.bundle/${bundle.name}/${bundle.target}"
+
+variables:
+  databricks_host:
+    description: "Databricks workspace URL"
+  env:
+    description: "dev | staging | prod"
+    default: dev
+
+targets:
+  dev:
+    mode: development
+    default: true
+    presets:
+      name_prefix: "[${bundle.target}] "
+      jobs_max_concurrent_runs: 1
+      trigger_pause_status: PAUSED
+    workspace:
+      host: "https://dev-workspace.azuredatabricks.net"
+
+  staging:
+    mode: production
+    workspace:
+      host: "https://staging-workspace.azuredatabricks.net"
+    run_as:
+      service_principal_name: "svc-databricks-staging@tenant.com"
+
+  prod:
+    mode: production
+    workspace:
+      host: "https://prod-workspace.azuredatabricks.net"
+    run_as:
+      service_principal_name: "svc-databricks-prod@tenant.com"
+
+resources_template:
+  jobs:
+    example_job:
+      name: "${bundle.target}_layer_purpose"
+      job_clusters:
+        - job_cluster_key: main
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "Standard_DS3_v2"
+            autoscale:
+              min_workers: 2
+              max_workers: 8
+      tasks:
+        - task_key: main_task
+          job_cluster_key: main
+          python_file: "src/pipeline.py"
+          libraries:
+            - pypi:
+                package: "delta-spark==3.2.0"
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: "America/Sao_Paulo"
+        pause_status: "${var.trigger_pause}"
+
+required_fields_checklist:
+  - "bundle.name definido"
+  - "pelo menos 3 targets: dev, staging, prod"
+  - "run_as configurado em staging e prod (service principal)"
+  - "spark_version LTS"
+  - "schedule com pause_status variável por target"

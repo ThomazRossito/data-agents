@@ -1,0 +1,51 @@
+mlflow:
+  tracking_uri: "databricks"  # usa UC automaticamente
+  experiment_location: "/Shared/experiments/{team}/{project}"
+  model_registry: "unity_catalog"
+  model_naming: "{catalog}.{schema}.{model_name}"
+  artifact_location: "abfss://mlflow@account.dfs.core.windows.net/{experiment_id}"
+
+model_serving:
+  foundation_models:
+    - "databricks-llama-3-1-70b"
+    - "databricks-dbrx-instruct"
+    - "databricks-bge-large-en"
+  scale_to_zero: true
+  workload_size: "Small | Medium | Large | GPU_SMALL"
+  rate_limits:
+    calls_per_minute: 60
+    tokens_per_minute: 100000
+
+guardrails:
+  input:
+    pii:
+      behavior: "BLOCK | WARN | ANONYMIZE"
+      entities: ["PERSON", "EMAIL", "PHONE", "CPF", "CNPJ"]
+    invalid_keywords:
+      behavior: "BLOCK"
+    topic_restriction:
+      behavior: "BLOCK"
+      topics: ["non_work_related"]
+  output:
+    toxicity:
+      behavior: "BLOCK"
+    hallucination:
+      behavior: "WARN"
+
+agent_memory_patterns:
+  short_term: "context_window (default)"
+  long_term:
+    type: "vector_store"
+    implementation: "Mosaic AI Vector Search"
+    table: "{catalog}.{schema}.agent_memory"
+    dimensions: 1024
+  episodic:
+    type: "checkpoint"
+    location: "abfss://agent-checkpoints@account.dfs.core.windows.net/"
+    enabled_threshold_minutes: 90
+
+genie:
+  min_tables_for_best_performance: 5
+  max_auto_steps: 10
+  requires_uc: true
+  analyze_table_frequency: "weekly"

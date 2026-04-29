@@ -1,0 +1,20 @@
+agent: auto
+
+task: |
+  Execute o workflow completo de implantação de um novo lakehouse para o domínio de logística.
+
+  Contexto:
+  - Empresa: varejo e-commerce nacional
+  - Dados: pedidos, entregas, transportadoras, rastreamento
+  - Volume estimado: 500k pedidos/dia, retenção 3 anos
+  - Plataforma: Microsoft Fabric
+  - Requisitos: LGPD, auditoria completa, SLA de 4h para silver
+
+  Entregáveis esperados:
+  1. Arquitetura e nomenclatura das tabelas
+  2. Pipeline de ingestão (bronze)
+  3. Regras de qualidade (silver)
+  4. Schema gold para BI
+  5. Checklist de governança
+
+output: output/workflows/implantacao_lakehouse_logistica.md

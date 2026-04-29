@@ -1,0 +1,21 @@
+# Padrão: <Nome>
+
+## Contexto
+
+<Situação em que este padrão se aplica — problema que ele resolve.>
+
+## Solução
+
+```python
+# implementação canônica, mínima e funcional
+```
+
+## Tradeoffs
+
+| Vantagem | Desvantagem |
+|----------|------------|
+| ... | ... |
+
+## Related
+
+- [<padrão relacionado>](<arquivo>.md)

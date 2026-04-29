@@ -1,0 +1,17 @@
+agent: spark_expert
+
+task: |
+  Crie um pipeline PySpark incremental Bronze → Silver para a tabela de pedidos.
+
+  Especificações:
+  - Fonte: JSON files em ADLS Gen2 (abfss://bronze@storage.dfs.core.windows.net/pedidos/)
+  - Destino: Delta table silver.pedidos_clean
+  - Modo de carga: incremental por data_ingestion (watermark)
+  - Transformações: cast de tipos, normalização de strings, remoção de duplicatas
+  - Qualidade: rejeitar linhas sem pedido_id ou valor_total nulo (quarentena em silver.pedidos_quarentena)
+  - Idempotência: MERGE no destino por pedido_id
+
+context_files:
+  - resources/naming convention.md
+
+output: output/pipelines/pipeline_pedidos_bronze_silver.md

@@ -1,0 +1,27 @@
+agent: governance_auditor
+
+task: |
+  Audite o CREATE TABLE abaixo e identifique:
+  1. Conformidade com naming conventions
+  2. Presença de PII sem mascaramento
+  3. Falta de colunas obrigatórias de governança
+  4. Problemas de tipagem
+  5. Sugestões de melhoria com SQL corrigido
+
+  ```sql
+  CREATE TABLE raw.customer_data (
+    id INT,
+    CustomerName STRING,
+    Email STRING,
+    CPF STRING,
+    Phone_Number STRING,
+    credit_card_number STRING,
+    salary DOUBLE,
+    created_at TIMESTAMP
+  );
+  ```
+
+context_files:
+  - resources/naming convention.md
+
+output: output/governance/create_table_review.md

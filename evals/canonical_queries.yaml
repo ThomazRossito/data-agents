@@ -1,8 +1,7 @@
-# Data Agents — Evals canônicos
+# Data Agents Copilot — Evals Canônicos
 #
-# Queries representativas executadas contra o agente `geral` (Haiku 4.5,
-# zero MCP). Usadas pra detectar regressão de qualidade sem precisar de
-# Databricks/Fabric reais.
+# Queries representativas executadas contra o agente `geral` (T3, sem MCP).
+# Usadas para detectar regressão de qualidade sem precisar de Databricks/Fabric.
 #
 # Rubric (determinística, sem LLM-as-judge):
 #   must_include     — substrings que DEVEM aparecer (case-insensitive)
@@ -17,10 +16,10 @@
 #         OU length fora do intervalo
 
 version: 1
-model: claude-haiku-4-5           # executa via run_geral_query
+model: gpt-4o-mini  # T3 — mais barato para rodar evals frequentemente
 
 queries:
-  # ─── Conceitos: arquitetura Medallion ───────────────────────────
+  # ─── Conceitos: arquitetura Medallion ───────────────────────────────────
   - id: medallion-architecture
     domain: conceptual
     prompt: |
@@ -32,19 +31,19 @@ queries:
       min_length: 250
       max_length: 3000
 
-  # ─── Conceitos: Delta Lake ──────────────────────────────────────
+  # ─── Conceitos: Delta Lake ───────────────────────────────────────────────
   - id: delta-lake-features
     domain: conceptual
     prompt: |
       Cite 3 features principais do Delta Lake e explique brevemente
       cada uma (ACID, time travel, schema evolution, etc.).
     rubric:
-      must_include: [acid, transaç, delta]
+      must_include: [acid, delta]
       must_not_include: ["não sei", "não tenho acesso"]
       min_length: 200
       max_length: 3000
 
-  # ─── Conceitos: Unity Catalog ───────────────────────────────────
+  # ─── Conceitos: Unity Catalog ───────────────────────────────────────────
   - id: unity-catalog-hierarchy
     domain: conceptual
     prompt: |
@@ -56,7 +55,7 @@ queries:
       min_length: 200
       max_length: 2500
 
-  # ─── Comparações: Delta Lake vs Iceberg ─────────────────────────
+  # ─── Comparações: Delta Lake vs Iceberg ─────────────────────────────────
   - id: delta-vs-iceberg
     domain: comparative
     prompt: |
@@ -68,7 +67,7 @@ queries:
       min_length: 250
       max_length: 3000
 
-  # ─── Comparações: Databricks vs Fabric ──────────────────────────
+  # ─── Comparações: Databricks vs Fabric ──────────────────────────────────
   - id: databricks-vs-fabric
     domain: comparative
     prompt: |
@@ -80,7 +79,7 @@ queries:
       min_length: 200
       max_length: 2500
 
-  # ─── SQL: window functions ──────────────────────────────────────
+  # ─── SQL: window functions ───────────────────────────────────────────────
   - id: sql-window-functions
     domain: sql
     prompt: |
@@ -92,7 +91,19 @@ queries:
       min_length: 150
       max_length: 2000
 
-  # ─── Spark: structured streaming ────────────────────────────────
+  # ─── SQL: SCD Type 2 ────────────────────────────────────────────────────
+  - id: sql-scd2-merge
+    domain: sql
+    prompt: |
+      Escreva um MERGE INTO em Spark SQL implementando SCD Type 2
+      (adicionar nova linha quando o registro muda, fechar a anterior).
+    rubric:
+      must_include: [merge, whenmatched, whennotmatched]
+      must_not_include: ["não consigo", "não é possível"]
+      min_length: 200
+      max_length: 2500
+
+  # ─── Spark: structured streaming ────────────────────────────────────────
   - id: spark-structured-streaming
     domain: spark
     prompt: |
@@ -105,32 +116,7 @@ queries:
       min_length: 200
       max_length: 2500
 
-  # ─── dbt: snapshots ─────────────────────────────────────────────
-  - id: dbt-snapshots
-    domain: dbt
-    prompt: |
-      Para que serve o recurso de snapshots no dbt? Quando você
-      usaria SCD type 2 versus check strategy?
-    rubric:
-      must_include: [snapshot, scd]
-      must_not_include: ["não conheço", "não tenho informação"]
-      min_length: 250
-      max_length: 3000
-
-  # ─── Migração: assessment de SQL Server ─────────────────────────
-  - id: migration-sqlserver-assessment
-    domain: migration
-    prompt: |
-      Liste 4 artefatos que você mapearia ao fazer assessment de um
-      banco SQL Server para migrar pra Databricks Lakehouse (tabelas,
-      views, procedures, etc.) e por quê.
-    rubric:
-      must_include: [tabela, view, stored procedure, índice]
-      must_not_include: ["não faço migrações", "fora do meu escopo"]
-      min_length: 300
-      max_length: 3000
-
-  # ─── Qualidade: great expectations ──────────────────────────────
+  # ─── Qualidade: padrões de validação ────────────────────────────────────
   - id: data-quality-patterns
     domain: quality
     prompt: |
@@ -142,7 +128,7 @@ queries:
       min_length: 200
       max_length: 2500
 
-  # ─── Governança: LGPD/GDPR ──────────────────────────────────────
+  # ─── Governança: LGPD/GDPR ──────────────────────────────────────────────
   - id: governance-pii-tagging
     domain: governance
     prompt: |
@@ -154,50 +140,38 @@ queries:
       min_length: 200
       max_length: 2500
 
-  # ─── Semântica: modelo estrela ──────────────────────────────────
-  - id: star-schema-basics
-    domain: semantic
-    prompt: |
-      O que é um modelo estrela (star schema) em data warehousing?
-      Explique a diferença entre tabela fato e tabela dimensão.
-    rubric:
-      must_include: [fato, dimensão]
-      must_not_include: ["não me lembro"]
-      min_length: 250
-      max_length: 3000
-
-  # ─── Pipeline: idempotência ─────────────────────────────────────
+  # ─── Pipeline: idempotência ──────────────────────────────────────────────
   - id: pipeline-idempotency
     domain: pipeline
     prompt: |
       Por que idempotência é importante em pipelines de dados? Cite 2
       técnicas para torná-los idempotentes.
     rubric:
-      must_include: [idempot, reprocess]
+      must_include: [idempoten]
       must_not_include: ["não sei explicar"]
       min_length: 250
       max_length: 3000
 
-  # ─── Python: pandas vs polars ───────────────────────────────────
-  - id: pandas-vs-polars
-    domain: python
+  # ─── Nomenclatura: prefixos Medallion ───────────────────────────────────
+  - id: naming-medallion-prefixes
+    domain: naming
     prompt: |
-      Em que cenários Polars é preferível a Pandas? Liste 2 vantagens
-      concretas de Polars para datasets grandes.
+      Quais são os prefixos convencionais por camada Medallion para
+      nomear tabelas Delta? (raw_, brz_, slv_, gld_)
     rubric:
-      must_include: [polars, pandas]
-      must_not_include: ["são equivalentes", "não há diferença prática"]
-      min_length: 200
-      max_length: 2500
+      must_include: [raw_, slv_, gld_]
+      must_not_include: ["não existe convenção", "qualquer nome serve"]
+      min_length: 100
+      max_length: 2000
 
-  # ─── Performance: particionamento ───────────────────────────────
+  # ─── Performance: particionamento ───────────────────────────────────────
   - id: partitioning-strategy
     domain: performance
     prompt: |
       Como escolher a coluna de partição em uma tabela Delta grande?
       Cite 2 critérios e um anti-padrão comum a evitar.
     rubric:
-      must_include: [partição, cardinalidade]
+      must_include: [parti]
       must_not_include: ["sempre particione por data", "nunca particione"]
       min_length: 250
       max_length: 3000

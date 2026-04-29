@@ -1,0 +1,34 @@
+# Domain Manifest Template
+# Preencha os campos obrigatórios e remova os comentários antes de usar.
+# Registre o domínio novo em kb/_index.yaml após criação.
+
+name: <nome-do-dominio>          # ex: testing  (snake-case, sem espaços)
+description: >
+  <Uma linha descrevendo o domínio, seu propósito e escopo no contexto
+  de Engenharia de Dados com Databricks/Fabric.>
+
+path: <nome-do-dominio>/
+status: draft                    # draft | complete | deprecated
+
+agents:                          # agentes que listam este domínio em kb_domains
+  - <agent_name>                 # ex: spark_expert, python_expert
+
+entry_points:
+  index: index.md
+  quick_reference: quick-reference.md
+
+content:
+  files:
+    - name: quick-reference.md
+      description: Tabelas de decisão, cheatsheets, pitfalls
+    - name: patterns/<pattern>.md
+      description: <Padrão reutilizável com código>
+    - name: specs/<spec>.yaml
+      description: <Configuração formal, schemas, SLAs>
+
+# Instruções de uso:
+# 1. Copie este template para kb/<nome-do-dominio>/
+# 2. Crie index.md a partir de kb/_templates/index.md.template
+# 3. Crie quick-reference.md a partir de kb/_templates/quick-reference.md.template
+# 4. Adicione entrada em kb/_index.yaml
+# 5. Adicione o domínio em kb_domains dos agentes relevantes em agents/registry/

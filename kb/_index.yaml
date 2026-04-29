@@ -1,0 +1,285 @@
+version: "1.0"
+last_updated: "2026-04-25"
+project: data-agents-copilot
+
+# Referência canônica de todos os domínios KB.
+# Ao criar um novo domínio, adicionar entrada aqui e referenciar em:
+#   - agents/registry/<agente>.md  (campo kb_domains)
+#   - agents/supervisor.py         (_load_kb_context dict)
+
+domains:
+  spark-patterns:
+    name: Spark Patterns
+    description: PySpark, Delta Lake, DLT/LakeFlow, Structured Streaming, performance tuning para Databricks.
+    path: spark-patterns/
+    status: complete
+    agents: [spark_expert, pipeline_architect]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - delta-lake.md
+      - structured-streaming.md
+      - medallion-pipeline.md
+      - performance.md
+      - quick-reference.md
+
+  sql-patterns:
+    name: SQL Patterns
+    description: Spark SQL, T-SQL, modelagem dimensional, DDL, window functions, Star Schema, Unity Catalog.
+    path: sql-patterns/
+    status: complete
+    agents: [sql_expert, dbt_expert, pipeline_architect]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - ddl-patterns.md
+      - window-functions.md
+      - star-schema.md
+      - query-optimization.md
+      - quick-reference.md
+
+  pipeline-design:
+    name: Pipeline Design
+    description: Arquitetura Medalhão, idempotência, error handling, retry, padrões de ingestão Bronze→Gold.
+    path: pipeline-design/
+    status: complete
+    agents: [pipeline_architect, spark_expert, dbt_expert]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - medallion-pattern.md
+      - idempotency.md
+      - error-handling.md
+      - quick-reference.md
+
+  data-quality:
+    name: Data Quality
+    description: DQX, Great Expectations, profiling estatístico, SLAs por camada Medalhão, validação de schema.
+    path: data-quality/
+    status: complete
+    agents: [data_quality, governance_auditor, sql_expert]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - expectations.md
+      - profiling.md
+      - quick-reference.md
+
+  governance:
+    name: Governance
+    description: PII/LGPD, Unity Catalog grants, auditoria de acessos, naming audit, row/column-level security.
+    path: governance/
+    status: complete
+    agents: [governance_auditor, naming_guard]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - naming-audit.md
+      - pii-handling.md
+      - access-control.md
+      - quick-reference.md
+
+  testing:
+    name: Testing
+    description: pytest para data engineering — SparkSession fixtures, DataFrame assertions, Databricks Connect, CI.
+    path: testing/
+    status: complete
+    agents: [python_expert]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/spark-unit-tests.md
+      - patterns/integration-tests.md
+      - specs/test-config.yaml
+
+  prompt-engineering:
+    name: Prompt Engineering
+    description: Técnicas de prompting para agentes DE — CoT, few-shot, temperatura, templates canônicos, validação.
+    path: prompt-engineering/
+    status: complete
+    agents: [python_expert]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/agent-prompt-template.md
+      - patterns/validation-prompts.md
+      - specs/prompt-formats.yaml
+
+  genai:
+    name: GenAI Architecture
+    description: Topologias multi-agente, guardrails, métricas de avaliação, model tiering e confidence system.
+    path: genai/
+    status: complete
+    agents: []
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/agentic-workflow.md
+      - patterns/evaluation-framework.md
+      - specs/genai-patterns.yaml
+
+  shared:
+    name: Shared
+    description: Anti-padrões globais — aplicável a todos os agentes independente de domínio.
+    path: shared/
+    status: complete
+    agents: [python_expert, geral]
+    entry_points:
+      index: anti-patterns.md
+    files:
+      - anti-patterns.md
+
+  fabric:
+    name: Microsoft Fabric
+    description: Lakehouse, OneLake, shortcuts, Direct Lake, Fabric Data Factory, Real-Time Intelligence, F-SKU capacity planning.
+    path: fabric/
+    status: complete
+    agents: [fabric_expert, pipeline_architect]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/lakehouse.md
+      - patterns/fabric-data-factory.md
+      - patterns/direct-lake.md
+      - patterns/real-time-intelligence.md
+      - specs/fabric-compute.yaml
+
+  spark-internals:
+    name: Spark Internals
+    description: Catalyst Optimizer (6 fases), narrow vs wide transformations, repartition vs coalesce, AQE, shuffle, memory management.
+    path: spark-internals/
+    status: complete
+    agents: [spark_expert, pipeline_architect]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/catalyst-optimizer.md
+      - patterns/repartition-vs-coalesce.md
+      - patterns/narrow-wide-transformations.md
+      - specs/spark-tuning.yaml
+
+  databricks-platform:
+    name: Databricks Platform
+    description: Clusters (job/interactive/serverless), Unity Catalog hierarchy, Azure integration (Entra ID, ADLS, Key Vault), runtime matrix, nomenclatura.
+    path: databricks-platform/
+    status: complete
+    agents: [pipeline_architect, spark_expert, governance_auditor]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/cluster-config.md
+      - patterns/azure-integration.md
+      - patterns/unity-catalog-setup.md
+      - specs/databricks-params.yaml
+
+  ci-cd:
+    name: CI/CD
+    description: Databricks Asset Bundles (DABs), Azure DevOps pipelines, Fabric Git integration via REST API, Service Principal setup, branch strategy.
+    path: ci-cd/
+    status: complete
+    agents: [devops_engineer, pipeline_architect]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/databricks-asset-bundles.md
+      - patterns/fabric-cicd.md
+      - patterns/azure-devops-pipeline.md
+      - specs/bundle-config.yaml
+
+  data-modeling:
+    name: Data Modeling
+    description: Modelagem dimensional (Star Schema, Snowflake), SCD Tipo 1/2/3 com mergerkey MERGE, Delta ACID transactions, surrogate vs natural keys.
+    path: data-modeling/
+    status: complete
+    agents: [sql_expert, dbt_expert]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/star-schema.md
+      - patterns/scd-types.md
+      - patterns/acid-transactions.md
+
+  orchestration:
+    name: Orchestration
+    description: Comparativo Airflow vs Databricks Workflows vs Fabric Pipelines, padrões DAG, sensors, depends_on, repair_run, fan-out/fan-in.
+    path: orchestration/
+    status: complete
+    agents: [pipeline_architect, devops_engineer]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/databricks-workflows.md
+      - patterns/airflow-patterns.md
+      - specs/orchestration-decision.yaml
+
+  databricks-ai:
+    name: Databricks AI
+    description: Agent Bricks (GA abr/2026), Mosaic AI Gateway, Unity AI Gateway (MCPs externos), Genie Agent Mode, MLflow, Model Serving, guardrails.
+    path: databricks-ai/
+    status: complete
+    agents: [databricks_ai, governance_auditor]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/agent-bricks.md
+      - patterns/mosaic-ai-gateway.md
+      - patterns/genie-agent.md
+      - specs/databricks-ai-config.yaml
+
+  lakehouse-design:
+    name: Lakehouse Design
+    description: Arquitetura e implantação de Lakehouses — decision matrix Databricks vs Fabric, checklist 9 fases, naming convention, external locations, OneLake shortcuts, hybrid Delta Sharing.
+    path: lakehouse-design/
+    status: complete
+    agents: [lakehouse_engineer, pipeline_architect, fabric_expert]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/databricks-lakehouse-setup.md
+      - patterns/fabric-lakehouse-setup.md
+      - patterns/hybrid-architecture.md
+      - specs/architecture-decision.yaml
+
+  lakehouse-ops:
+    name: Lakehouse Ops
+    description: Operação, manutenção e sustentação de Lakehouses — OPTIMIZE/VACUUM schedule, triage de incidentes, otimização de custo DBU/CU, runbook de migração, SLAs por camada.
+    path: lakehouse-ops/
+    status: complete
+    agents: [lakehouse_engineer, data_quality, governance_auditor]
+    entry_points:
+      index: index.md
+      quick_reference: quick-reference.md
+    files:
+      - quick-reference.md
+      - patterns/maintenance-runbook.md
+      - patterns/incident-triage.md
+      - patterns/cost-optimization.md
+      - patterns/migration-runbook.md
+      - specs/maintenance-schedule.yaml

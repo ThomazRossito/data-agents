@@ -1,0 +1,35 @@
+aqe:
+  spark.sql.adaptive.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.minPartitionSize: "1MB"
+  spark.sql.adaptive.skewJoin.enabled: "true"
+  spark.sql.adaptive.skewJoin.skewedPartitionFactor: 5
+  spark.sql.adaptive.skewJoin.skewedPartitionThresholdInBytes: "256MB"
+  spark.sql.adaptive.localShuffleReader.enabled: "true"
+
+shuffle:
+  spark.sql.shuffle.partitions: 200
+  note: "AQE substitui esse valor em runtime; sem AQE, regra: 128MB/partição após shuffle"
+  spark.shuffle.service.enabled: "true"  # necessário para dynamic allocation
+
+memory:
+  spark.executor.memory: "8g"  # ajustar por workload
+  spark.memory.fraction: 0.6
+  spark.memory.storageFraction: 0.5
+  spark.executor.memoryOverhead: "1g"  # para joins grandes/UDFs Python
+  spark.sql.execution.arrow.pyspark.enabled: "true"  # pandas UDFs
+
+broadcast:
+  spark.sql.autoBroadcastJoinThreshold: "10MB"  # default; aumentar para 30-50MB em clusters grandes
+  spark.broadcast.blockSize: "4m"
+
+io:
+  spark.sql.files.maxPartitionBytes: "128MB"
+  spark.sql.files.openCostInBytes: "4MB"
+  spark.databricks.delta.optimize.maxFileSize: "104857600"  # 100MB por arquivo Delta
+
+dynamic_allocation:
+  spark.dynamicAllocation.enabled: "true"
+  spark.dynamicAllocation.minExecutors: 1
+  spark.dynamicAllocation.maxExecutors: 20
+  spark.dynamicAllocation.executorIdleTimeout: "60s"

@@ -1,0 +1,20 @@
+agent: pipeline_architect
+
+task: |
+  Projete e implemente um pipeline end-to-end no Databricks para o domínio de vendas:
+
+  Camadas:
+  - Bronze: ingestão raw de 3 fontes (pedidos CSV, clientes API REST, produtos Parquet)
+  - Silver: limpeza, tipagem, deduplicação, qualidade (DQX)
+  - Gold: star schema agregado + tabelas de relatório (receita_diaria, top_produtos, churn_clientes)
+
+  Requisitos de orquestração:
+  - Databricks Workflows com dependências entre jobs
+  - Retry automático (3x) em falhas transitórias
+  - Alertas por email em falha crítica
+  - Parâmetros: data_inicio, data_fim, modo (full/incremental)
+
+context_files:
+  - resources/naming convention.md
+
+output: output/pipelines/e2e_vendas.md
