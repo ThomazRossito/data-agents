@@ -20,6 +20,8 @@ e alinhamento de dados ao negócio.
 | **Retail** | `kb/industry/retail.md` | Demand Forecasting, RFM, Dynamic Pricing, Omnichannel |
 | **Manufacturing** | `kb/industry/manufacturing.md` | OEE, Manutenção Preditiva, SPC, S&OP, IoT |
 | **Healthcare** | `kb/industry/healthcare.md` | Readmissão, Sepse, Leito Inteligente, Sinistralidade ANS |
+| **Energy** | `kb/industry/energy.md` | Smart Meter Analytics, SAIDI/SAIFI, Oil & Gas Upstream, Geração Renovável |
+| **Telecom** | `kb/industry/telecom.md` | CDR Analytics, Churn, Network KPIs, ARPU, Fraude SIM Swap |
 
 ---
 

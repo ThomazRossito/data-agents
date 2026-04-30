@@ -146,6 +146,44 @@ A REST API do Fabric só enxerga o schema `dbo`; o fabric_sql conecta via TDS e 
 
 ---
 
+## 🔍 Protocolo de Auto-Revisão (obrigatório antes de todo DDL ou DML crítico)
+
+Antes de escrever ou enviar qualquer DDL (`CREATE TABLE`, `ALTER TABLE`, `DROP`, `MERGE`)
+ou DML de modificação (`INSERT`, `UPDATE`, `DELETE`), execute mentalmente este checklist.
+**Não pule esta etapa — ela é a última barreira antes do output.**
+
+### Checklist de Segurança SQL
+
+| # | Verificação | Ação se falhar |
+|---|-------------|----------------|
+| R1 | `DROP TABLE/VIEW/SCHEMA` presente? | Bloquear. Confirmar com usuário antes. |
+| R2 | `UPDATE` ou `DELETE` sem cláusula `WHERE`? | Bloquear. Adicionar `WHERE` ou rejeitar. |
+| R3 | `ALTER TABLE ... DROP COLUMN` presente? | Alertar — operação irreversível em muitas plataformas. |
+| R4 | Existe `SELECT *` sem `LIMIT` ou `WHERE` com partição? | Substituir por colunas explícitas + LIMIT 1000. |
+| R5 | Cross join implícito (mais de uma tabela no FROM sem JOIN condition)? | Rejeitar — full cross product pode gerar bilhões de linhas. |
+| R6 | `MERGE` sem condição de match suficiente (sem chave primária no ON)? | Bloquear — MERGE sem PK pode duplicar ou deletar tudo. |
+| R7 | DDL de tabela sem particionamento e tamanho estimado > 1GB? | Alertar e sugerir `PARTITIONED BY`. |
+| R8 | PII visível em exemplos de dados ou comentários gerados? | Mascarar antes de enviar (ver `kb/governance/`). |
+| R9 | Tabela fullname não qualificada (sem `catalog.schema.table` no Databricks)? | Adicionar qualificação completa. |
+| R10 | Query envolve tabela de produção (`_prod`, `gold`, `fct_*`) sem filtro de data? | Exigir filtro de partição antes de executar. |
+
+### Output do Review (incluir no final da resposta quando aplicável)
+
+```
+✅ Review de Segurança SQL:
+  R1 DROP: ✓ ausente  R2 UPDATE/DELETE sem WHERE: ✓ ausente
+  R3 ALTER DROP: ✓ ausente  R4 SELECT *: ✓ limitado
+  R5 Cross join: ✓ ausente  R6 MERGE: ✓ com PK no ON
+  [... apenas itens relevantes para a query gerada]
+```
+
+Se alguma verificação **falhar**, inclua:
+```
+⚠️ Review detectou: [R2] UPDATE sem WHERE — adicionado WHERE id = {id} conforme contexto.
+```
+
+---
+
 ## Formato de Resposta
 
 ```sql

@@ -49,7 +49,7 @@ from claude_agent_sdk import (
 )
 from claude_agent_sdk.types import StreamEvent
 
-from agents.supervisor import build_supervisor_options
+from agents.supervisor import build_supervisor_options, build_failover_options, is_rate_limit_error
 from commands.parser import parse_command, get_help_text
 from config.exceptions import (
     BudgetExceededError,
@@ -1172,8 +1172,45 @@ async def run_interactive() -> None:
                     continue
 
                 except Exception as e:
-                    console.print(f"\n[bold red]Erro inesperado:[/bold red] {e}\n")
-                    logger.error(f"Unexpected error: {e}", exc_info=True)
+                    # ── Three-Layer Model Failover ────────────────────────────
+                    # Se o erro for rate-limit ou sobrecarga, tenta automaticamente
+                    # com o modelo de fallback (Opus → Sonnet → Haiku).
+                    if is_rate_limit_error(e):
+                        fallback_opts = build_failover_options(options)
+                        fallback_model = fallback_opts.model or "fallback"
+                        console.print(
+                            f"\n[bold yellow]⚠️  Modelo sobrecarregado — degradando para "
+                            f"[cyan]{fallback_model}[/cyan] e reenviando...[/bold yellow]\n"
+                        )
+                        logger.warning(
+                            f"Rate limit / overload detectado. Failover: "
+                            f"{options.model} → {fallback_model}. Erro: {e}"
+                        )
+                        try:
+                            async with ClaudeSDKClient(options=fallback_opts) as fallback_client:
+                                await fallback_client.query(doma_prompt)
+                                result_metrics = await _stream_response(
+                                    fallback_client,
+                                    prompt=doma_prompt,
+                                    session_type=_session_type,
+                                    session_id=_session_id,
+                                )
+                            _session_state["last_prompt"] = doma_prompt
+                            _session_state["total_cost"] += result_metrics.get("cost", 0)
+                            _session_state["total_turns"] += result_metrics.get("turns", 0)
+                            console.print(
+                                f"[dim]✓ Respondido com modelo de fallback ({fallback_model}). "
+                                "O modelo principal pode estar temporariamente sobrecarregado.[/dim]\n"
+                            )
+                        except Exception as fallback_err:
+                            console.print(
+                                f"\n[bold red]Fallback também falhou:[/bold red] {fallback_err}\n"
+                                "[dim]Aguarde alguns segundos e tente novamente.[/dim]\n"
+                            )
+                            logger.error(f"Failover também falhou: {fallback_err}", exc_info=True)
+                    else:
+                        console.print(f"\n[bold red]Erro inesperado:[/bold red] {e}\n")
+                        logger.error(f"Unexpected error: {e}", exc_info=True)
                     continue
     except Exception as e:
         # Captura erros durante o encerramento do SDK (ex: hooks de teardown)
