@@ -80,6 +80,44 @@ _SQL_IN_BASH = re.compile(
 _SQL_TOOL_FIELDS = ("query", "sql", "statement")
 
 
+# ─── DDL destrutivo em tools SQL (MCP / direto) ─────────────────
+
+#: Operações DDL/DML que requerem confirmação explícita antes de executar
+_DESTRUCTIVE_SQL_PATTERNS: list[tuple[re.Pattern, str]] = [
+    (
+        re.compile(
+            r"\bDROP\s+(DATABASE|CATALOG|SCHEMA|TABLE|VIEW|FUNCTION|PROCEDURE)\b", re.IGNORECASE
+        ),
+        "DROP detectado — esta operação é irreversível. Confirme com o usuário antes de executar.",
+    ),
+    (
+        re.compile(r"\bTRUNCATE\s+TABLE\b", re.IGNORECASE),
+        "TRUNCATE TABLE detectado — apaga todos os dados da tabela de forma irreversível. Confirme com o usuário.",
+    ),
+    (
+        re.compile(r"\bDELETE\s+FROM\b(?!.*\bWHERE\b)", re.IGNORECASE | re.DOTALL),
+        "DELETE FROM sem WHERE detectado — apagaria todos os registros da tabela. Adicione uma cláusula WHERE.",
+    ),
+    (
+        re.compile(r"\bALTER\s+TABLE\s+\S+\s+DROP\s+(COLUMN|PARTITION)\b", re.IGNORECASE),
+        "ALTER TABLE DROP detectado — remoção de coluna ou partição é irreversível. Confirme com o usuário.",
+    ),
+]
+
+
+def _detect_destructive_sql(sql: str) -> tuple[bool, str]:
+    """
+    Verifica se uma string SQL contém DDL/DML destrutivo.
+
+    Retorna (bloqueado: bool, motivo: str).
+    Aplicado a tools SQL (MCP e diretas), não só ao Bash.
+    """
+    for pattern, reason in _DESTRUCTIVE_SQL_PATTERNS:
+        if pattern.search(sql):
+            return True, reason
+    return False, ""
+
+
 # ─── Padrões SQL adicionais de segurança ────────────────────────
 
 # WHERE trivial (sempre verdadeiro — bypass de filtro)
@@ -223,6 +261,12 @@ async def check_sql_cost(
     if not sql_candidate:
         return {}
 
+    # 1. DDL destrutivo — bloqueia antes de verificar custo (prioridade máxima)
+    blocked, reason = _detect_destructive_sql(sql_candidate)
+    if blocked:
+        return _deny(f"SQL bloqueado — operação destrutiva detectada: {reason}")
+
+    # 2. SELECT de alto custo
     blocked, reason = _detect_expensive_sql(sql_candidate)
     if blocked:
         return _deny(f"Query bloqueada — alto custo detectado: {reason}")

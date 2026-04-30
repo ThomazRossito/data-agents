@@ -20,14 +20,9 @@ Uso típico:
 from __future__ import annotations
 
 import logging
+import time
 
-from claude_agent_sdk import (
-    AssistantMessage,
-    ClaudeAgentOptions,
-    ResultMessage,
-    TextBlock,
-    query as sdk_query,
-)
+import anthropic
 
 from config.settings import settings
 
@@ -47,23 +42,18 @@ GERAL_SYSTEM = (
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def build_geral_options() -> ClaudeAgentOptions:
+def _geral_model() -> str:
     """
-    ClaudeAgentOptions mínimo para /geral.
+    Modelo para /geral — usa Haiku (T3) por padrão.
 
-    Zero sub-agentes, zero MCP, zero hooks.
-    O SDK gerencia auth internamente → mesmo mecanismo Bearer do Supervisor.
-    Modelo: settings.default_model (inclui prefixo bedrock/ quando configurado).
+    Tier map permite override via TIER_MODEL_MAP no .env.
+    Nunca usa prefixo bedrock/ — /geral faz chamada direta à API Anthropic.
     """
-    return ClaudeAgentOptions(
-        model=settings.default_model,
-        system_prompt=GERAL_SYSTEM,
-        allowed_tools=[],
-        agents=None,
-        mcp_servers={},
-        max_turns=1,
-        permission_mode="bypassPermissions",
-    )
+    tier_map: dict = getattr(settings, "tier_model_map", {}) or {}
+    # T3 override ou fallback para Haiku
+    model = tier_map.get("T3") or "claude-haiku-4-5-20251001"
+    # Strip bedrock prefix — Anthropic client não aceita
+    return model.replace("bedrock/anthropic.", "").replace("bedrock/", "")
 
 
 def build_prompt_with_history(user_message: str, history: list[dict]) -> str:
@@ -100,7 +90,11 @@ async def run_geral_query(
     session_type: str = "geral",
 ) -> tuple[str, dict[str, float]]:
     """
-    Executa consulta /geral via claude_agent_sdk.
+    Executa consulta /geral via API Anthropic direta (sem SDK de agentes).
+
+    Usa anthropic.AsyncAnthropic em vez de sdk_query porque /geral é uma
+    query single-turn simples sem ferramentas ou sub-agentes. O SDK de agentes
+    não é adequado para chamadas stateless diretas sem orchestration.
 
     O caller é responsável por:
       1. Adicionar user_message ao history ANTES de chamar esta função.
@@ -114,38 +108,52 @@ async def run_geral_query(
 
     Returns:
         Tuple (response_text, metrics) onde:
-          - response_text: Texto da resposta (vazio se erro ou sem resposta).
+          - response_text: Texto da resposta (vazio se erro).
           - metrics: {"cost": float, "turns": float, "duration": float}
 
     Raises:
-        Propaga exceções do SDK — o caller deve tratar e reverter o histórico.
+        Propaga exceções da API Anthropic — o caller deve tratar e reverter histórico.
     """
-    from hooks.session_logger import log_session_result
-
     prompt = build_prompt_with_history(user_message, history)
-    options = build_geral_options()
+    model = _geral_model()
 
+    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
+    t0 = time.monotonic()
+    message = await client.messages.create(
+        model=model,
+        max_tokens=4096,
+        system=GERAL_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    duration = time.monotonic() - t0
+
+    # Extrai texto da resposta
     response_text = ""
-    metrics: dict[str, float] = {"cost": 0.0, "turns": 1.0, "duration": 0.0}
+    for block in message.content:
+        if hasattr(block, "text") and block.text.strip():
+            response_text += block.text
 
-    async for message in sdk_query(prompt=prompt, options=options):
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock) and block.text.strip():
-                    response_text += block.text
+    # Calcula custo estimado (Haiku: $0.80/MTok input, $4.00/MTok output)
+    input_tokens = message.usage.input_tokens if message.usage else 0
+    output_tokens = message.usage.output_tokens if message.usage else 0
+    cost = (input_tokens * 0.80 + output_tokens * 4.00) / 1_000_000
 
-        elif isinstance(message, ResultMessage):
-            metrics["cost"] = float(message.total_cost_usd or 0)
-            metrics["turns"] = float(message.num_turns or 1)
-            metrics["duration"] = float(message.duration_ms or 0) / 1000
-            log_session_result(
-                message, prompt_preview=user_message[:100], session_type=session_type
-            )
-            logger.debug(
-                "geral query: cost=%.5f turns=%d duration=%.1fs",
-                metrics["cost"],
-                int(metrics["turns"]),
-                metrics["duration"],
-            )
+    metrics: dict[str, float] = {
+        "cost": cost,
+        "turns": 1.0,
+        "duration": duration,
+        "input_tokens": float(input_tokens),
+        "output_tokens": float(output_tokens),
+    }
+
+    logger.debug(
+        "geral query: model=%s cost=%.5f in=%d out=%d duration=%.1fs",
+        model,
+        cost,
+        input_tokens,
+        output_tokens,
+        duration,
+    )
 
     return response_text, metrics

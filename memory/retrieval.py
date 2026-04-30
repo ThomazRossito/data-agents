@@ -280,10 +280,14 @@ def format_memories_for_injection(memories: list[Memory]) -> str:
         MemoryType.FEEDBACK: "Feedback & Correções",
         MemoryType.ARCHITECTURE: "Decisões Arquiteturais",
         MemoryType.PROGRESS: "Progresso & Contexto",
+        MemoryType.DATA_ASSET: "Assets de Dados",
+        MemoryType.PLATFORM_DECISION: "Decisões de Plataforma",
+        MemoryType.PIPELINE_STATUS: "Status de Pipelines",
     }
 
     for mt, mems in by_type.items():
-        sections.append(f"\n### {type_labels[mt]}\n")
+        label = type_labels.get(mt, mt.value.replace("_", " ").title())
+        sections.append(f"\n### {label}\n")
         for mem in mems:
             conf = f" (confidence: {mem.confidence:.2f})" if mem.confidence < 1.0 else ""
             sections.append(f"**[{mem.id}]** {mem.summary}{conf}\n")
