@@ -166,19 +166,20 @@ def _compress_by_lines(output: str, max_lines: int, label: str) -> str | None:
     return "\n".join(truncated)
 
 
-def _compress_by_chars(output: str) -> str | None:
+def _compress_by_chars(output: str, max_chars: int | None = None) -> str | None:
     """
-    Fallback de segurança: trunca por caracteres se exceder MAX_OUTPUT_CHARS.
+    Fallback de segurança: trunca por caracteres se exceder o limite.
 
     Aplicado a tools não categorizadas com output muito grande.
+    Aceita `max_chars` customizado (ex: para migration-expert com limite maior).
     Retorna None se dentro do limite.
     """
-    max_chars = _limits()[4]
-    if len(output) <= max_chars:
+    limit = max_chars if max_chars is not None else _limits()[4]
+    if len(output) <= limit:
         return None
 
-    truncated = output[:max_chars]
-    omitted = len(output) - max_chars
+    truncated = output[:limit]
+    omitted = len(output) - limit
     return (
         truncated + f"\n\n[OUTPUT COMPRIMIDO] ... {omitted} caracteres omitidos "
         f"(total original: {len(output)} chars)."

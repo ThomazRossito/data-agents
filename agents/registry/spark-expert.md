@@ -4,7 +4,7 @@ description: "Especialista em Python e Apache Spark. Use para: geração de cód
 model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Grep, Glob, Write, context7_all]
 mcp_servers: [context7]
-kb_domains: [spark-patterns, pipeline-design, databricks]
+kb_domains: [spark-patterns, pipeline-design, databricks, shared, checklists]
 skill_domains: [databricks, patterns]
 tier: T1
 output_budget: "150-400 linhas"

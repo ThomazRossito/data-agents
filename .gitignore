@@ -47,6 +47,10 @@ memory/*
 !memory/MEMORY_ARCHITECTURE.docx
 reports/
 
+# Bundle do BTG OpenFinance — exceção para o DAB CLI sincronizar
+!output/BTG/
+!output/BTG/**
+
 # =============================================================================
 # INPUTS (documentos externos — não versionar)
 # =============================================================================

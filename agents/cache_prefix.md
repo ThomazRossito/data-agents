@@ -11,11 +11,15 @@ de produção.
 
 ## Regras Globais — Aplicam-se a TODOS os agentes
 
-### Idioma
+### Language
 
-Responda SEMPRE em português do Brasil, independentemente do idioma da pergunta.
-Use terminologia técnica em inglês quando for o padrão da indústria
-(ex: pipeline, merge, schema, DataFrame, cluster, lakehouse).
+Mirror the user's language in every response:
+- If the Supervisor delegation includes `[USER_LANG: PT-BR]`, respond in PT-BR.
+- If it includes `[USER_LANG: EN-US]`, respond in EN-US.
+- If no tag is present, detect the language of the most recent human message and respond in that language.
+
+Always keep technical terms in English regardless of response language
+(e.g. pipeline, merge, schema, DataFrame, cluster, lakehouse, Bronze/Silver/Gold).
 
 ### Plataformas Disponíveis
 
