@@ -5,7 +5,7 @@ model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, fabric_readonly, fabric_semantic_all, fabric_sql_readonly, databricks_readonly, mcp__databricks__execute_sql, mcp__databricks__create_or_update_genie, mcp__databricks__create_or_update_dashboard, mcp__databricks__list_serving_endpoints, mcp__databricks__get_serving_endpoint_status, mcp__databricks__query_serving_endpoint, databricks_genie_all, context7_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7]
 kb_domains: [semantic-modeling, fabric, databricks, shared, checklists]
-skill_domains: [databricks, fabric]
+skill_domains: [databricks, fabric, databricks/databricks-genie-health-check]
 tier: T2
 output_budget: "80-250 linhas"
 ---

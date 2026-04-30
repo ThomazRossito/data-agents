@@ -5,6 +5,7 @@ description: "Padrões de validação e qualidade de dados em pipelines PySpark/
 
 # Skill: Qualidade e Validação de Dados
 
+<!-- type: example -->
 ## Validações Básicas com PySpark
 
 ```python
@@ -38,10 +39,12 @@ def validate_dataframe(df: DataFrame, required_cols: list[str]) -> dict:
     return report
 ```
 
+<!-- type: constraint -->
 ## Expectations no Lakeflow/SDP (Spark Declarative Pipelines)
 
 > ⚠️ NUNCA use `import dlt` — API DEPRECIADA. Use `from pyspark import pipelines as dp`.
 
+<!-- type: pattern -->
 ### Python (API Moderna)
 ```python
 from pyspark import pipelines as dp
@@ -58,6 +61,7 @@ def silver_vendas():
     return spark.readStream.table("bronze_vendas")
 ```
 
+<!-- type: pattern -->
 ### SQL (Constraints nativos)
 ```sql
 CREATE OR REFRESH STREAMING TABLE silver_vendas (
@@ -68,6 +72,7 @@ CREATE OR REFRESH STREAMING TABLE silver_vendas (
 AS SELECT * FROM stream(bronze_vendas);
 ```
 
+<!-- type: example -->
 ## Reconciliação Fonte × Destino
 
 ```sql

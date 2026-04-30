@@ -5,6 +5,7 @@ description: "Arquitetura Medallion (Bronze/Silver/Gold) com regras mandatórias
 
 # Skill: Design de Pipelines ETL/ELT
 
+<!-- type: concept -->
 ## Arquitetura Medallion (Bronze → Silver → Gold)
 
 ```
@@ -29,6 +30,7 @@ Fonte (CSV / API / Stream)
   └─────────────┘
 ```
 
+<!-- type: constraint -->
 ### Regras Mandatórias por Camada (Lakeflow/SDP)
 
 | Camada | Tipo SDP Obrigatório | Padrão de Ingestão | Proibido |
@@ -37,6 +39,7 @@ Fonte (CSV / API / Stream)
 | **Silver** | `STREAMING TABLE` + `CREATE FLOW` | `stream(bronze_table)` + `AUTO CDC INTO` | `MATERIALIZED VIEW`, Window Functions `LAG/LEAD` para SCD2 |
 | **Gold** | `MATERIALIZED VIEW` | Leitura direta das tabelas Silver | — |
 
+<!-- type: pattern -->
 ## Padrão de Pipeline Cross-Platform (Fabric → Databricks)
 
 ```
@@ -53,6 +56,7 @@ Estratégias de conectividade:
 2. **OneLake Shortcut**: Databricks monta o OneLake como volume externo.
 3. **Export → Upload**: download do OneLake, upload para Volume Databricks.
 
+<!-- type: example -->
 ## Configuração de Job Databricks (JSON Reference)
 
 ```json
@@ -85,6 +89,7 @@ Estratégias de conectividade:
 }
 ```
 
+<!-- type: constraint -->
 ## Checklist de Qualidade de Pipeline
 
 - [ ] Schema de entrada validado antes da transformação

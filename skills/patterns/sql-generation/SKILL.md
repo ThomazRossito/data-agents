@@ -5,6 +5,7 @@ description: "Sintaxe de SQL para Databricks/Unity Catalog (Liquid Clustering co
 
 # Skill: Geração de SQL para Databricks e Fabric
 
+<!-- type: concept -->
 ## Spark SQL — Criação de Tabela Delta no Unity Catalog
 
 ```sql
@@ -26,10 +27,12 @@ TBLPROPERTIES (
 COMMENT 'Tabela de vendas processadas';
 ```
 
+<!-- type: constraint -->
 > **Nota:** `PARTITIONED BY` + `ZORDER BY` são padrões legados. Para tabelas Delta novas no
 > Unity Catalog, use sempre `CLUSTER BY` (Liquid Clustering). Oferece melhor performance de
 > leitura e elimina a necessidade de definir partições estáticas.
 
+<!-- type: pattern -->
 ## Spark SQL — OPTIMIZE (com Liquid Clustering)
 
 ```sql
@@ -41,6 +44,7 @@ OPTIMIZE catalog.schema.tabela_nome;
 VACUUM catalog.schema.tabela_nome RETAIN 168 HOURS;
 ```
 
+<!-- type: example -->
 ## Spark SQL — Adicionar Liquid Clustering a Tabela Existente
 
 ```sql
@@ -52,6 +56,7 @@ CLUSTER BY (data_evento, categoria);
 OPTIMIZE catalog.schema.tabela_nome;
 ```
 
+<!-- type: example -->
 ## Spark SQL — CTE com Window Function
 
 ```sql
@@ -79,6 +84,7 @@ WHERE rn <= 10
 ORDER BY categoria, valor DESC;
 ```
 
+<!-- type: example -->
 ## KQL — Query Eventhouse (Fabric RTI)
 
 ```kql
@@ -93,6 +99,7 @@ eventos
 | order by Timestamp desc
 ```
 
+<!-- type: example -->
 ## T-SQL — Fabric Synapse (Data Warehouse)
 
 ```sql
@@ -108,6 +115,7 @@ GROUP BY p.nome_produto
 ORDER BY receita_total DESC;
 ```
 
+<!-- type: pattern -->
 ## Conversão T-SQL → Spark SQL
 
 | T-SQL                        | Spark SQL                          |
