@@ -22,6 +22,8 @@ Modos de thinking:
   - Demais modos: thinking disabled — economiza custo/latência em tarefas pontuais
 """
 
+import copy
+import re
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -38,6 +40,59 @@ from hooks.memory_hook import capture_session_context
 from hooks.output_compressor_hook import compress_tool_output
 from hooks.security_hook import block_destructive_commands, check_sql_cost
 from hooks.workflow_tracker import pre_track_workflow_events, track_workflow_events
+
+
+# ─── Three-Layer Model Failover ──────────────────────────────────────────────
+
+#: Mapa primary → fallback para degradação de modelo em rate-limit / overload.
+#: Opus → Sonnet → Haiku (three-layer cascade).
+FAILOVER_MODEL_MAP: dict[str, str] = {
+    "claude-opus-4-6": "claude-sonnet-4-6",
+    "claude-sonnet-4-6": "claude-haiku-4-5-20251001",
+    "bedrock/anthropic.claude-4-6-sonnet": "claude-sonnet-4-6",
+    "bedrock/anthropic.claude-haiku-4-5": "claude-haiku-4-5-20251001",
+}
+
+#: Padrões de mensagem de erro que indicam sobrecarga ou rate-limit do modelo.
+_OVERLOAD_PATTERNS: list[re.Pattern] = [
+    re.compile(r"rate.?limit", re.IGNORECASE),
+    re.compile(r"overloaded", re.IGNORECASE),
+    re.compile(r"529", re.IGNORECASE),
+    re.compile(r"too many requests", re.IGNORECASE),
+    re.compile(r"capacity", re.IGNORECASE),
+    re.compile(r"throttl", re.IGNORECASE),
+]
+
+
+def is_rate_limit_error(exc: BaseException) -> bool:
+    """
+    Detecta se uma exceção indica sobrecarga ou rate-limit do modelo.
+
+    Analisa a mensagem de erro e o tipo da exceção para identificar erros
+    HTTP 429 (Rate Limited) e HTTP 529 (Overloaded) da API Anthropic.
+    """
+    msg = str(exc).lower()
+    return any(p.search(msg) for p in _OVERLOAD_PATTERNS)
+
+
+def build_failover_options(primary_options: ClaudeAgentOptions) -> ClaudeAgentOptions:
+    """
+    Retorna uma cópia de ClaudeAgentOptions com modelo de fallback.
+
+    Aplica o FAILOVER_MODEL_MAP para degradar o modelo do Supervisor para
+    o próximo nível disponível (Opus → Sonnet → Haiku).
+
+    Args:
+        primary_options: Opções originais com o modelo primário.
+
+    Returns:
+        Nova instância de ClaudeAgentOptions com modelo de fallback configurado.
+    """
+    primary_model = primary_options.model or "claude-sonnet-4-6"
+    fallback_model = FAILOVER_MODEL_MAP.get(primary_model, "claude-sonnet-4-6")
+    fallback_opts = copy.copy(primary_options)
+    fallback_opts.model = fallback_model
+    return fallback_opts
 
 
 def build_supervisor_options(

@@ -20,6 +20,12 @@ e alinhamento de dados ao negócio.
 | **Retail** | `kb/industry/retail.md` | Demand Forecasting, RFM, Dynamic Pricing, Omnichannel |
 | **Manufacturing** | `kb/industry/manufacturing.md` | OEE, Manutenção Preditiva, SPC, S&OP, IoT |
 | **Healthcare** | `kb/industry/healthcare.md` | Readmissão, Sepse, Leito Inteligente, Sinistralidade ANS |
+| **Energy** | `kb/industry/energy.md` | Smart Meter Analytics, SAIDI/SAIFI, Oil & Gas Upstream, Geração Renovável |
+| **Telecom** | `kb/industry/telecom.md` | CDR Analytics, Churn, Network KPIs, ARPU, Fraude SIM Swap |
+| **Agribusiness** | `kb/industry/agribusiness.md` | Monitoramento de Safra, Mark-to-Market, EUDR/RTRS, Carbon Credits, Rastreabilidade |
+| **Insurance** | `kb/industry/insurance.md` | Pricing GLM/ML, Detecção de Fraude, IBNR, Telemática UBI, SUSEP |
+| **Logistics** | `kb/industry/logistics.md` | OTIF, Track & Trace, Gestão de Frota, Acuracidade de Inventário, Carbon Footprint |
+| **Education** | `kb/industry/education.md` | Early Warning de Evasão, Funil de Captação, LMS Analytics, Inadimplência, NPS Acadêmico |
 
 ---
 
@@ -33,6 +39,10 @@ Verificar pelas palavras-chave no contexto do usuário:
 - **Retail**: loja, SKU, estoque, e-commerce, PDV, GMV, giro, campanha, atribuição, cesta
 - **Manufacturing**: fábrica, linha de produção, OEE, sensor, PLM, manutenção, MTBF, turno, refugo, scrap
 - **Healthcare**: hospital, clínica, paciente, CID, prontuário, operadora, sinistralidade, AIH, ANS, LGPD Art.11
+- **Agribusiness**: fazenda, safra, talhão, soja, milho, commodity, CAR, NDVI, rastreabilidade, EUDR, RTRS, trading, hedge, cooperativa, agroindústria
+- **Insurance**: seguradora, apólice, sinistro, SUSEP, IBNR, prêmio, segurado, subscrição, resseguro, fraude de sinistro, telemática
+- **Logistics**: transportadora, frete, entrega, OTIF, rastreamento, armazém, WMS, frota, last-mile, CTe, ANTT, cross-dock, fulfillment
+- **Education**: escola, universidade, IES, aluno, matrícula, evasão, LMS, EAD, ENADE, INEP, MEC, PROUNI, FIES, frequência, edtech
 
 ### Carregar a KB da vertical antes de análise
 
@@ -70,4 +80,4 @@ Cada arquivo segue o padrão:
 Para adicionar uma nova vertical, seguir o template em `kb/_templates/domain.md` e criar
 o arquivo `kb/industry/<vertical>.md`. Adicionar a entrada na tabela acima.
 
-Verticais prioritárias para expansão: Agribusiness, Education, Logistics/Transportation, Energy/Utilities.
+Verticais prioritárias para expansão futura: Public Sector/GovTech, Media & Entertainment, Real Estate.

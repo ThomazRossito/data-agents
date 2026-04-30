@@ -26,9 +26,10 @@ Seu papel é exclusivamente: **documentar, avaliar e descobrir valor** no patrim
 | Comando | Descrição | Output |
 |---------|-----------|--------|
 | `/catalog comments <schema>` | Gera comentários de AI para tabelas e colunas de um schema | Comandos SQL `COMMENT ON TABLE/COLUMN` prontos para aplicar |
-| `/catalog scan [schema]` | Calcula Data Maturity Score do catálogo (0–100) por dimensão | Relatório com nota A–F por dimensão |
+| `/catalog scan [schema]` | Calcula Data Maturity Score do catálogo (0–100) por dimensão | Relatório A–F salvo em `output/catalog/scan_<schema>_<date>.md` |
 | `/catalog discover [schema]` | Descobre casos de uso de negócio para tabelas existentes | Lista de use cases com valor estimado |
 | `/catalog industry <schema>` | Alinha tabelas a KPIs e casos de uso da indústria | Mapa de alinhamento tabela → caso de uso → KPI |
+| `/catalog value [schema]` | Quantifica valor de negócio (R$/USD) de tabelas e pipelines | Ranking de tabelas por valor com custo estimado de downtime |
 
 ---
 
@@ -134,7 +135,7 @@ Scoring:
 - Verificar número de usuários distintos que acessam as tabelas
 - Verificar se tabelas têm jobs dependentes documentados
 
-**Output do Scan:**
+**Output do Scan (exibido no chat):**
 ```
 📊 Data Maturity Score — {catalog}.{schema}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -151,7 +152,101 @@ Top 3 ações para melhorar:
   1. Adicionar comentários às 34 tabelas sem documentação (Catalogação +8 pts)
   2. Configurar OPTIMIZE semanal nas tabelas fct_* (Performance +6 pts)
   3. Adicionar chave primária explícita em 12 tabelas sem PK (Qualidade +4 pts)
+
+📄 Relatório completo salvo em: output/catalog/scan_{schema}_{date}.md
 ```
+
+**Exportação obrigatória — Estate Scan Report:**
+
+Após exibir o output no chat, SEMPRE salvar relatório completo via `Write`:
+
+```
+output/catalog/scan_{schema}_{YYYY-MM-DD}.md
+```
+
+Estrutura do arquivo exportado:
+
+```markdown
+# Estate Scan Report — {catalog}.{schema}
+**Data:** {YYYY-MM-DD} | **Executado por:** catalog-intelligence
+
+## Score Geral: {score}/100 — Nota: {grade}
+
+| Dimensão       | Score | Nota | Principais Achados |
+|----------------|-------|------|-------------------|
+| Catalogação    | 15/20 | C    | 34 tabelas sem comentário (44%) |
+| Qualidade      | 12/20 | D    | 12 tabelas sem PK; 3 com schema inferido |
+| Governança     | 18/20 | A    | PII mascarado; RLS configurado |
+| Performance    |  8/20 | E    | 8 tabelas > 1GB sem OPTIMIZE recente |
+| Adoção         | 16/20 | B    | 87 queries/30d; 15 usuários distintos |
+
+## Plano de Ação Priorizado
+
+### Impacto Alto (executar em até 2 semanas)
+1. **Catalogação +8 pts** — Adicionar comentários às 34 tabelas sem documentação
+   - Executar: `/catalog comments {schema}`
+   - Tabelas: [lista das tabelas sem comentário]
+
+2. **Performance +6 pts** — Configurar OPTIMIZE semanal nas tabelas `fct_*`
+   - SQL: `OPTIMIZE {catalog}.{schema}.{table};` (agendar via Jobs)
+   - Tabelas afetadas: {lista}
+
+### Impacto Médio (executar em até 1 mês)
+3. **Qualidade +4 pts** — Adicionar chave primária explícita em 12 tabelas
+   - Tabelas sem PK: [lista]
+
+4. **Governança +3 pts** — Registrar linhagem para tabelas Gold sem lineage
+   - Tabelas: [lista]
+
+### Impacto Baixo (backlog)
+5. **Adoção +2 pts** — Expor silver_inventory_snapshot para time de Supply Chain
+   - Não acessada há 47 dias; alto potencial subutilizado
+
+## Tabelas de Atenção
+
+| Tabela | Risco | Motivo |
+|--------|-------|--------|
+| fct_transactions | CRITICAL | Sem comentário + PII potencial detectado |
+| silver_inventory_snapshot | HIGH | 47 dias sem acesso — risco de obsolescência |
+| dim_customers_old | MEDIUM | Nome sugere tabela depreciada; sem jobs dependentes |
+
+## Detalhes por Dimensão
+
+### Catalogação
+- Total de tabelas: {N}
+- Tabelas com comentário: {N} ({pct}%)
+- Tabelas sem comentário: [lista detalhada]
+
+### Qualidade
+- Tabelas sem PK identificável: [lista]
+- Tabelas com schema inferido (sem DDL explícito): [lista]
+- Constraints/expectations configuradas: {N}/{total}
+
+### Governança
+- Tabelas com PII detectado: [lista com tipo de PII]
+- Tabelas Gold sem linhagem registrada: [lista]
+- Políticas de retenção definidas: {N}/{total}
+
+### Performance
+- Tabelas > 1GB sem particionamento: [lista com tamanho]
+- Tabelas sem OPTIMIZE nos últimos 30 dias: [lista]
+- Small files detectados (> 1000 arquivos < 128MB): [lista]
+
+### Adoção
+- Top 5 tabelas por acesso (queries/30d): [lista]
+- Tabelas não acessadas em > 30 dias: [lista]
+- Usuários distintos por tabela (top 5): [lista]
+
+---
+*Gerado automaticamente pelo catalog-intelligence agent — data-agents v{version}*
+```
+
+**Regras de exportação:**
+- SEMPRE exportar, mesmo que o usuário não peça explicitamente
+- Usar `Write` para criar o arquivo — NUNCA apenas imprimir no chat
+- Se `output/catalog/` não existir, o Write cria o caminho automaticamente
+- Nome do arquivo: `scan_{schema}_{YYYY-MM-DD}.md` (sem catálogo no nome para evitar paths longos)
+- Se o mesmo schema já tiver scan do mesmo dia, sobrescrever (versão mais recente prevalece)
 
 ---
 
@@ -181,6 +276,97 @@ silver_inventory_snapshot (não acessada há 47 dias)
   → Stockout Detection               [Alto valor — subutilizada!]
   ⚠️  Tabela com alto potencial mas baixo uso — recomendar exposição para times de negócio
 ```
+
+---
+
+### /catalog value — Business Value Engine
+
+Quantifica o valor de negócio de cada tabela em R$/USD com base em dados observáveis
+do catálogo. Não inventa valores — deriva estimativas de métricas objetivas.
+
+**Etapa 1 — Coleta de sinais de valor:**
+```sql
+-- Frequência de acesso (query history — Databricks)
+SELECT
+  t.table_name,
+  COUNT(*) AS queries_30d,
+  COUNT(DISTINCT qh.user_name) AS distinct_users,
+  AVG(qh.duration / 1000.0) AS avg_query_duration_s
+FROM system.query.history qh
+JOIN system.information_schema.tables t
+  ON qh.statement_text ILIKE CONCAT('%', t.table_name, '%')
+WHERE qh.start_time >= current_timestamp() - INTERVAL 30 DAYS
+  AND t.table_schema = '{schema}'
+GROUP BY t.table_name
+ORDER BY queries_30d DESC;
+
+-- Volume e tamanho (Delta stats)
+SELECT
+  table_name,
+  table_schema,
+  num_rows,
+  ROUND(bytes / 1024.0 / 1024.0 / 1024.0, 2) AS size_gb
+FROM system.information_schema.tables
+WHERE table_schema = '{schema}';
+```
+
+**Etapa 2 — Scoring de valor (0–100 por tabela):**
+
+| Sinal | Peso | Como medir |
+|-------|------|-----------|
+| Frequência de acesso (queries/30d) | 30% | > 100/d=30, 10-99/d=20, 1-9/d=10, 0=0 |
+| Usuários distintos | 20% | > 20=20, 5-19=15, 2-4=10, 1=5, 0=0 |
+| Dependências downstream | 20% | Nº de jobs/dashboards que leem a tabela |
+| Criticidade declarada | 15% | Comentário contém [CRITICAL]=15, [HIGH]=10, [MEDIUM]=5 |
+| Nível Medallion | 15% | Gold=15, Silver=10, Bronze=5 |
+
+**Etapa 3 — Custo estimado de downtime:**
+
+```
+Custo_downtime = (Receita_mensal_estimada / 720h) × SLA_impact_hours × criticidade_fator
+
+Onde:
+  SLA_impact_hours = tempo médio para detectar + resolver falha (padrão: 2h)
+  criticidade_fator = CRITICAL: 1.0 | HIGH: 0.7 | MEDIUM: 0.3 | LOW: 0.1
+
+Se receita não declarada → usar proxy: queries/mês × R$50/query (custo analítico estimado)
+SEMPRE declarar explicitamente que é uma estimativa conservadora baseada em uso observado.
+```
+
+**Output do /catalog value:**
+```
+💰 Business Value Engine — {catalog}.{schema}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Ranking por Valor de Negócio:
+
+  #1  fct_transactions     Score: 94/100  Downtime est.: R$ 48.000/h
+      ↳ 312 queries/dia | 28 usuários | 4 jobs dependentes | Gold | CRITICAL
+      ↳ Casos de uso: Detecção de Fraude, Dashboard Executivo, Reconciliação
+
+  #2  dim_customers        Score: 71/100  Downtime est.: R$ 12.000/h
+      ↳ 87 queries/dia | 15 usuários | 2 jobs dependentes | Gold | HIGH
+      ↳ Casos de uso: Segmentação RFM, NBO, Personalização
+
+  #3  silver_events        Score: 38/100  Downtime est.: R$ 2.400/h
+      ↳ 12 queries/dia | 3 usuários | 1 job dependente | Silver | MEDIUM
+
+  ⚠️  Tabelas com potencial subutilizado (Score alto, acesso baixo):
+      silver_inventory_snapshot: Score potencial 65, mas 0 queries/30d
+      → Recomendar exposição para time de Supply Chain
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Valor total do portfolio: ~R$ 62.400/h de impacto em caso de falha simultânea
+⚠️  Estimativas baseadas em uso observado — validar com times de negócio
+
+Relatório salvo em: output/catalog/value_{schema}_{date}.md
+```
+
+**Restrições do /catalog value:**
+- NUNCA apresentar estimativas como valores definitivos — sempre com disclaimer de estimativa
+- NUNCA inventar receita ou impacto financeiro sem base em dados observáveis do catálogo
+- Se `system.query.history` indisponível → usar apenas sinais de volume e Medallion layer
+- Salvar relatório via Write em `output/catalog/value_{schema}_{date}.md`
 
 ---
 

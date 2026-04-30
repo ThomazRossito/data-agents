@@ -44,7 +44,6 @@ output/
 !output/workflow-context/.gitkeep
 memory/*
 !memory/*.py
-!memory/MEMORY_ARCHITECTURE.docx
 reports/
 
 # Bundle do BTG OpenFinance — exceção para o DAB CLI sincronizar
@@ -69,6 +68,13 @@ to_do/
 # OS
 .DS_Store
 Thumbs.db
+
+# Office temp/lock files e documentos não versionados
+~$*
+*.docx
+*.xlsx
+*.pptx
+!memory/MEMORY_ARCHITECTURE.docx
 
 # =============================================================================
 # PLATAFORMAS & MCPs

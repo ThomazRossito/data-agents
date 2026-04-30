@@ -11,6 +11,7 @@ description: "Regras de design de Star Schema para Gold layer no LakeFlow: auton
 
 ---
 
+<!-- type: concept -->
 ## O que é Star Schema e por que importa no LakeFlow
 
 Um Star Schema organiza dados analíticos em:
@@ -31,6 +32,7 @@ ou onde uma dimensão aponte para uma tabela transacional (silver_vendas, bronze
 
 ---
 
+<!-- type: constraint -->
 ## REGRA 1 — Autonomia das Dimensões
 
 **Tabelas `dim_*` NUNCA devem derivar de tabelas de fatos ou transacionais.**
@@ -48,12 +50,14 @@ produtos/clientes que ainda não tiveram venda ficam invisíveis na dimensão.
 
 ---
 
+<!-- type: pattern -->
 ## REGRA 2 — Geração de Dimensão de Data/Calendário
 
 A dimensão de data (`dim_data`, `dim_calendario`, `dim_tempo`) é **sempre gerada
 sinteticamente** a partir de um intervalo fixo — nunca derivada de datas que
 aparecem nos fatos.
 
+<!-- type: example -->
 ### Padrão obrigatório (SQL / MATERIALIZED VIEW):
 
 ```sql
@@ -80,6 +84,7 @@ FROM (
 CLUSTER BY ano, mes;
 ```
 
+<!-- type: constraint -->
 ### Por que não usar `SELECT DISTINCT data_venda FROM silver_vendas`:
 - Datas sem vendas (feriados, fins de semana) ficam ausentes → joins futuros retornam NULL.
 - O intervalo cresce dinamicamente → reprocessamento completo a cada nova data.
@@ -87,11 +92,13 @@ CLUSTER BY ano, mes;
 
 ---
 
+<!-- type: constraint -->
 ## REGRA 3 — Tabela Fato DEVE fazer INNER JOIN com TODAS as Dimensões
 
 A `fact_*` é o ponto de encontro de todas as entidades. Ela **deve referenciar**
 as tabelas `dim_*` via INNER JOIN, não apenas ler a tabela silver diretamente.
 
+<!-- type: example -->
 ### Padrão obrigatório (SQL / MATERIALIZED VIEW):
 
 ```sql
@@ -116,6 +123,7 @@ INNER JOIN gold_dim_data     d ON CAST(v.data_venda AS DATE) = d.data_id
 CLUSTER BY d.ano, d.mes;
 ```
 
+<!-- type: concept -->
 **Por que INNER JOIN e não LEFT JOIN?**
 - INNER JOIN garante que cada fato aponte para dimensões válidas (integridade referencial).
 - Um fato sem dimensão correspondente indica dado sujo → deve ser tratado na Silver.
@@ -124,6 +132,7 @@ CLUSTER BY d.ano, d.mes;
 
 ---
 
+<!-- type: concept -->
 ## REGRA 4 — Impacto no DAG do LakeFlow
 
 O DAG é derivado automaticamente das dependências SQL. Para garantir a topologia
@@ -146,6 +155,7 @@ e o LakeFlow pode reprocessar a silver desnecessariamente.
 
 ---
 
+<!-- type: constraint -->
 ## REGRA 5 — Liquid Clustering na Gold Layer
 
 Use `CLUSTER BY` nas tabelas Gold para otimizar consultas analíticas. **Não use
@@ -165,6 +175,7 @@ Escolha colunas de clustering com base nos filtros mais comuns:
 
 ---
 
+<!-- type: constraint -->
 ## Checklist Star Schema — Gold Layer
 
 Antes de finalizar qualquer geração de Gold Layer, confirme:
@@ -179,6 +190,7 @@ Antes de finalizar qualquer geração de Gold Layer, confirme:
 
 ---
 
+<!-- type: example -->
 ## Exemplo Completo — Star Schema de E-commerce (Referência)
 
 ```sql

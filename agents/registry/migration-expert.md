@@ -186,6 +186,45 @@ Para reconciliação complexa, delegar ao `data-quality-steward`.
 | Queries complexas para Silver/Gold | `sql-expert` |
 | Jobs PySpark de ingestão | `spark-expert` |
 
+---
+
+## 🔍 Protocolo de Auto-Revisão de DDL (obrigatório na FASE 4 — TRANSPILE)
+
+Antes de entregar qualquer DDL de destino gerado, execute este checklist.
+**É a última verificação antes do output — não pule.**
+
+### Checklist de Compatibilidade e Segurança
+
+| # | Verificação | Ação se falhar |
+|---|-------------|----------------|
+| M1 | Colunas `FLOAT`/`REAL` mapeadas para `DECIMAL(19,4)` em colunas monetárias? | Corrigir — FLOAT perde centavos (anti-padrão M01) |
+| M2 | Colunas `IDENTITY`/`SERIAL` removidas do DDL destino? | Remover — não são dados, são implementação de PK (anti-padrão M02) |
+| M3 | FKs como constraints `FOREIGN KEY` removidas? | Remover — Delta Lake não executa FK constraints (anti-padrão M05) |
+| M4 | `TEXT`/`NTEXT`/`IMAGE` mapeados para `STRING`/`BINARY`? | Corrigir — tipos obsoletos do SQL Server |
+| M5 | `UNIQUEIDENTIFIER`/`UUID` mapeados para `STRING`? | Corrigir — Spark não tem tipo UUID nativo |
+| M6 | `DATETIMEOFFSET`/`TIMESTAMPTZ` normalizados para UTC? | Normalizar com `AT TIME ZONE 'UTC'` na ingestão |
+| M7 | Tabela tem `PARTITIONED BY (_ingestion_date)` no Bronze? | Adicionar — sem partição, full scan em cada job |
+| M8 | Colunas técnicas `_ingestion_date`, `_source_system` presentes no Bronze? | Adicionar — obrigatório pela arquitetura Medallion |
+| M9 | DDL mistura Spark SQL com T-SQL no mesmo arquivo? | Separar — dialetos distintos para destinos distintos (anti-padrão M09) |
+| M10 | Tabela fullname qualificada com `catalog.schema.table` (Databricks) ou `schema.table` (Fabric)? | Adicionar qualificação — evita ambiguidade de namespace |
+
+### Output do Review (incluir no relatório da FASE 4)
+
+```
+✅ Review de DDL — Fase 4 Transpile:
+  M1 Tipos monetários: ✓  M2 IDENTITY removido: ✓  M3 FKs removidas: ✓
+  M4 TEXT→STRING: ✓  M5 UUID→STRING: ✓  M6 Timestamps UTC: ✓
+  M7 Particionamento: ✓  M8 Colunas técnicas: ✓  M9 Dialeto único: ✓  M10 Namespace: ✓
+  → DDL aprovado para execução.
+```
+
+Se alguma verificação falhar:
+```
+⚠️ Review detectou: [M3] FK constraint presente — removida. Documentada em output/migration/.
+```
+
+---
+
 ## Formato de Resposta
 
 Cada fase deve ser reportada com:

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.0.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.1.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Databricks-MCP-FF3621" alt="Databricks">
   <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4" alt="Fabric">
@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **14 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -98,15 +98,16 @@ python main.py         # ou: make run
 | Agente | Comando | Tier | O que faz |
 |--------|---------|------|-----------|
 | **Supervisor** | `/plan` | — | Coordena, planeja e valida tudo contra a Constituição |
-| **Business Analyst** | `/brief` | T3 | Converte reuniões e briefings em backlog P0/P1/P2 |
-| **SQL Expert** | `/sql` | T1 | SQL (Spark SQL, T-SQL, KQL), schemas, Unity Catalog |
+| **Business Analyst** | `/brief`, `/ship` | T3 | Converte reuniões e briefings em backlog P0/P1/P2; gera SHIPPED docs |
+| **SQL Expert** | `/sql` | T1 | SQL (Spark SQL, T-SQL, KQL), schemas, Unity Catalog; auto-revisão de DDL/DML |
 | **Spark Expert** | `/spark` | T1 | PySpark, Delta Lake, pipelines Medallion |
 | **Pipeline Architect** | `/pipeline` | T1 | ETL/ELT, orquestração, cross-platform Databricks ↔ Fabric |
 | **dbt Expert** | `/dbt` | T2 | dbt Core: models, testes, snapshots, seeds, docs |
 | **Data Quality Steward** | `/quality` | T2 | Validação de dados, profiling, alertas, SLAs |
 | **Governance Auditor** | `/governance` | T2 | Auditoria de acessos, linhagem, PII, LGPD/GDPR |
-| **Semantic Modeler** | `/semantic` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards |
-| **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion) |
+| **Semantic Modeler** | `/semantic`, `/genie` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards; Genie Health Check |
+| **Catalog Intelligence** | `/catalog` | T2 | Documenta catálogo com AI, calcula Data Maturity Score, Business Value Engine e alinhamento a indústria |
+| **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion); auto-revisão de DDL |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
 | **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
 | **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
@@ -152,7 +153,13 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/monitor <pergunta>` | Q&A sobre alertas do daemon de monitoramento de negócio |
 | `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
+| `/catalog comments <schema>` | Gera comentários de AI para tabelas e colunas de um schema |
+| `/catalog scan [schema]` | Calcula Data Maturity Score (0–100, A–F) e exporta relatório em `output/catalog/` |
+| `/catalog discover [schema]` | Descobre casos de uso de negócio para tabelas existentes |
+| `/catalog industry <schema>` | Alinha tabelas a KPIs e casos de uso da indústria detectada |
+| `/catalog value [schema]` | Business Value Engine: ranking de tabelas por valor com custo estimado de downtime |
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |
+| `/ship <feature>` | Gera SHIPPED doc — decisões, trade-offs e próximos passos de uma feature entregue |
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
 | `/review <artefato>` | Review de código ou pipeline |
 | `/party <query>` | Multi-agente paralelo (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
@@ -195,6 +202,100 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente:
 | **WF-03** Migração Cross-Platform | "Migre do Databricks para o Fabric" | Architect → SQL → Spark → Quality + Governance |
 | **WF-04** Auditoria de Governança | "Gere um relatório de compliance" | Governance → Quality → Relatório |
 | **WF-05** Migração Relacional→Nuvem | "Migre o SQL Server para Databricks" | Migration Expert → SQL → Spark → Quality + Governance |
+
+---
+
+## Catalog Intelligence
+
+O agente **catalog-intelligence** transforma catálogos de dados brutos em ativos documentados, avaliados e alinhados ao negócio. Opera sobre Unity Catalog (Databricks) e Fabric Lakehouse.
+
+### Comandos `/catalog`
+
+| Subcomando | O que entrega |
+|------------|--------------|
+| `comments` | Comandos `COMMENT ON TABLE/COLUMN` prontos para aplicar — granularidade, PII, Medallion layer |
+| `scan` | Data Maturity Score em 5 dimensões (Catalogação, Qualidade, Governança, Performance, Adoção) com notas A–F e plano de ação priorizado; exporta `output/catalog/scan_<schema>_<date>.md` |
+| `discover` | Casos de uso de negócio inferidos a partir de tabelas existentes cruzados com as KBs de indústria |
+| `industry` | Mapa tabela → caso de uso → KPI com gaps identificados (o que está faltando para cobrir os use cases da vertical) |
+| `value` | **Business Value Engine** — ranking de tabelas por score 0–100 (acesso, usuários, dependências, criticidade, Medallion) e estimativa de custo de downtime em R$/h |
+
+```bash
+/catalog scan production.silver
+# → 📊 Score: 69/100 (C) + relatório exportado em output/catalog/scan_silver_2026-04-30.md
+
+/catalog value production.gold
+# → 💰 fct_transactions: Score 94/100 | Downtime est.: R$ 48.000/h
+
+/catalog industry production.silver
+# → 🏭 Verticais detectadas: Financial Services | 3 use cases cobertos, 2 com gap
+```
+
+---
+
+## Knowledge Base de Indústria
+
+O sistema inclui **10 verticais** de indústria com casos de uso, schemas de referência, KPIs e anti-padrões específicos — consultadas pelos agentes antes de qualquer análise:
+
+| Vertical | Domínio de Conhecimento |
+|----------|------------------------|
+| **Financial Services** | Crédito (ECL/PD/LGD), AML/KYC, IFRS 9, Churn, NBO, Open Finance |
+| **Retail** | Demand Forecasting, RFM, Dynamic Pricing, Omnichannel |
+| **Manufacturing** | OEE, Manutenção Preditiva, SPC, S&OP, IoT |
+| **Healthcare** | Readmissão, Sepse, Leito Inteligente, Sinistralidade ANS |
+| **Energy** | Smart Meter Analytics, SAIDI/SAIFI (ANEEL), Oil & Gas Upstream, Geração Renovável |
+| **Telecom** | CDR Analytics, Churn, Network KPIs (ANATEL), ARPU, Fraude SIM Swap |
+| **Agribusiness** | Monitoramento de Safra, Mark-to-Market, EUDR/RTRS, Carbon Credits |
+| **Insurance** | Pricing GLM/ML, Detecção de Fraude, IBNR, Telemática UBI, SUSEP |
+| **Logistics** | OTIF, Track & Trace, Gestão de Frota, Acuracidade de Inventário, CTe/ANTT |
+| **Education** | Early Warning de Evasão, LMS Analytics, Inadimplência, NPS Acadêmico, LGPD+ECA |
+
+Cada KB inclui esquemas SQL comentados com boas práticas de PII, checklists de anti-padrões com severidade e benchmarks regulatórios locais (ANEEL, ANATEL, SUSEP, BACEN, INEP, MEC).
+
+---
+
+## Confiabilidade e Proteção de Qualidade
+
+### Failover de Modelo em Três Camadas
+
+Quando um modelo está sobrecarregado ou retorna rate limit, o sistema degrada automaticamente:
+
+```
+Opus → Sonnet → Haiku
+```
+
+Detectado por padrões: `rate limit`, `overloaded`, `529`, `too many requests`, `throttle`. O failover ocorre na mesma sessão sem interromper o fluxo — o usuário vê um aviso e a resposta continua com o modelo alternativo.
+
+### Auto-Revisão de DDL (LLM-as-Reviewer)
+
+O **sql-expert** executa 10 verificações antes de entregar qualquer DDL/DML:
+
+- Bloqueia `DROP` sem confirmação explícita do usuário
+- Rejeita `UPDATE`/`DELETE` sem `WHERE`
+- Substitui `SELECT *` por colunas explícitas + `LIMIT 1000`
+- Alerta para tabelas > 1GB sem particionamento
+- Mascara PII detectada em exemplos e comentários
+
+O **migration-expert** executa 10 verificações específicas de migração:
+
+- Converte `FLOAT`/`REAL` para `DECIMAL(19,4)` em colunas monetárias
+- Remove `IDENTITY`/`SERIAL` (Delta não usa auto-increment)
+- Normaliza `DATETIMEOFFSET`/`TIMESTAMPTZ` para UTC
+- Adiciona `_ingestion_date` e `_source_system` no Bronze
+- Garante namespace completo `catalog.schema.table`
+
+### Genie Health Check
+
+O **semantic-modeler** inclui um playbook de 20 verificações para Genie Spaces:
+
+| Dimensão | Checks | O que avalia |
+|----------|--------|-------------|
+| Cobertura | 4 | Tabelas e campos mapeados no Space |
+| Qualidade | 4 | Comentários, sinonímia, curated questions |
+| Calibração | 4 | Queries geradas vs. esperadas, SQL correto |
+| Governança | 4 | RLS, PII, acesso restrito |
+| Adoção | 4 | DAUs, query volume, feedback negativo |
+
+Score 0–100 com nota A–F e plano de ação corretiva por dimensão.
 
 ---
 
