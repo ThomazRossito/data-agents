@@ -250,20 +250,23 @@ commands:
       Tarefa: {task}
     display_template: '[bold cyan]🗂️ [Catalog] Analisando catálogo com catalog-intelligence...[/bold cyan]'
   ship:
-    agent: null
+    agent: business-analyst
     doma_mode: express
     description: |-
       Arquiva uma tarefa concluída com lições aprendidas, decisões técnicas e recomendações para futuras tarefas similares. Use ao final de qualquer tarefa complexa. Exemplo: /ship pipeline-vendas-bronze-gold
     skills:
     - templates/sdd/SHIPPED_template.md
     prompt_template: |-
-      [SHIP — ARCHIVAMENTO] Crie um documento SHIPPED para a tarefa concluída. Siga estas etapas:
+      [DOMA EXPRESS — SHIP] Delegue IMEDIATAMENTE para business-analyst. Não crie PRD, não peça aprovação.
+
+      O agente deve criar um documento SHIPPED para a tarefa concluída. Siga estas etapas:
       1. Leia o template em `templates/sdd/SHIPPED_template.md` com Read().
       2. Reflita sobre a sessão atual: o que foi entregue, quais agentes foram usados, quais decisões técnicas foram tomadas.
       3. Preencha todos os campos do template com base no contexto real da sessão.
       4. Garanta que o diretório `output/shipped/` existe (Bash: mkdir -p output/shipped).
       5. Salve o documento em `output/shipped/SHIPPED_{task_slug}_{date}.md` onde task_slug é o título em snake_case e date é a data atual (YYYY-MM-DD).
       6. Confirme ao usuário o caminho do arquivo salvo e as principais lições aprendidas (máx 3 bullets).
+
       Título da tarefa: {task}
     display_template: '[bold cyan]📦 [SHIP] Arquivando lições aprendidas: {task}[/bold cyan]'
   workflow:
