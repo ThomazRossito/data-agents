@@ -223,6 +223,49 @@ commands:
     skills: []
     prompt_template: '{task}'
     display_template: '[bold green]📡 [Monitor] Business Monitor — {agent}[/bold green]'
+  catalog:
+    agent: catalog-intelligence
+    doma_mode: express
+    description: |-
+      Aciona o Catalog Intelligence para documentar, avaliar e descobrir valor no catálogo de dados. Subcomandos: comments <schema> | scan [schema] | discover [schema] | industry <schema>. Exemplos: /catalog comments gold | /catalog scan silver | /catalog discover | /catalog industry gold
+    skills:
+    - kb/industry/index.md
+    - kb/governance/index.md
+    prompt_template: |-
+      [DOMA EXPRESS — CATALOG] Delegue IMEDIATAMENTE para catalog-intelligence. Não crie PRD, não peça aprovação.
+
+      O agente deve:
+      1. Identificar o subcomando na tarefa (comments | scan | discover | industry).
+      2. Ler `kb/industry/index.md` para contexto de indústria antes de inferir casos de uso.
+      3. Ler `kb/governance/index.md` para regras de PII antes de gerar comentários.
+      4. Ler `kb/shared/sql-rules.md` para regras de execução SQL antes de qualquer query.
+      5. Executar o protocolo correspondente ao subcomando:
+         - `comments <schema>`: DESCRIBE EXTENDED em cada tabela → gerar COMMENT ON TABLE/COLUMN SQL
+         - `scan [schema]`: calcular Data Maturity Score (0-100) em 5 dimensões com nota A-F
+         - `discover [schema]`: identificar casos de uso de negócio e valor estimado por tabela
+         - `industry <schema>`: mapear tabelas a casos de uso e KPIs da indústria do cliente
+      6. NUNCA executar DDL que não seja COMMENT ON. NUNCA modificar dados.
+      7. Alertar sobre PII detectada ANTES de gerar comentários.
+
+      Tarefa: {task}
+    display_template: '[bold cyan]🗂️ [Catalog] Analisando catálogo com catalog-intelligence...[/bold cyan]'
+  ship:
+    agent: null
+    doma_mode: express
+    description: |-
+      Arquiva uma tarefa concluída com lições aprendidas, decisões técnicas e recomendações para futuras tarefas similares. Use ao final de qualquer tarefa complexa. Exemplo: /ship pipeline-vendas-bronze-gold
+    skills:
+    - templates/sdd/SHIPPED_template.md
+    prompt_template: |-
+      [SHIP — ARCHIVAMENTO] Crie um documento SHIPPED para a tarefa concluída. Siga estas etapas:
+      1. Leia o template em `templates/sdd/SHIPPED_template.md` com Read().
+      2. Reflita sobre a sessão atual: o que foi entregue, quais agentes foram usados, quais decisões técnicas foram tomadas.
+      3. Preencha todos os campos do template com base no contexto real da sessão.
+      4. Garanta que o diretório `output/shipped/` existe (Bash: mkdir -p output/shipped).
+      5. Salve o documento em `output/shipped/SHIPPED_{task_slug}_{date}.md` onde task_slug é o título em snake_case e date é a data atual (YYYY-MM-DD).
+      6. Confirme ao usuário o caminho do arquivo salvo e as principais lições aprendidas (máx 3 bullets).
+      Título da tarefa: {task}
+    display_template: '[bold cyan]📦 [SHIP] Arquivando lições aprendidas: {task}[/bold cyan]'
   workflow:
     agent: null
     doma_mode: full
