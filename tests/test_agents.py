@@ -99,6 +99,7 @@ class TestLoadAllAgents:
             "semantic-modeler",
             "dbt-expert",
             "migration-expert",
+            "catalog-intelligence",
         ]
         for name in expected:
             assert name in agents, f"Agente '{name}' não encontrado no registry"
@@ -466,6 +467,77 @@ class TestTokenBudgetsByTier:
                 assert agent.maxTurns is None, (
                     f"Agente T2 '{name}' não deve ter maxTurns com mapa parcial T1-only"
                 )
+
+
+# ─── Testes do Catalog Intelligence (T2) ─────────────────────────────────────
+
+
+class TestCatalogIntelligence:
+    """Testes específicos para o catalog-intelligence."""
+
+    def test_catalog_intelligence_is_loaded(self):
+        """catalog-intelligence deve ser carregado no registry."""
+        agents = load_all_agents()
+        assert "catalog-intelligence" in agents, "catalog-intelligence não encontrado no registry"
+
+    def test_catalog_intelligence_model_is_sonnet(self):
+        """catalog-intelligence é T2 — deve usar Sonnet."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower(), (
+            f"catalog-intelligence deve usar Sonnet, mas usa: {agent.model}"
+        )
+
+    def test_catalog_intelligence_has_databricks_readonly(self):
+        """catalog-intelligence precisa de tools readonly do Databricks para DESCRIBE e info_schema."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        db_tools = [t for t in (agent.tools or []) if "databricks" in t]
+        assert len(db_tools) > 0, "catalog-intelligence deve ter tools do Databricks"
+
+    def test_catalog_intelligence_has_fabric_readonly(self):
+        """catalog-intelligence deve ter acesso readonly ao Fabric."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        fabric_tools = [t for t in (agent.tools or []) if "fabric" in t]
+        assert len(fabric_tools) > 0, "catalog-intelligence deve ter tools do Fabric"
+
+    def test_catalog_intelligence_has_no_destructive_tools(self):
+        """catalog-intelligence é somente leitura — nunca deve ter tools de criação ou modificação."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        # Verificar ausência de tools de escrita de dados (exceto COMMENT ON)
+        # Tools como create_table, ingest_data, upload_file não devem estar presentes
+        forbidden_patterns = ["create_table", "ingest", "upload_file", "delete", "drop"]
+        forbidden_found = [
+            t for t in (agent.tools or []) if any(p in t for p in forbidden_patterns)
+        ]
+        assert len(forbidden_found) == 0, (
+            f"catalog-intelligence não deve ter tools destrutivas: {forbidden_found}"
+        )
+
+    def test_catalog_intelligence_tier_is_t2(self):
+        """catalog-intelligence deve ter tier T2."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "catalog-intelligence.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        assert meta.get("tier") == "T2", (
+            f"catalog-intelligence deve ter tier: T2, mas tem: {meta.get('tier')}"
+        )
+
+    def test_catalog_intelligence_has_industry_kb_domain(self):
+        """catalog-intelligence deve ter industry em kb_domains para receber contexto das verticais."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "catalog-intelligence.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        kb_domains = meta.get("kb_domains", [])
+        assert "industry" in kb_domains, (
+            "catalog-intelligence deve ter 'industry' em kb_domains para receber KBs de verticals"
+        )
 
 
 # ─── Testes de Model Routing por Tier ───────────────────────────────────────
