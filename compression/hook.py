@@ -18,8 +18,10 @@ from compression.constants import (
     BASH_TOOLS,
     FILE_TOOLS,
     LIST_TOOLS,
+    MIGRATION_SOURCE_TOOL_PREFIX,
     SQL_TOOLS,
     _limits,
+    _migration_limits,
 )
 from compression.metrics import _log_compression_metrics
 from compression.strategies import (
@@ -104,7 +106,14 @@ async def compress_tool_output(
     compressed: str | None = None
 
     try:
-        if tool_name in SQL_TOOLS:
+        # Tools do migration-expert: limites maiores — DDLs e schemas são legitimamente grandes.
+        if tool_name.startswith(MIGRATION_SOURCE_TOOL_PREFIX):
+            migration_file_lines, migration_max_chars = _migration_limits()
+            compressed = _compress_by_lines(output, migration_file_lines, "migration_source")
+            if compressed is None:
+                compressed = _compress_by_chars(output, migration_max_chars)
+
+        elif tool_name in SQL_TOOLS:
             compressed = _compress_sql_result(output, tool_name)
 
         elif tool_name in LIST_TOOLS:

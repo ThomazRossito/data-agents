@@ -142,8 +142,9 @@ class Settings(BaseSettings):
     agent_permission_mode: str = "bypassPermissions"
 
     # --- Configurações do Sistema ---
-    # default_model: str = "bedrock/anthropic.claude-4-6-sonnet"
-    default_model: str = "claude-opus-4-6"
+    default_model: str = (
+        "claude-sonnet-4-6"  # Supervisor model. Use Opus only for /plan (enable_thinking=True).
+    )
     max_budget_usd: float = 5.0
     max_turns: int = 50
     log_level: str = "INFO"
@@ -277,12 +278,18 @@ class Settings(BaseSettings):
     # --- Output Compressor Limits ---
     # Limites de truncagem do output_compressor_hook.py.
     # Reduzir MAX_OUTPUT_CHARS economiza tokens de contexto em troca de menos detalhe.
-    # Override via .env: COMPRESSOR_MAX_SQL_ROWS=50
-    compressor_max_sql_rows: int = 50
-    compressor_max_list_items: int = 30
-    compressor_max_file_lines: int = 200
-    compressor_max_bash_lines: int = 100
-    compressor_max_output_chars: int = 8_000
+    # Override via .env: COMPRESSOR_MAX_SQL_ROWS=20
+    compressor_max_sql_rows: int = 20
+    compressor_max_list_items: int = 15
+    compressor_max_file_lines: int = 80
+    compressor_max_bash_lines: int = 40
+    compressor_max_output_chars: int = 3_500
+
+    # Limites específicos para migration-expert (mcp__migration_source__*).
+    # DDLs e schemas extraídos de SQL Server/PostgreSQL são legitimamente grandes.
+    # Override via .env: COMPRESSOR_MIGRATION_MAX_FILE_LINES=300
+    compressor_migration_max_file_lines: int = 300
+    compressor_migration_max_output_chars: int = 10_000
 
     # --- Context Budget Thresholds ---
     # Limite de tokens de input por sessão (context window do Claude: 200K tokens).

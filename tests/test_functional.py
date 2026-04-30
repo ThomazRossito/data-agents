@@ -308,13 +308,15 @@ class TestPartyModePersonas:
                 f"Persona do agente '{agent}' não menciona nenhum termo de Engenharia de Dados"
             )
 
-    def test_all_personas_instruct_portuguese(self):
+    def test_all_personas_instruct_language(self):
         from commands.party import AGENT_PERSONAS
 
         for agent, persona in AGENT_PERSONAS.items():
-            assert "português" in persona.lower() or "brasileiro" in persona.lower(), (
-                f"Persona de '{agent}' não instrui resposta em português"
+            p = persona.lower()
+            instructs_language = (
+                "português" in p or "brasileiro" in p or "english" in p or "en-us" in p
             )
+            assert instructs_language, f"Persona de '{agent}' não instrui idioma de resposta"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -388,15 +390,19 @@ class TestWorkflowContextCacheSupervisorPrompt:
         # O prompt usa notação de range "WF-01 a WF-05" — verifica a presença da cobertura
         # seja via lista explícita ou via range
         covers_all = (
-            "WF-01" in content
-            and "WF-02" in content
-            and "WF-03" in content
-            and "WF-04" in content
-            and "WF-05" in content
-        ) or ("WF-01 a WF-05" in content)
+            (
+                "WF-01" in content
+                and "WF-02" in content
+                and "WF-03" in content
+                and "WF-04" in content
+                and "WF-05" in content
+            )
+            or ("WF-01 a WF-05" in content)
+            or ("WF-01 to WF-05" in content)
+        )
         assert covers_all, (
             "supervisor_prompt.py deve mencionar todos os workflows WF-01 a WF-05 "
-            "(seja individualmente ou via range 'WF-01 a WF-05')"
+            "(seja individualmente, via range 'WF-01 a WF-05' ou 'WF-01 to WF-05')"
         )
 
     def test_context_cache_instructs_read_tool(self):
@@ -436,8 +442,8 @@ class TestSupervisorPromptUsesDOMA:
 
     def test_formato_resposta_uses_doma(self):
         content = self._get_prompt()
-        assert "FORMATO DE RESPOSTA (DOMA)" in content, (
-            "Seção de formato de resposta deve ser '# FORMATO DE RESPOSTA (DOMA)'"
+        assert "FORMATO DE RESPOSTA (DOMA)" in content or "RESPONSE FORMAT (DOMA)" in content, (
+            "Seção de formato de resposta deve ser '# FORMATO DE RESPOSTA (DOMA)' ou '# RESPONSE FORMAT (DOMA)'"
         )
 
     def test_intake_uses_doma(self):

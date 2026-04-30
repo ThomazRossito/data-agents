@@ -4,7 +4,7 @@ description: "Arquiteto de Pipelines de Dados. Use para: design e execução de 
 model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, Bash, databricks_all, databricks_compute, databricks_aibi, databricks_genie_all, fabric_all, fabric_official_all, fabric_sql_all, fabric_rti_all, context7_all, github_all, firecrawl_all, memory_mcp_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_official, fabric_sql, fabric_rti, context7, github, firecrawl, memory_mcp]
-kb_domains: [pipeline-design, databricks, fabric]
+kb_domains: [pipeline-design, databricks, fabric, shared, checklists]
 skill_domains: [databricks, fabric, patterns]
 tier: T1
 output_budget: "150-400 linhas"

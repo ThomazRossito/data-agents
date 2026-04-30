@@ -4,7 +4,7 @@ description: "Especialista em SQL e metadados de dados. Use para: descoberta de 
 model: bedrock/anthropic.claude-4-6-sonnet
 tools: [Read, Write, Grep, Glob, databricks_readonly, mcp__databricks__execute_sql, mcp__databricks__execute_sql_multi, mcp__databricks__get_best_warehouse, mcp__databricks__get_table_stats_and_schema, databricks_genie_readonly, fabric_readonly, fabric_official_readonly, fabric_sql_readonly, fabric_rti_readonly, context7_all, postgres_all]
 mcp_servers: [databricks, databricks_genie, fabric, fabric_community, fabric_official, fabric_sql, fabric_rti, context7, postgres]
-kb_domains: [sql-patterns, databricks, fabric]
+kb_domains: [sql-patterns, databricks, fabric, shared, checklists]
 skill_domains: [databricks, fabric, patterns]
 tier: T1
 output_budget: "150-400 linhas"

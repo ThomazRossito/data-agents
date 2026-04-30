@@ -20,9 +20,10 @@ COMPRESSION_LOG_PATH: str = os.path.join(
 )
 
 # Pricing de referência (input tokens, pois é o que o compressor economiza).
-# claude-opus-4-6: $15/1M input tokens, claude-sonnet-4-6: $3/1M input tokens.
-# Usamos a média ponderada assumindo mix de agentes.
-AVG_INPUT_PRICE_PER_TOKEN: float = 9.0 / 1_000_000  # ~$9/1M tokens (média opus+sonnet)
+# claude-sonnet-4-6: $3/1M input, claude-opus-4-6: $15/1M input.
+# Supervisor migrado para Sonnet; T1 (Opus) usado apenas em tarefas complexas.
+# Média ponderada revisada: ~70% Sonnet + 30% Opus = ~$4/M tokens.
+AVG_INPUT_PRICE_PER_TOKEN: float = 4.0 / 1_000_000  # ~$4/1M tokens (mix atual)
 
 
 def _limits() -> tuple[int, int, int, int, int]:
@@ -35,6 +36,23 @@ def _limits() -> tuple[int, int, int, int, int]:
         settings.compressor_max_output_chars,
     )
 
+
+def _migration_limits() -> tuple[int, int]:
+    """
+    Retorna limites específicos para tools do migration-expert (mcp__migration_source__*).
+
+    DDLs e schemas extraídos de SQL Server/PostgreSQL são legitimamente maiores —
+    o agente precisa do contexto completo para fazer o assessment de migração.
+    """
+    return (
+        settings.compressor_migration_max_file_lines,
+        settings.compressor_migration_max_output_chars,
+    )
+
+
+# Prefixo de todas as tools do MCP customizado migration_source.
+# Usado no hook para identificar chamadas do migration-expert sem precisar do nome do agente.
+MIGRATION_SOURCE_TOOL_PREFIX: str = "mcp__migration_source__"
 
 # Aliases de módulo para compatibilidade com testes e importações externas.
 MAX_SQL_ROWS: int = settings.compressor_max_sql_rows
