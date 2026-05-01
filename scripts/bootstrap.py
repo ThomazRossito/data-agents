@@ -172,7 +172,7 @@ def main() -> int:
 
     sections = {
         "Anthropic / Claude": _collect_anthropic(),
-        "Databricks": _collect_databricks(),
+        "Databricks ": _collect_databricks(),
         "Microsoft Fabric": _collect_fabric(),
     }
 
