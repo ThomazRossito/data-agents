@@ -2,7 +2,7 @@ name: CI — Lint, Type-check & Tests
 
 on:
   push:
-    branches: ["main", "develop", "dev"]
+    branches: ["main", "develop"]
     paths:
       - "**.py"
       - "pyproject.toml"
@@ -67,8 +67,9 @@ jobs:
       - name: Install dev dependencies
         run: pip install -e ".[dev]"
 
-      # Testmon cache: restaura dados da branch atual; cai para main como fallback.
-      # A chave inclui o sha para salvar um snapshot novo a cada push (progressivo).
+      # Cache testmon: usado apenas em push (main/develop). Chave por branch+sha,
+      # fallback progressivo. Em PRs não há cache — roda suite completa garantindo
+      # que --cov-fail-under=80 seja calculado sobre 100% dos testes.
       - name: Restore testmon cache
         if: github.event_name == 'push'
         uses: actions/cache@v4
@@ -79,8 +80,7 @@ jobs:
             testmon-${{ runner.os }}-${{ github.ref }}-
             testmon-${{ runner.os }}-refs/heads/main-
 
-      # Push para dev/develop/main: roda só os testes afetados pelas mudanças.
-      # Sem --cov-fail-under — cobertura total é verificada no PR gate abaixo.
+      # Push para main/develop: testmon (só testes afetados), sem threshold.
       - name: Run tests — affected only (push)
         if: github.event_name == 'push'
         env:
@@ -92,7 +92,8 @@ jobs:
             --cov=agents --cov=config --cov=hooks --cov=commands \
             --cov-report=xml
 
-      # PR para main: suite completa + threshold de cobertura. É o gate de qualidade.
+      # PR para main: suite completa + threshold. Testmon não é usado aqui para
+      # garantir que --cov-fail-under=80 seja calculado sobre todos os testes.
       - name: Run tests — full suite (pull request)
         if: github.event_name == 'pull_request'
         env:
