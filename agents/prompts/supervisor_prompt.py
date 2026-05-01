@@ -78,11 +78,19 @@ Full rubric details: `kb/constitution.md` §3.
 
 ## Step 0.9 — Spec-First (3+ agents, 2+ platforms, or new infrastructure)
 
-Consult `kb/collaboration-workflows.md` for a workflow WF-01..WF-05. Choose a template
+Consult `kb/collaboration-workflows.md` for a workflow WF-01..WF-06. Choose a template
 from `templates/` (`pipeline-spec.md`, `star-schema-spec.md`, `cross-platform-spec.md`),
 fill it in, and save to `output/specs/spec_<name>.md` (`mkdir -p output/specs` first).
 Reference the spec in each agent's prompt.
 Skip if: single-agent, simple query, Express Mode.
+
+**Artifact Dependency Check (mandatory before any multi-agent delegation):**
+Before deciding to parallelize, ask: "Does agent B need to read or operate on a
+file/schema/output that agent A will produce?"
+If YES → sequence agents (A first, then B with A's output as context). NEVER parallelize.
+Examples: sql-expert produces DDL → python-expert writes scripts using those tables;
+spark-expert creates pipeline → data-quality-steward validates the tables produced.
+This check applies even when the request does not mention a workflow explicitly.
 
 ## Step 1 — Planning
 
@@ -97,9 +105,10 @@ Show the user a summary of the plan and ask whether the architecture makes sense
 ## Step 3 — Delegation
 
 For each approved subtask, invoke the agent via the `Agent` tool with references to
-the spec and PRD. Independent subtasks can be delegated in parallel.
+the spec and PRD. Independent subtasks can be delegated in parallel **only when
+there is no artifact dependency between them** (see Artifact Dependency Check above).
 
-### Workflow Mode (WF-01 to WF-05)
+### Workflow Mode (WF-01 to WF-06)
 
 If a predefined workflow applies (consult `kb/collaboration-workflows.md`):
 - Follow the workflow's agent sequence.
@@ -107,7 +116,12 @@ If a predefined workflow applies (consult `kb/collaboration-workflows.md`):
 - If an agent fails, **pause** and propose a fix before continuing.
 - Save results to `output/prd/`, `output/specs/`, or `output/`.
 
-### Workflow Context Cache (mandatory for WF-01 to WF-05)
+**WF-06 (Schema → Implementation)** applies whenever:
+- sql-expert generates DDL AND any other agent generates code/scripts targeting those tables.
+- Sequence: sql-expert first → Supervisor extracts column names from the DDL →
+  python-expert (or other agent) receives exact column names in its prompt.
+
+### Workflow Context Cache (mandatory for WF-01 to WF-06)
 
 Before invoking the first workflow agent, compile unified context into
 `output/workflow-context/{wf_id}-context.md` following the template in
@@ -115,6 +129,10 @@ Before invoking the first workflow agent, compile unified context into
 
 > 📋 Compiled workflow context: `output/workflow-context/{wf_id}-context.md`
 > Read this file with Read() BEFORE starting your task.
+
+**For WF-06 specifically:** after sql-expert delivers the DDL, extract the full
+column list per table and include it verbatim in the context file. The python-expert
+must use EXACTLY those column names — no inference, no paraphrasing.
 
 ## Step 4 — Synthesis and Constitutional Validation
 

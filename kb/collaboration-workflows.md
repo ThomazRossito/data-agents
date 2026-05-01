@@ -222,6 +222,87 @@ Quando detectado, o Supervisor deve:
 
 ---
 
+### WF-06: Schema → Implementation (DDL-first, Seed/Script dependente)
+
+```
+┌──────────────┐    ┌─────────────────────────────┐    ┌──────────────────┐
+│  sql-expert  │───→│  Workflow Context Cache      │───→│  python-expert   │
+│              │    │  output/workflow-context/    │    │                  │
+│ Cria DDL     │    │  wf06-context.md             │    │ Lê o DDL antes   │
+│ completo     │    │  (contém schema completo)    │    │ de gerar scripts │
+│ (schema)     │    └─────────────────────────────┘    │ seed/config/etc. │
+└──────────────┘                                        └──────────────────┘
+```
+
+**Trigger:** Usuário solicita schema + script/código que opera sobre esse schema
+(seed, gerador de dados, migration script, API layer, ORM, testes de integração, etc).
+
+**Regra fundamental:** O python-expert (ou qualquer agente de implementação) **jamais**
+pode ser executado em paralelo com o sql-expert quando seu output depende do schema.
+O DDL é o contrato — deve existir antes de qualquer código que o consuma.
+
+**Spec:** não requer template — o DDL gerado pelo sql-expert é o próprio contrato.
+
+**Handoff points:**
+1. sql-expert gera DDL completo com todos os nomes de colunas, tipos e constraints
+2. Supervisor lê o DDL e compila `output/workflow-context/wf06-context.md` com:
+   - Lista de tabelas e colunas exatas (extraída do DDL)
+   - Tipos de dados e constraints relevantes
+   - Nomes de sequences/triggers gerados
+3. python-expert recebe o contexto e lê o DDL antes de escrever qualquer INSERT/SELECT
+
+**Prompt de delegação do Supervisor para o python-expert (etapa 2):**
+```
+Workflow: WF-06 Schema → Implementation
+Etapa: 2 de 2
+Contexto do schema: output/workflow-context/wf06-context.md
+
+OBRIGATÓRIO: Leia o arquivo acima com Read() ANTES de escrever qualquer código.
+Use EXATAMENTE os nomes de colunas, tabelas e tipos definidos no DDL.
+Não inferir nomes — o contrato já está definido.
+
+Sua tarefa: [descrição do script]
+```
+
+**Por que esse workflow existe:**
+Sem ele, o Supervisor tende a paralelizar sql-expert + python-expert — o que é
+otimização correta para tarefas independentes, mas catastrófico quando o script
+depende do schema. Os dois agentes fazem escolhas razoáveis isoladamente
+(`unit_cost` vs `cost_price`) mas divergem porque nunca compartilharam o contrato.
+
+---
+
+## 3.3 Detecção Automática de Workflow
+
+O Supervisor deve detectar automaticamente quando um workflow pré-definido se aplica:
+
+| Palavras-chave na Requisição | Workflow Sugerido |
+|------------------------------|-------------------|
+| "pipeline completo", "end-to-end", "bronze até gold" | WF-01 |
+| "star schema", "camada gold", "dimensional" | WF-02 |
+| "migrar", "mover para fabric", "cross-platform" | WF-03 |
+| "auditoria", "governança completa", "relatório de compliance" | WF-04 |
+| "migrar sql server", "migrar postgres", "migração relacional", "banco relacional para databricks/fabric" | WF-05 |
+| "schema e script", "ddl e seed", "criar tabelas e popular", "criar schema e gerar dados", "poc", "fase 1", "lakebase e python", "schema + implementação", "criar banco e script" | WF-06 |
+
+**Regra de detecção de dependência de artefato (independente de palavras-chave):**
+
+Antes de paralelizar qualquer delegação, o Supervisor deve verificar:
+> "O agente B precisa ler ou operar sobre um arquivo/schema que o agente A vai produzir?"
+
+Se a resposta for **sim** → **sequenciar obrigatoriamente**, nunca paralelizar.
+Exemplos de dependência de artefato:
+- sql-expert gera DDL → python-expert gera script que faz INSERT nessas tabelas
+- spark-expert gera pipeline → data-quality-steward valida as tabelas produzidas
+- migration-expert extrai DDL → sql-expert converte o DDL extraído
+
+Quando detectado, o Supervisor deve:
+1. Informar o usuário qual workflow será utilizado
+2. Apresentar o plano de etapas e agentes
+3. Solicitar aprovação antes de iniciar
+
+---
+
 ## 4. Criando Novos Workflows
 
 Para adicionar um novo workflow:
