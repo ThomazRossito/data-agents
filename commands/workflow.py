@@ -156,7 +156,7 @@ class WorkflowState:
         ctx_dir = Path(__file__).parent.parent / "output" / "workflow-context"
         ctx_dir.mkdir(parents=True, exist_ok=True)
         ctx_path = ctx_dir / f"{self.wf_id}-context.md"
-        ctx_path.write_text(self.build_context_for(None), encoding="utf-8")  # type: ignore[arg-type]
+        ctx_path.write_text(self.build_context_for(None), encoding="utf-8")
 
     def build_context_for(self, step: WorkflowStep | None) -> str:
         """
@@ -694,7 +694,7 @@ def _build_step_options(agent_name: str) -> ClaudeAgentOptions:
             mcp_servers=filtered_mcps,
             max_turns=agent_def.maxTurns,
             permission_mode="bypassPermissions",
-            effort=agent_def.effort,
+            effort=agent_def.effort if isinstance(agent_def.effort, str) else None,
         )
 
     # Fallback: partido persona sem MCPs (agente não encontrado no registry)
