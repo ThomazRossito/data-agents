@@ -1078,6 +1078,35 @@ async def on_message(message: cl.Message) -> None:
         await _handle_export()
         return
 
+    # Comando global /eval — resumo de avaliações de qualidade (sem Supervisor)
+    if user_input.lower().startswith("/eval"):
+        from commands.eval import get_eval_summary
+
+        summary = get_eval_summary()
+        if summary["total"] == 0:
+            md = "Nenhuma avaliação registrada ainda. As avaliações são coletadas ao encerrar sessões."
+        else:
+            lines = [f"### Avaliações de Qualidade — {summary['total']} sessões\n"]
+            lines.append("| Tipo | Sessões | Média |")
+            lines.append("|------|---------|-------|")
+            for stype, stats in summary["by_type"].items():
+                avg = stats["avg"]
+                filled = round(avg)
+                stars = "★" * filled + "☆" * (5 - filled)
+                lines.append(f"| `{stype}` | {stats['count']} | {stars} {avg:.1f} |")
+            lines.append(f"\n**Média geral: {summary['avg_rating']:.1f}/5.0**")
+            md = "\n".join(lines)
+        await cl.Message(content=md, author="Sistema").send()
+        return
+
+    # Comando global /mcp — status dos MCP servers (sem Supervisor)
+    if user_input.lower().startswith("/mcp"):
+        from commands.mcp import handle_mcp_command_chainlit
+
+        md = handle_mcp_command_chainlit(user_input)
+        await cl.Message(content=md, author="Sistema").send()
+        return
+
     mode: str | None = cl.user_session.get("mode")
 
     # Nenhum modo selecionado ainda
@@ -1124,11 +1153,34 @@ async def on_message(message: cl.Message) -> None:
 @cl.on_chat_end
 async def on_chat_end() -> None:
     """
-    Limpa referências da sessão ao encerrar.
-
-    O ClaudeSDKClient do Supervisor NÃO é desconectado aqui — ele vive no
-    cache de módulo (_supervisor_cache) e será reutilizado pela próxima sessão.
-    Apenas removemos a referência local para não manter ponteiros desnecessários.
+    Limpa referências da sessão e coleta avaliação de qualidade.
     """
     cl.user_session.set("supervisor_client", None)
     cl.user_session.set("supervisor_options", None)
+
+    # Solicita avaliação via action buttons
+    actions = [
+        cl.Action(name=f"rate_{i}", value=str(i), label=("★" * i + "☆" * (5 - i)))
+        for i in range(1, 6)
+    ]
+    await cl.Message(
+        content="Como foi esta sessão?",
+        actions=actions,
+        author="Sistema",
+    ).send()
+
+
+@cl.action_callback("rate_1")
+@cl.action_callback("rate_2")
+@cl.action_callback("rate_3")
+@cl.action_callback("rate_4")
+@cl.action_callback("rate_5")
+async def on_session_rated(action: cl.Action) -> None:
+    """Salva a avaliação da sessão no log de evals."""
+    from commands.eval import save_eval
+
+    session_id = cl.user_session.get("session_id") or "chainlit"
+    rating = int(action.value)
+    stars = "★" * rating + "☆" * (5 - rating)
+    save_eval(session_id=session_id, rating=rating, session_type="chainlit")
+    await cl.Message(content=f"Avaliação registrada: {stars} ({rating}/5)", author="Sistema").send()

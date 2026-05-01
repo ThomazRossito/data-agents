@@ -147,11 +147,22 @@ class WorkflowState:
 
     def add(self, key: str, output: str) -> None:
         self.context_chain[key] = output
+        self._persist_context()
 
-    def build_context_for(self, step: WorkflowStep) -> str:
+    def _persist_context(self) -> None:
+        """Persiste o contexto acumulado em disco para sobreviver a crashes e human pauses."""
+        from pathlib import Path
+
+        ctx_dir = Path(__file__).parent.parent / "output" / "workflow-context"
+        ctx_dir.mkdir(parents=True, exist_ok=True)
+        ctx_path = ctx_dir / f"{self.wf_id}-context.md"
+        ctx_path.write_text(self.build_context_for(None), encoding="utf-8")
+
+    def build_context_for(self, step: WorkflowStep | None) -> str:
         """
         Compila o contexto acumulado para injetar no prompt do próximo agente.
         Inclui apenas outputs de etapas anteriores relevantes.
+        Quando step=None, retorna snapshot completo (usado para persistência em disco).
         """
         if not self.context_chain:
             return ""
@@ -647,9 +658,49 @@ def _all_optional(group: list[WorkflowStep]) -> bool:
 
 
 def _build_step_options(agent_name: str) -> ClaudeAgentOptions:
-    """Constrói opções mínimas para um agente de workflow (sem MCPs — contexto textual)."""
+    """
+    Constrói opções completas para um agente de workflow usando o registry.
+
+    Usa load_agent() para obter system prompt, tools, model e effort reais do agente.
+    MCPs são filtrados para os disponíveis com credenciais (mesma lógica do supervisor).
+    """
+    from agents.loader import AGENTS_REGISTRY_DIR, load_agent
+    from config.mcp_servers import build_mcp_registry
+    from utils.frontmatter import parse_yaml_frontmatter
+
+    mcp_registry = build_mcp_registry()
+    agent_path = AGENTS_REGISTRY_DIR / f"{agent_name}.md"
+
+    if agent_path.exists():
+        _, agent_def = load_agent(
+            path=agent_path,
+            tier_model_map=settings.tier_model_map if settings.tier_model_map else None,
+            tier_turns_map=settings.tier_turns_map if settings.tier_turns_map else None,
+            tier_effort_map=settings.tier_effort_map if settings.tier_effort_map else None,
+            inject_kb_index=settings.inject_kb_index,
+            inject_cache_prefix=True,
+        )
+        # Filtra MCPs para os que o agente declara no frontmatter e têm credenciais
+        raw = agent_path.read_text(encoding="utf-8")
+        meta, _ = parse_yaml_frontmatter(raw)
+        agent_mcp_names: list[str] = meta.get("mcp_servers", [])
+        filtered_mcps = {k: v for k, v in mcp_registry.items() if k in agent_mcp_names}
+
+        return ClaudeAgentOptions(
+            model=agent_def.model or settings.default_model,
+            system_prompt=agent_def.prompt,
+            allowed_tools=list(agent_def.tools or []),
+            agents=None,
+            mcp_servers=filtered_mcps,
+            max_turns=agent_def.maxTurns,
+            permission_mode="bypassPermissions",
+            effort=agent_def.effort if isinstance(agent_def.effort, str) else None,
+        )
+
+    # Fallback: partido persona sem MCPs (agente não encontrado no registry)
     from commands.party import AGENT_PERSONAS, _DEFAULT_PERSONA, _AGENT_TIERS, _PARTY_MAX_TURNS
 
+    logger.warning(f"Agente '{agent_name}' não encontrado no registry — usando persona fallback")
     persona = AGENT_PERSONAS.get(agent_name, _DEFAULT_PERSONA)
     tier = _AGENT_TIERS.get(agent_name, "T2")
     tier_turns = settings.tier_turns_map.get(tier) if settings.tier_turns_map else None

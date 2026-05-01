@@ -529,18 +529,6 @@ def load_agent(
     # Resolve aliases de tool sets para tools MCP concretas
     tools = _resolve_tools(tools_raw)
 
-    # Siftools: pruning semântico opcional do tool set do agente (off por padrão).
-    # Gated por SIFTOOLS_PRUNING_ENABLED=true. Em caso de qualquer falha, retorna
-    # a lista original inalterada — nunca quebra o startup do supervisor.
-    try:
-        from agents.siftools_integration import is_enabled as _siftools_enabled
-        from agents.siftools_integration import prune_agent_tools as _siftools_prune
-
-        if _siftools_enabled():
-            tools = _siftools_prune(tools, description)
-    except Exception as e:
-        logger.warning(f"siftools pruning unavailable for '{name}': {e}")
-
     # CWD injection: AgentDefinition não tem campo cwd — o sub-agente herda o
     # cwd do processo (que no Chainlit/Streamlit pode ser diferente da raiz do
     # projeto). Injetamos o path absoluto como instrução no prompt para que

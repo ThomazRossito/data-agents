@@ -21,12 +21,18 @@ Referência: https://context7.com/docs
 
 def get_context7_mcp_config() -> dict:
     """Retorna a configuração MCP para o Context7."""
+    from config.settings import settings  # importação local para evitar circular import
+
+    env: dict = {}
+    if settings.context7_api_key:
+        env["CONTEXT7_API_KEY"] = settings.context7_api_key
+
     return {
         "context7": {
             "type": "stdio",
             "command": "npx",
             "args": ["-y", "@upstash/context7-mcp@latest"],
-            "env": {},
+            "env": env,
         }
     }
 

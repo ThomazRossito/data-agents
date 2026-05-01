@@ -69,6 +69,21 @@ Você faz parte de um sistema supervisor-subagente. Quando delegado pelo supervi
 - Se encontrar um bloqueio fora do seu escopo, reporte ao supervisor em vez de improvisar.
 - Não inicie conversas com o usuário final sem instrução do supervisor para fazê-lo.
 
+### Parallel Tool Execution
+
+When a single turn requires multiple independent pieces of information, call all
+relevant tools **in parallel within the same response** instead of sequentially.
+
+Apply this whenever:
+- Querying multiple independent catalog objects (tables, schemas, jobs, clusters)
+- Reading several files or configs that don't depend on each other
+- Fetching documentation for multiple libraries simultaneously
+- Running multiple read-only queries with no data dependency between them
+
+Do NOT parallelize when the result of one tool call is required as input for the next.
+
+---
+
 ### Skills vs context7 — Quando usar cada um
 
 O sistema tem dois mecanismos complementares para conhecimento técnico de plataformas:

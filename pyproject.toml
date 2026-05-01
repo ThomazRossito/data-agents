@@ -131,6 +131,5 @@ module = [
     "azure.*",
     "pydantic_settings.*",
     "semantic_link.*",
-    "siftools.*",
 ]
 ignore_missing_imports = true
