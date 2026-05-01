@@ -11,7 +11,7 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **14 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -168,7 +168,9 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |
 | `/health` | Status das plataformas configuradas |
 | `/status` | Estado da sessão atual |
-| `/memory <query>` | Consulta à memória persistente |
+| `/memory <query>` | Consulta à memória persistente (`/memory clear` para limpar com confirmação) |
+| `/mcp [filtro]` | Status em tempo real dos MCP servers — quais estão ativos e quais precisam de credenciais |
+| `/eval [all]` | Histórico de avaliações de qualidade das sessões (1–5 estrelas) |
 | `/sessions [all\|<id>]` | Lista sessões registradas (transcript + checkpoint) |
 | `/resume [last\|<id>]` | Retoma sessão anterior reconstruindo contexto do transcript |
 | `/export` | Exporta o histórico da sessão para HTML (abra no browser → Cmd+P para PDF) |
@@ -413,8 +415,6 @@ make health-fabric
 | `CONSOLE_LOG_LEVEL` | WARNING | Nível de log no terminal (WARNING oculta logs operacionais) |
 | `SKILL_REFRESH_INTERVAL_DAYS` | 3 | Intervalo de refresh das Skills |
 | `AGENT_PERMISSION_MODE` | `bypassPermissions` | `acceptEdits` para pedir confirmação antes de writes |
-| `SIFTOOLS_PRUNING_ENABLED` | `false` | Pruning semântico das tools MCP por agente via embeddings locais (zero LLM cost). Requer artifact `.cache/siftools/tools.json` — gerar com `python -m agents.siftools_integration rebuild` |
-| `SIFTOOLS_TOP_K` | `15` | Número máximo de tools mantidas por agente quando o pruning está ativo |
 
 ---
 
