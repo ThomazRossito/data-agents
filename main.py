@@ -449,11 +449,12 @@ async def _handle_memory_command(user_input: str) -> None:
     Processa o slash command /memory localmente (sem Supervisor).
 
     Subcomandos:
-      /memory status   — Exibe estatísticas do sistema de memória
-      /memory flush    — Força o flush do buffer de sessão
-      /memory compile  — Compila daily logs em knowledge articles
-      /memory lint     — Executa health checks
-      /memory search <query> — Busca memórias relevantes via Sonnet
+      /memory status          — Exibe estatísticas do sistema de memória
+      /memory flush           — Força o flush do buffer de sessão
+      /memory compile         — Compila daily logs em knowledge articles
+      /memory lint            — Executa health checks
+      /memory search <query>  — Busca memórias relevantes via Sonnet
+      /memory clear [tipo]    — Remove memórias (all por padrão; ou tipo específico)
     """
     from memory.lint import lint_memories
     from hooks.memory_hook import get_buffer_stats
@@ -519,8 +520,43 @@ async def _handle_memory_command(user_input: str) -> None:
             console.print("[dim]Nenhuma memória relevante encontrada.[/dim]")
         console.print()
 
+    elif sub == "clear":
+        scope = parts[2].lower() if len(parts) > 2 else "all"
+        from memory.types import MemoryType
+
+        if scope == "all":
+            types_to_clear = list(MemoryType)
+            label = "todas as memórias"
+        else:
+            try:
+                types_to_clear = [MemoryType(scope)]
+                label = f"memórias do tipo '{scope}'"
+            except ValueError:
+                valid = ", ".join(t.value for t in MemoryType)
+                console.print(
+                    f"[yellow]Tipo inválido: '{scope}'. Válidos: {valid} ou 'all'[/yellow]"
+                )
+                return
+
+        console.print(f"[yellow]Tem certeza que deseja apagar {label}? (s/N)[/yellow] ", end="")
+        confirm = input().strip().lower()
+        if confirm not in ("s", "sim", "y", "yes"):
+            console.print("[dim]Cancelado.[/dim]")
+            return
+
+        removed = 0
+        for mem_type in types_to_clear:
+            for mem in store.list_all(memory_type=mem_type):
+                if store.delete(mem.id, mem_type):
+                    removed += 1
+
+        console.print(f"[bold cyan]🧠 Clear: {removed} memória(s) removida(s).[/bold cyan]\n")
+
     else:
-        console.print("[yellow]Subcomandos: status, flush, compile, lint, search <query>[/yellow]")
+        console.print(
+            "[yellow]Subcomandos: status, flush, compile, lint, search <query>, "
+            "clear [tipo|all][/yellow]"
+        )
 
 
 # Histórico de conversa do /geral — mantido na sessão CLI.
@@ -711,6 +747,7 @@ async def run_interactive() -> None:
         "last_prompt": "",
         "total_cost": 0.0,
         "total_turns": 0,
+        "last_session_type": "interactive",
     }
 
     # T1.1: registra o estado como "sessão ativa" para que atexit/signal handlers
@@ -962,6 +999,7 @@ async def run_interactive() -> None:
                     if command_result:
                         doma_prompt = command_result.doma_prompt
                         _session_type = command_result.command.lstrip("/")
+                        _session_state["last_session_type"] = _session_type
                         console.print(command_result.display_message)
                         logger.info(
                             f"Slash command: {command_result.command} "
@@ -970,10 +1008,25 @@ async def run_interactive() -> None:
                     else:
                         doma_prompt = user_input
                         _session_type = "interactive"
+                        _session_state["last_session_type"] = "interactive"
 
                     # --- /memory → Gerenciamento local de memória, sem Supervisor ---
                     if command_result and command_result.command == "/memory":
                         await _handle_memory_command(user_input)
+                        continue
+
+                    # --- /eval → Resumo de avaliações de qualidade (local, sem Supervisor) ---
+                    if command_result and command_result.command == "/eval":
+                        from commands.eval import handle_eval_command
+
+                        handle_eval_command(user_input, console)
+                        continue
+
+                    # --- /mcp → Status dos MCP servers (local, sem Supervisor) ---
+                    if command_result and command_result.command == "/mcp":
+                        from commands.mcp import handle_mcp_command
+
+                        handle_mcp_command(user_input, console)
                         continue
 
                     # --- /sessions → Lista sessões registradas (local, sem Supervisor) ---
@@ -1217,6 +1270,16 @@ async def run_interactive() -> None:
         # Erros de teardown não devem ser exibidos ao usuário — apenas logados em debug
         logger.debug(f"Erro no encerramento do SDK (ignorado): {e}")
     finally:
+        # Eval loop: coleta avaliação antes de encerrar (não bloqueia se usuário pular)
+        from commands.eval import prompt_eval_cli
+
+        prompt_eval_cli(
+            console=console,
+            session_id=_session_id,
+            session_type=_session_state.get("last_session_type", "interactive"),
+            cost_usd=_session_state.get("total_cost", 0.0),
+            turns=int(_session_state.get("total_turns", 0)),
+        )
         # Ch.12 — Session Lifecycle: flush de memória e log de estatísticas de uso
         on_session_end(_session_id)
 

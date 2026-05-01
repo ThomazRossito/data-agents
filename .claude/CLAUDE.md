@@ -414,7 +414,6 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `delegation.py` | `DelegationRouter`, `route_to_agent()` | Roteamento declarativo de delegações |
 | `delegation_map.yaml` | — | YAML: padrões de intent → agente alvo |
 | `mlflow_wrapper.py` | `MLflowAgentWrapper` | Wrapper para logging de experimentos com MLflow |
-| `siftools_integration.py` | `is_enabled()`, `prune_agent_tools()` | Pruning semântico opcional do tool set |
 | `cache_prefix.md` | — | Prefixo byte-idêntico injetado em TODOS os agentes (prompt caching -40% custo) |
 | `prompts/supervisor_prompt.py` | `SUPERVISOR_SYSTEM_PROMPT` | System prompt do Supervisor: regras, tiers, delegação |
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
@@ -438,7 +437,7 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 **Campos críticos em `Settings`:** `default_model`, `tier_model_map`, `tier_turns_map`,
 `tier_effort_map`, `max_turns`, `max_budget_usd`, `agent_permission_mode`,
 `memory_enabled`, `memory_retrieval_enabled`, `memory_capture_enabled`,
-`inject_kb_index`, `siftools_pruning_enabled`.
+`inject_kb_index`.
 
 ### mcp_servers/ — Servidores MCP
 

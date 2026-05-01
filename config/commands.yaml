@@ -73,6 +73,22 @@ commands:
       Como Product Manager/Arquiteto (DOMA Passo 1), você deve criar um PRD completo para a tarefa abaixo. ANTES de escrever qualquer linha do PRD, use a ferramenta Read para ler os skills relevantes: (1) Identifique o tipo de tarefa (SDP, Structured Streaming, Jobs, Fabric Lakehouse, RTI, etc). (2) Consulte o Mapa de Skills no seu system prompt para decidir quais SKILL.md ler. (3) Leia TODOS os skills identificados antes de começar o PRD. (4) Garanta que o diretório `output/prd/` existe (Bash: mkdir -p output/prd). (5) Crie um PRD detalhado em `output/prd/prd_<nome_descritivo>.md` usando Bash, incluindo: arquitetura Medallion moderna (Bronze→Silver→Gold), padrões obrigatórios por camada, agentes a acionar e ordem de execução. Se a tarefa envolver Star Schema ou Gold Layer com dim_*/fact_*, inclua no PRD as regras de `skills/patterns/star-schema-design/SKILL.md`: autonomia das dimensões, geração sintética de dim_data via SEQUENCE, e INNER JOIN obrigatório nas fact_*. (6) Apresente o resumo do PRD e aguarde aprovação antes de delegar. Após aprovação: garanta que `output/specs/` existe (mkdir -p output/specs) e salve a SPEC em `output/specs/spec_<nome_descritivo>.md`. Tarefa: {task}
     display_template: |-
       [bold purple]🗺️ [DOMA Agile] Iniciando Context Engineering — lendo skills relevantes...[/bold purple]
+  eval:
+    agent: null
+    doma_mode: internal
+    description: |-
+      Exibe resumo das avaliações de qualidade por sessão. Avaliações são coletadas ao encerrar cada sessão interativa.
+    skills: []
+    prompt_template: '{task}'
+    display_template: '[bold cyan]⭐ [Eval] Resumo de avaliações de qualidade...[/bold cyan]'
+  mcp:
+    agent: null
+    doma_mode: internal
+    description: |-
+      Exibe status em tempo real de todos os MCP servers (ativos/inativos). Opcional: /mcp <nome> filtra por servidor específico. Ex: /mcp tavily
+    skills: []
+    prompt_template: '{task}'
+    display_template: '[bold cyan]🔌 [MCP Status] Verificando MCP servers...[/bold cyan]'
   health:
     agent: null
     doma_mode: internal
