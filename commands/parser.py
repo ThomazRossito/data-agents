@@ -83,7 +83,10 @@ def parse_command(user_input: str) -> CommandResult | None:
         agent=definition.agent,
         doma_prompt=definition.prompt_template.format(task=task),
         doma_mode=definition.doma_mode,
-        display_message=definition.display_template.format(agent=definition.agent or "supervisor"),
+        display_message=definition.display_template.format(
+            agent=definition.agent or "supervisor",
+            task=task,
+        ),
     )
 
 
