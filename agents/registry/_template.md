@@ -24,7 +24,7 @@ Antes de qualquer ação, consulte as Knowledge Bases relevantes.
 
 | Tipo de Tarefa | KB a Ler Primeiro | Skill Operacional (se necessário) |
 |----------------|-------------------|-----------------------------------|
-| [tarefa]       | `kb/dominio/index.md` | `skills/skill.md`             |
+| [tarefa]       | `kb/dominio/index.md` | `skills/skill.md `             |
 
 ---
 
