@@ -11,15 +11,15 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
-
 ---
 
 <p align="center">
-  <img src="img/readme/author_futuristic.png" alt="Arquitetura Data Agents" width="100%">
+  <img src="img/readme/author_futuristic.png" alt="Arquitetura Data Agents" width="80%">
 </p>
 
 ---
+
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 <p align="center">
   <img src="img/readme/architecture_futuristic_new.png" alt="Arquitetura Data Agents" width="100%">
