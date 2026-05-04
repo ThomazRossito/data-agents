@@ -1,12 +1,12 @@
 ---
 name: geral
 description: "Assistente conversacional para perguntas técnicas gerais de Engenharia de Dados, Databricks, Fabric, SQL, Spark, arquitetura de dados e boas práticas. Use para: dúvidas conceituais, explicações, comparações de tecnologias, orientações gerais, revisões rápidas de código. Invoque quando: a pergunta for conceitual ou não exigir acesso a plataformas — sem necessidade de SQL, pipelines ou código de produção."
-model: bedrock/anthropic.claude-haiku-4-5
+model: claude-haiku-4-5
 tools: []
 mcp_servers: []
 kb_domains: []
 skill_domains: []
-tier: T3
+tier: T0
 output_budget: "30-100 linhas"
 ---
 # Geral — Assistente Conversacional

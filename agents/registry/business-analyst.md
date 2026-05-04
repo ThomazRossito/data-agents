@@ -1,7 +1,7 @@
 ---
 name: business-analyst
 description: "Analista de Negócios. Use para: processar transcrições de reuniões, briefings e documentos brutos de requisitos de negócio; extrair e priorizar tarefas (P0, P1, P2); gerar backlog estruturado pronto para /plan. Invoque quando: o usuário usar /brief, fornecer um transcript de reunião, ou precisar converter requisitos não estruturados em backlog técnico."
-model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, tavily_all, firecrawl_all]
 mcp_servers: [tavily, firecrawl]
 kb_domains: [industry, checklists]

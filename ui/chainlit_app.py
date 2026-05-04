@@ -59,6 +59,7 @@ from claude_agent_sdk.types import StreamEvent
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+from agents.loader import preload_registry  # noqa: E402
 from commands.parser import parse_command  # noqa: E402
 from ui.ui_config import (  # noqa: E402
     COMMAND_GROUPS as _COMMAND_GROUPS,
@@ -66,6 +67,11 @@ from ui.ui_config import (  # noqa: E402
     enrich_tool_label as _enrich_tool_label,
     tool_label as _tool_label,
 )
+
+# ── Tier lookup para labels de delegação ─────────────────────────────────────
+_AGENT_TIERS: dict[str, str] = {
+    name: meta.tier for name, meta in preload_registry().items() if meta.tier
+}
 
 # ── Constantes ────────────────────────────────────────────────────────────────
 MODE_SUPERVISOR = "supervisor"
@@ -534,7 +540,7 @@ async def _handle_supervisor(user_input: str) -> None:
     final_text = ""
     _result_cost: float = 0.0  # preenchido no ResultMessage; acessível no except
     _result_turns: int = 0
-    _thinking_msg: cl.Message | None = None  # indicador "processando" temporário
+    _thinking_msg: cl.Step | None = None  # indicador "Supervisor sintetizando..." temporário
 
     # Mensagem de resposta principal (recebe o texto gerado pelo modelo)
     response_msg = cl.Message(content="", author="Supervisor")
@@ -609,16 +615,19 @@ async def _handle_supervisor(user_input: str) -> None:
                                     current_agent = agent_name
                                     last_agent = agent_name
                                     display = _agent_author(agent_name)
-                                    await steps.rename(f"🤖 {display}")
+                                    _tier = _AGENT_TIERS.get(agent_name, "")
+                                    _tier_label = f" · T{_tier[1:]}" if _tier else ""
+                                    await steps.rename(f"🤖 {display}{_tier_label}")
                             except (json.JSONDecodeError, TypeError):
                                 pass
 
                     elif delta_type == "text_delta":
                         token = delta.get("text", "")
                         if token:
-                            # Remove indicador "processando" ao receber o primeiro token real
+                            # Fecha step "sintetizando" ao receber o primeiro token real
                             if _thinking_msg is not None:
-                                await _thinking_msg.remove()
+                                _thinking_msg.output = "✅ Resposta gerada"
+                                await _thinking_msg.update()
                                 _thinking_msg = None
                             streamed_text += token
                             await response_msg.stream_token(token)
@@ -628,14 +637,12 @@ async def _handle_supervisor(user_input: str) -> None:
                     if current_tool == "Agent" and current_agent:
                         # Agent tool: fecha imediatamente — resultado vem como mensagem
                         display = _agent_author(current_agent)
-                        await steps.close(f"✅ {display} concluído")
-                        # Após retorno de sub-agente, Supervisor pode demorar para processar
-                        # o resultado e gerar sua resposta — exibe mensagem temporária para
-                        # evitar que o chat pareça travado durante esse período silencioso.
-                        _thinking_msg = cl.Message(
-                            content="⏳ *Supervisor analisando resultado...*",
-                            author="Sistema",
-                        )
+                        _tier = _AGENT_TIERS.get(current_agent, "")
+                        _tier_label = f" · T{_tier[1:]}" if _tier else ""
+                        await steps.close(f"✅ {display}{_tier_label} concluído")
+                        # Após retorno de sub-agente, abre step "sintetizando" que
+                        # fecha naturalmente quando o primeiro token da resposta chegar.
+                        _thinking_msg = cl.Step(name="⚙️ Supervisor sintetizando...", type="run")
                         await _thinking_msg.send()
                     elif current_tool and current_tool_use_id:
                         # Demais tools: estaciona aguardando ToolResultBlock no UserMessage
@@ -667,7 +674,8 @@ async def _handle_supervisor(user_input: str) -> None:
                 # Não fecha steps estacionados — UserMessage com resultados reais
                 # pode chegar DEPOIS do AssistantMessage (ordem real do stream)
                 if _thinking_msg is not None:
-                    await _thinking_msg.remove()
+                    _thinking_msg.output = "✅ Resposta gerada"
+                    await _thinking_msg.update()
                     _thinking_msg = None
                 for blk in message.content:
                     if isinstance(blk, TextBlock) and blk.text.strip():
@@ -678,7 +686,8 @@ async def _handle_supervisor(user_input: str) -> None:
                 await steps.close()
                 await steps.close_all_parked()  # fallback final — fecha qualquer step sem resultado
                 if _thinking_msg is not None:
-                    await _thinking_msg.remove()
+                    _thinking_msg.output = "✅ Resposta gerada"
+                    await _thinking_msg.update()
                     _thinking_msg = None
 
                 # Usa texto final como fallback se não houve streaming
@@ -1105,6 +1114,47 @@ async def on_message(message: cl.Message) -> None:
 
         md = handle_mcp_command_chainlit(user_input)
         await cl.Message(content=md, author="Sistema").send()
+        return
+
+    # Comando global /memory — gerenciamento local de memória (sem Supervisor)
+    if user_input.lower().startswith("/memory"):
+        from memory.store import MemoryStore
+        from memory.types import MemoryType
+        from hooks.checkpoint import clear_checkpoint
+
+        parts = user_input.split(maxsplit=2)
+        sub = parts[1].lower() if len(parts) > 1 else "status"
+        scope = parts[2].lower() if len(parts) > 2 else "all"
+        store = MemoryStore()
+
+        if sub == "clear":
+            clear_ckpt = scope == "full"
+            types_to_clear = list(MemoryType)
+            removed = 0
+            for mem_type in types_to_clear:
+                for mem in store.list_all(memory_type=mem_type):
+                    if store.delete(mem.id, mem_type):
+                        removed += 1
+            ckpt_msg = ""
+            if clear_ckpt:
+                clear_checkpoint()
+                cl.user_session.set("_pending_checkpoint", None)
+                ckpt_msg = " + checkpoint removido"
+            await cl.Message(
+                content=f"🧠 **Clear:** {removed} memória(s) removida(s){ckpt_msg}.",
+                author="Sistema",
+            ).send()
+        elif sub == "status":
+            stats = store.get_stats()
+            lines = [f"**Memórias:** {stats['active']} ativas / {stats['total']} total"]
+            for t, v in stats.get("by_type", {}).items():
+                lines.append(f"- {t}: {v['active']}/{v['total']}")
+            await cl.Message(content="\n".join(lines), author="Sistema").send()
+        else:
+            await cl.Message(
+                content="Subcomandos disponíveis: `status`, `clear`, `clear all`, `clear full`",
+                author="Sistema",
+            ).send()
         return
 
     mode: str | None = cl.user_session.get("mode")

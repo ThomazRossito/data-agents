@@ -44,7 +44,7 @@ MINIMAL_AGENT_CONTENT = """\
 ---
 name: minimal-agent
 description: "Agente mínimo."
-model: claude-haiku-3-5
+model: claude-haiku-4-5
 tools: [Read]
 ---
 # Minimal Agent

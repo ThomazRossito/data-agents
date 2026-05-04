@@ -1231,7 +1231,7 @@ elif page == "💰 Custo & Tokens":
                     "Cache Write": "$3.75",
                 },
                 {
-                    "Modelo": "claude-haiku-3-5",
+                    "Modelo": "claude-haiku-4-5",
                     "Input ($/1M tokens)": "$0.80",
                     "Output ($/1M tokens)": "$4.00",
                     "Cache Read": "$0.08",

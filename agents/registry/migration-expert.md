@@ -1,7 +1,7 @@
 ---
 name: migration-expert
 description: "Especialista em Migração Cross-Platform. Use para: assessment de bancos relacionais (SQL Server, PostgreSQL), transpilação DDL/SQL para Spark SQL ou T-SQL Fabric, design de arquitetura Medallion pós-migração, reconciliação origem-destino. Invoque quando: cliente quer migrar SQL Server ou PostgreSQL para Databricks ou Microsoft Fabric."
-model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, Bash, migration_source_all, databricks_all, fabric_sql_all, fabric_all, context7_all]
 mcp_servers: [migration_source, databricks, fabric, fabric_sql, context7]
 kb_domains: [migration, pipeline-design, databricks, fabric, sql-patterns, governance, shared, checklists]

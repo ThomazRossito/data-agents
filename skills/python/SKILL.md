@@ -10,8 +10,6 @@ Skills disponíveis para o python-expert. Leia os arquivos relevantes antes de e
 | `pandas-polars-patterns.md` | Transformações de dados com pandas ou polars; performance, tipos, pipelines |
 | `pytest-patterns.md` | Testes unitários e de integração, fixtures, mocking, cobertura |
 | `python-packaging.md` | pyproject.toml, setup, entry points, publicação PyPI, pip install -e |
-| `async-patterns.md` | asyncio, httpx async, tarefas concorrentes, event loop |
-| `cli-patterns.md` | CLIs com Click ou Typer, subcomandos, parâmetros, configuração |
 
 ## Regras Gerais
 

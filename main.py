@@ -71,7 +71,7 @@ from hooks.memory_hook import flush_session_memories
 from hooks.transcript_hook import append_turn as _append_transcript_turn
 from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
-from agents.loader import inject_memory_context
+from agents.loader import inject_memory_context, preload_registry
 from commands.geral import run_geral_query
 from commands.party import run_party_query, parse_party_args
 
@@ -138,6 +138,11 @@ def _signal_handler(signum: int, _frame: object) -> None:
 
 # ─── Mapeamento de tool → label amigável para o usuário ──────────────
 
+# Pré-carrega apenas o frontmatter (fase rápida) para lookup de tier em tempo real.
+_AGENT_TIERS: dict[str, str] = {
+    name: meta.tier for name, meta in preload_registry().items() if meta.tier
+}
+
 TOOL_LABELS: dict[str, str] = {
     # Ferramentas do Supervisor
     "Agent": "🤖 Delegando para agente especialista",
@@ -188,7 +193,9 @@ def _get_agent_label(tool_input_json: str) -> str:
         data = json.loads(tool_input_json) if tool_input_json else {}
         agent_name = data.get("agent_name") or data.get("name") or ""
         if agent_name:
-            return f"🤖 Delegando para → [bold yellow]{agent_name}[/bold yellow]"
+            tier = _AGENT_TIERS.get(agent_name, "")
+            tier_label = f" [dim](T{tier[1:]})[/dim]" if tier else ""
+            return f"🤖 Delegando para → [bold yellow]{agent_name}[/bold yellow]{tier_label}"
     except Exception:
         pass
     return "🤖 Delegando para agente especialista"
@@ -337,9 +344,12 @@ async def _stream_response(
                             )
                             if agent_name:
                                 _current_agent = agent_name
+                                _tier = _AGENT_TIERS.get(agent_name, "")
+                                _tier_label = f" (T{_tier[1:]})" if _tier else ""
                                 _stop_spinner(live_status)
                                 live_status = _start_spinner(
-                                    f"🤖 Delegando para → [bold yellow]{agent_name}[/bold yellow]..."
+                                    f"🤖 Delegando para → [bold yellow]{agent_name}[/bold yellow]"
+                                    f"[dim]{_tier_label}[/dim]..."
                                 )
                         except Exception:
                             pass
@@ -350,9 +360,12 @@ async def _stream_response(
                     elapsed = _elapsed()
                     if current_tool == "Agent" and _current_agent:
                         # Mostra conclusão do agente especialista com tempo
+                        _tier = _AGENT_TIERS.get(_current_agent, "")
+                        _tier_label = f" · T{_tier[1:]}" if _tier else ""
                         _stop_spinner(live_status)
                         console.print(
-                            f"[dim]  ✅ [bold]{_current_agent}[/bold] concluído ({elapsed})[/dim]"
+                            f"[dim]  ✅ [bold]{_current_agent}[/bold]"
+                            f"[dim]{_tier_label}[/dim] concluído ({elapsed})[/dim]"
                         )
                     elif current_tool != "Agent":
                         # Para tools não-Agent, mostra conclusão discreta
@@ -362,12 +375,16 @@ async def _stream_response(
                     else:
                         _stop_spinner(live_status)
 
+                    _was_agent = current_tool == "Agent"
                     current_tool = None
                     tool_input_buffer = ""
                     _current_agent = None
                     turn_count += 1
                     _step_start = time.monotonic()
-                    live_status = _start_spinner(f"Processando... (etapa {turn_count})")
+                    if _was_agent:
+                        live_status = _start_spinner("⚙️  Supervisor sintetizando...")
+                    else:
+                        live_status = _start_spinner(f"Processando... (etapa {turn_count})")
 
         # ── AssistantMessage: resposta final completa ─────────────────
         elif isinstance(message, AssistantMessage):
@@ -455,6 +472,7 @@ async def _handle_memory_command(user_input: str) -> None:
       /memory lint            — Executa health checks
       /memory search <query>  — Busca memórias relevantes via Sonnet
       /memory clear [tipo]    — Remove memórias (all por padrão; ou tipo específico)
+      /memory clear full      — Remove memórias + checkpoint de sessão anterior
     """
     from memory.lint import lint_memories
     from hooks.memory_hook import get_buffer_stats
@@ -524,9 +542,10 @@ async def _handle_memory_command(user_input: str) -> None:
         scope = parts[2].lower() if len(parts) > 2 else "all"
         from memory.types import MemoryType
 
-        if scope == "all":
+        clear_ckpt = scope == "full"
+        if scope in ("all", "full"):
             types_to_clear = list(MemoryType)
-            label = "todas as memórias"
+            label = "todas as memórias" + (" + checkpoint" if clear_ckpt else "")
         else:
             try:
                 types_to_clear = [MemoryType(scope)]
@@ -534,7 +553,7 @@ async def _handle_memory_command(user_input: str) -> None:
             except ValueError:
                 valid = ", ".join(t.value for t in MemoryType)
                 console.print(
-                    f"[yellow]Tipo inválido: '{scope}'. Válidos: {valid} ou 'all'[/yellow]"
+                    f"[yellow]Tipo inválido: '{scope}'. Válidos: {valid}, all ou full[/yellow]"
                 )
                 return
 
@@ -550,7 +569,14 @@ async def _handle_memory_command(user_input: str) -> None:
                 if store.delete(mem.id, mem_type):
                     removed += 1
 
-        console.print(f"[bold cyan]🧠 Clear: {removed} memória(s) removida(s).[/bold cyan]\n")
+        ckpt_msg = ""
+        if clear_ckpt:
+            clear_checkpoint()
+            ckpt_msg = " + checkpoint removido"
+
+        console.print(
+            f"[bold cyan]🧠 Clear: {removed} memória(s) removida(s){ckpt_msg}.[/bold cyan]\n"
+        )
 
     else:
         console.print(
@@ -1292,19 +1318,65 @@ async def run_single_query(prompt: str) -> None:
     options.include_partial_messages = True
 
     current_tool: str | None = None
+    tool_input_buffer: str = ""
+    current_agent: str | None = None
+    _step_start: float = time.monotonic()
 
     async for message in query(prompt=prompt, options=options):
         if isinstance(message, StreamEvent):
             event = message.event
             event_type = event.get("type", "")
+
             if event_type == "content_block_start":
                 block = event.get("content_block", {})
                 if block.get("type") == "tool_use":
                     current_tool = block.get("name", "unknown")
-                    label = _get_tool_label(current_tool)
-                    console.print(f"[dim]{label}...[/dim]")
+                    tool_input_buffer = ""
+                    current_agent = None
+                    _step_start = time.monotonic()
+                    if current_tool != "Agent":
+                        label = _get_tool_label(current_tool)
+                        console.print(f"[dim]{label}...[/dim]")
+
+            elif event_type == "content_block_delta":
+                delta = event.get("delta", {})
+                if delta.get("type") == "input_json_delta":
+                    tool_input_buffer += delta.get("partial_json", "")
+                    if current_tool == "Agent" and current_agent is None:
+                        try:
+                            import json as _json
+
+                            data = _json.loads(tool_input_buffer)
+                            agent_name = (
+                                data.get("agent_name")
+                                or data.get("subagent_type")
+                                or data.get("name")
+                                or ""
+                            )
+                            if agent_name:
+                                current_agent = agent_name
+                                _tier = _AGENT_TIERS.get(agent_name, "")
+                                _tier_label = f" · T{_tier[1:]}" if _tier else ""
+                                console.print(
+                                    f"[dim]🤖 Delegando para → [bold yellow]{agent_name}[/bold yellow]"
+                                    f"[dim]{_tier_label}[/dim]...[/dim]"
+                                )
+                        except Exception:
+                            pass
+
             elif event_type == "content_block_stop":
+                if current_tool == "Agent" and current_agent:
+                    elapsed = f"{time.monotonic() - _step_start:.1f}s"
+                    _tier = _AGENT_TIERS.get(current_agent, "")
+                    _tier_label = f" · T{_tier[1:]}" if _tier else ""
+                    console.print(
+                        f"[dim]  ✅ [bold]{current_agent}[/bold]"
+                        f"[dim]{_tier_label}[/dim] concluído ({elapsed})[/dim]"
+                    )
+                    console.print("[dim]⚙️  Supervisor sintetizando...[/dim]")
                 current_tool = None
+                tool_input_buffer = ""
+                current_agent = None
 
         elif isinstance(message, AssistantMessage):
             for block in message.content:

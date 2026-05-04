@@ -126,8 +126,7 @@ class TestLoadAllAgents:
         valid_models = {
             "claude-sonnet-4-6",
             "claude-opus-4-6",
-            "bedrock/anthropic.claude-4-6-sonnet",  # proxy Flow LiteLLM (produção)
-            "bedrock/anthropic.claude-haiku-4-5",  # T0.3: agente `geral` usa Haiku 4.5
+            "claude-haiku-4-5",  # T0: agente `geral` usa Haiku (alias, sempre mais recente)
         }
         for name, agent in agents.items():
             assert agent.model in valid_models, f"Agente '{name}' com model inválido: {agent.model}"
@@ -179,8 +178,7 @@ class TestSparkExpert:
     def test_spark_expert_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["spark-expert"]
-        # Aceita bedrock/anthropic.claude-4-6-sonnet (proxy Flow) ou claude-sonnet-4-6 (local)
-        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower()
+        assert "sonnet" in agent.model.lower()
 
 
 class TestPipelineArchitect:
@@ -195,11 +193,11 @@ class TestPipelineArchitect:
         assert has_databricks, "Pipeline Architect deve ter tools do Databricks"
         assert has_fabric, "Pipeline Architect deve ter tools do Fabric"
 
-    def test_pipeline_architect_model_is_opus(self):
+    def test_pipeline_architect_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["pipeline-architect"]
-        # Aceita bedrock/anthropic.claude-4-6-sonnet (proxy Flow) ou claude-opus-4-6 (local)
-        assert "opus" in agent.model.lower() or "bedrock" in agent.model.lower()
+        # T1 usa claude-sonnet-4-6 por padrão (TIER_MODEL_MAP pode sobrescrever para Opus)
+        assert "sonnet" in agent.model.lower()
 
 
 # ─── Testes dos Agentes T2 (Especializados) ──────────────────────────────────
@@ -273,7 +271,7 @@ class TestDbtExpert:
     def test_dbt_expert_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["dbt-expert"]
-        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower()
+        assert "sonnet" in agent.model.lower()
 
     def test_dbt_expert_has_no_platform_mcp_tools(self):
         """dbt-expert não executa queries em Databricks/Fabric diretamente."""
@@ -325,7 +323,7 @@ class TestSemanticModeler:
     def test_semantic_modeler_model_is_sonnet(self):
         agents = load_all_agents()
         agent = agents["semantic-modeler"]
-        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower()
+        assert "sonnet" in agent.model.lower()
 
 
 # ─── Testes de Arquivos de Registry ──────────────────────────────────────────
@@ -484,7 +482,7 @@ class TestCatalogIntelligence:
         """catalog-intelligence é T2 — deve usar Sonnet."""
         agents = load_all_agents()
         agent = agents["catalog-intelligence"]
-        assert "sonnet" in agent.model.lower() or "bedrock" in agent.model.lower(), (
+        assert "sonnet" in agent.model.lower(), (
             f"catalog-intelligence deve usar Sonnet, mas usa: {agent.model}"
         )
 
@@ -540,6 +538,53 @@ class TestCatalogIntelligence:
         )
 
 
+class TestGeral:
+    """Testes específicos para o agente geral (T0 — Haiku, zero MCP)."""
+
+    def test_geral_agent_is_loaded(self):
+        """geral deve ser carregado no registry."""
+        agents = load_all_agents()
+        assert "geral" in agents, "agente 'geral' não encontrado no registry"
+
+    def test_geral_agent_is_t0(self):
+        """geral deve ter tier T0 — tier exclusivo que nunca é coberto pelo TIER_MODEL_MAP."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "geral.md"
+        content_md = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content_md)
+        assert meta.get("tier") == "T0", f"geral deve ter tier: T0, mas tem: {meta.get('tier')}"
+
+    def test_geral_agent_uses_haiku(self):
+        """geral deve usar claude-haiku-4-5 — mesmo com TIER_MODEL_MAP cobrindo outros tiers."""
+        tier_map = {"T1": "claude-sonnet-4-6", "T2": "claude-sonnet-4-6", "T3": "claude-sonnet-4-6"}
+        agents = load_all_agents(tier_model_map=tier_map)
+        agent = agents["geral"]
+        assert "haiku" in agent.model.lower(), (
+            f"geral deve usar Haiku independente do TIER_MODEL_MAP, mas usa: {agent.model}"
+        )
+
+    def test_geral_agent_has_no_mcp_servers(self):
+        """geral não deve ter MCP servers — resposta direta do modelo sem tools externas."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "geral.md"
+        content_md = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content_md)
+        mcp_servers = meta.get("mcp_servers", [])
+        assert mcp_servers == [], f"geral não deve ter mcp_servers, mas tem: {mcp_servers}"
+
+    def test_geral_t0_not_in_tier_model_map_default(self):
+        """T0 não deve aparecer no TIER_MODEL_MAP default — protege Haiku de override acidental."""
+        from config.settings import Settings
+
+        default_settings = Settings()
+        tier_map = default_settings.tier_model_map
+        assert "T0" not in tier_map, (
+            f"T0 não deve estar no TIER_MODEL_MAP default, mas está: {tier_map}"
+        )
+
+
 # ─── Testes de Model Routing por Tier ───────────────────────────────────────
 
 
@@ -549,46 +594,36 @@ class TestModelRoutingByTier:
     def test_load_without_tier_map_uses_frontmatter_model(self):
         """Sem tier_model_map, cada agente usa o model do seu frontmatter."""
         agents = load_all_agents(tier_model_map=None)
-        # sql-expert é T1 — frontmatter pode declarar sonnet ou bedrock (proxy Flow)
-        assert (
-            "sonnet" in agents["sql-expert"].model.lower()
-            or "bedrock" in agents["sql-expert"].model.lower()
-        )
-        # pipeline-architect é T1 — frontmatter pode declarar opus ou bedrock (proxy Flow)
-        assert (
-            "opus" in agents["pipeline-architect"].model.lower()
-            or "bedrock" in agents["pipeline-architect"].model.lower()
-        )
+        # sql-expert e pipeline-architect são T1 — frontmatter declara claude-sonnet-4-6
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        assert "sonnet" in agents["pipeline-architect"].model.lower()
+        # geral é T0 — frontmatter declara claude-haiku-4-5
+        assert "haiku" in agents["geral"].model.lower()
 
     def test_load_with_empty_tier_map_uses_frontmatter_model(self):
         """Com tier_model_map vazio, comportamento idêntico a None."""
         agents = load_all_agents(tier_model_map={})
-        assert (
-            "sonnet" in agents["sql-expert"].model.lower()
-            or "bedrock" in agents["sql-expert"].model.lower()
-        )
-        assert (
-            "opus" in agents["pipeline-architect"].model.lower()
-            or "bedrock" in agents["pipeline-architect"].model.lower()
-        )
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        assert "sonnet" in agents["pipeline-architect"].model.lower()
+        assert "haiku" in agents["geral"].model.lower()
 
     def test_load_with_tier_map_overrides_model(self):
         """Com tier_model_map populado, o modelo do tier sobrescreve o do frontmatter."""
-        tier_map = {"T1": "claude-opus-4-6", "T2": "claude-haiku-3-5"}
+        tier_map = {"T1": "claude-opus-4-6", "T2": "claude-haiku-4-5"}
         agents = load_all_agents(tier_model_map=tier_map)
         # sql-expert é T1 → deve receber claude-opus-4-6
         assert agents["sql-expert"].model == "claude-opus-4-6"
-        # data-quality-steward é T2 → deve receber claude-haiku-3-5
-        assert agents["data-quality-steward"].model == "claude-haiku-3-5"
+        # data-quality-steward é T2 → deve receber claude-haiku-4-5
+        assert agents["data-quality-steward"].model == "claude-haiku-4-5"
 
     def test_load_with_partial_tier_map(self):
         """Se o tier_model_map não cobre todos os tiers, apenas os cobertos são roteados."""
-        tier_map = {"T2": "claude-haiku-3-5"}
+        tier_map = {"T2": "claude-haiku-4-5"}
         agents = load_all_agents(tier_model_map=tier_map)
         # sql-expert é T1, não está no mapa → mantém frontmatter (sonnet)
         assert "sonnet" in agents["sql-expert"].model.lower()
         # data-quality-steward é T2 → recebe haiku
-        assert agents["data-quality-steward"].model == "claude-haiku-3-5"
+        assert agents["data-quality-steward"].model == "claude-haiku-4-5"
 
     def test_all_t1_agents_have_tier_field(self):
         """Todos os agentes T1 devem declarar tier no frontmatter."""

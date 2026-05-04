@@ -1,8 +1,7 @@
 ---
 name: agent-name
 description: "Descrição do agente. Use para: [casos de uso]. Invoque quando: [condições de trigger]."
-# model: bedrock/anthropic.claude-4-6-sonnet
-model: claude-sonnet-4-6
+model: claude-sonnet-4-6  # ou claude-opus-4-6 para tarefas complexas; claude-haiku-4-5 para T0
 tools: [Read, Grep, Glob, Write]
 mcp_servers: []
 kb_domains: []
@@ -67,8 +66,8 @@ Antes de qualquer ação, consulte as Knowledge Bases relevantes.
 |---------------|-------------|---------------------------------------------------------------------------|
 | `name`        | Sim         | Identificador único do agente (kebab-case)                                |
 | `description` | Sim         | Descrição para o Supervisor usar no roteamento                            |
-| `model`       | Sim         | Modelo Claude: `bedrock/anthropic.claude-4-6-sonnet`                   |
+| `model`       | Sim         | Modelo Claude: `claude-sonnet-4-6` (T1/T2/T3) ou `claude-haiku-4-5` (T0) |
 | `tools`       | Sim         | Lista de tools. Aliases: `databricks_all`, `databricks_readonly`, `fabric_all`, `fabric_readonly`, `fabric_rti_all`, `fabric_rti_readonly` |
 | `mcp_servers` | Não         | Lista de MCP servers: `databricks`, `fabric`, `fabric_community`, `fabric_rti` |
 | `kb_domains`  | Não         | Domínios de KB do agente. Quando `INJECT_KB_INDEX=true` (padrão), o loader injeta o `index.md` de cada domínio no prompt do agente automaticamente |
-| `tier`        | Não         | Tier de complexidade: `T1` (core), `T2` (especializado), `T3` (avançado). Consumido pelo loader para model routing quando `TIER_MODEL_MAP` está configurado no `.env` |
+| `tier`        | Não         | Tier de complexidade: `T0` (conversacional puro, Haiku), `T1` (core), `T2` (especializado), `T3` (conversacional com tools). Consumido pelo loader para model routing quando `TIER_MODEL_MAP` está configurado no `.env` |

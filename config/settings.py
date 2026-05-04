@@ -157,24 +157,26 @@ class Settings(BaseSettings):
     # --- Model Routing por Tier ---
     # Mapeamento tier -> modelo. Permite override global da estratégia de modelo por tier.
     # Se um tier não estiver no mapa, o agente usa o model declarado no seu frontmatter.
-    # Override via .env: TIER_MODEL_MAP='{"T1": "claude-opus-4-6", "T2": "claude-haiku-3-5"}'
+    # Override via .env: TIER_MODEL_MAP='{"T1": "claude-opus-4-6", "T2": "claude-sonnet-4-6"}'
     tier_model_map: dict[str, str] = {}
 
     # --- Token Budgets por Tier (Ch. 5 — Agent Loop) ---
     # Mapeamento tier -> maxTurns: limita o número máximo de chamadas de tool por sub-agente.
-    # Agentes T1 (pipelines complexos, cross-platform) precisam de mais turns.
-    # Agentes T2 (análise especializada, escopo restrito) precisam de menos.
-    # Agentes T3 (conversacional, sem tools) precisam de muito poucos.
-    # Override via .env: TIER_TURNS_MAP='{"T1": 25, "T2": 15, "T3": 5}'
-    tier_turns_map: dict[str, int] = {"T1": 20, "T2": 12, "T3": 5}
+    # T0 (haiku, zero MCP): conversacional puro, sem tools — pouquíssimos turns necessários.
+    # T1 (pipelines complexos, cross-platform) precisam de mais turns.
+    # T2 (análise especializada, escopo restrito) precisam de menos.
+    # T3 (conversacional com tools limitadas) precisam de poucos turns.
+    # Override via .env: TIER_TURNS_MAP='{"T0": 3, "T1": 25, "T2": 15, "T3": 5}'
+    tier_turns_map: dict[str, int] = {"T0": 3, "T1": 20, "T2": 12, "T3": 5}
 
     # --- Effort por Tier (Ch. 5 — Agent Loop) ---
     # Mapeamento tier -> effort: controla o nível de "esforço" do modelo por agente.
+    # T0: "low" — Haiku respondendo perguntas conceituais, sem raciocínio profundo necessário.
     # "high": raciocínio mais profundo, maior custo e latência — para tarefas complexas T1.
     # "medium": balanceado — para tarefas especializadas T2.
     # "low": rápido e eficiente — para tarefas conversacionais T3.
-    # Override via .env: TIER_EFFORT_MAP='{"T1": "high", "T2": "medium", "T3": "low"}'
-    tier_effort_map: dict[str, str] = {"T1": "high", "T2": "medium", "T3": "low"}
+    # Override via .env: TIER_EFFORT_MAP='{"T0": "low", "T1": "high", "T2": "medium", "T3": "low"}'
+    tier_effort_map: dict[str, str] = {"T0": "low", "T1": "high", "T2": "medium", "T3": "low"}
 
     # --- KB Injection ---
     # Se True, injeta o conteúdo dos index.md das KBs relevantes no prompt de cada agente.
@@ -242,11 +244,11 @@ class Settings(BaseSettings):
 
     # --- Memory Extraction Model ---
     # Modelo usado pelo extractor e retrieval para chamadas laterais (sem SDK).
-    # Padrão: Sonnet para balancear qualidade e custo.
-    # Override via .env: MEMORY_EXTRACTOR_MODEL=claude-haiku-4-5-20251001
-    memory_extractor_model: str = "claude-sonnet-4-6"
+    # Haiku é suficiente para extração/retrieval e ~4x mais barato que Sonnet.
+    # Override via .env: MEMORY_EXTRACTOR_MODEL=claude-sonnet-4-6
+    memory_extractor_model: str = "claude-haiku-4-5"
     memory_extractor_max_tokens: int = 2048
-    memory_retrieval_model: str = "claude-sonnet-4-6"
+    memory_retrieval_model: str = "claude-haiku-4-5"
     memory_retrieval_max_tokens: int = 1024
     # Número máximo de memórias recuperadas por query (retrieval semântico).
     # Override via .env: MEMORY_RETRIEVAL_MAX=10
