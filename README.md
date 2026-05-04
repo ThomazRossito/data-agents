@@ -21,9 +21,6 @@
 
 ---
 
-## Como Funciona
-
-
 <p align="center">
   <img src="img/readme/architecture_futuristic_new.png" alt="Arquitetura Data Agents" width="100%">
 </p>
