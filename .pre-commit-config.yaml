@@ -30,7 +30,7 @@ repos:
       - id: check-json
       - id: check-merge-conflict
       - id: check-added-large-files
-        args: ["--maxkb=500"]
+        args: ["--maxkb=1500"]
       - id: detect-private-key
 
   # ─── Segurança: bandit ────────────────────────────────────────────
