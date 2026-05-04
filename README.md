@@ -11,29 +11,17 @@
   <img src="https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-2088FF" alt="CI/CD">
 </p>
 
+---
+
+<p align="center">
+  <img src="img/readme/author_futuristic.png" alt="Arquitetura Data Agents" width="80%">
+</p>
+
+---
+
 **Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
-
-## Autor
-
-> **Thomaz Antonio Rossito Neto**
-> Specialist Data & AI Solutions Architect | Center of Excellence CoE @CI&T
-
-**LinkedIn:** [thomaz-antonio-rossito-neto](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/)        **GitHub:** [ThomazRossito](https://github.com/ThomazRossito/)
-
-### Certificações Databricks
-
-<img src="img/readme/badges/db_spark.png" alt="Databricks Certified Spark Developer" width="100"/> <img src="img/readme/badges/db_genai.png" alt="Databricks Certified Generative AI Engineer Associate" width="100"/> <img src="img/readme/badges/db_analyst.png" alt="Databricks Certified Data Analyst Associate" width="100"/> <img src="img/readme/badges/db_de_associate.png" alt="Databricks Certified Data Engineer Associate" width="100"/> <img src="img/readme/badges/db_de_professional.png" alt="Databricks Certified Data Engineer Professional" width="100"/>
-
-### Certificações Microsoft
-
-<a href="https://www.credly.com/badges/052e5133-0c67-4ab7-bb3a-c99efa7b4406/public_url"><img src="img/readme/badges/ms_dp900.png" alt="DP-900" width="100"/></a> <a href="https://learn.microsoft.com/pt-br/users/thomazantoniorossitoneto/credentials/certification/fabric-data-engineer-associate"><img src="img/readme/badges/ms_dp700.png" alt="DP-700" width="100"/></a>
-
----
-
-## Como Funciona
-
 
 <p align="center">
   <img src="img/readme/architecture_futuristic_new.png" alt="Arquitetura Data Agents" width="100%">
