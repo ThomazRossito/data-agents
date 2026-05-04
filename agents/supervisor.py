@@ -48,9 +48,8 @@ from hooks.workflow_tracker import pre_track_workflow_events, track_workflow_eve
 #: Opus → Sonnet → Haiku (three-layer cascade).
 FAILOVER_MODEL_MAP: dict[str, str] = {
     "claude-opus-4-6": "claude-sonnet-4-6",
-    "claude-sonnet-4-6": "claude-haiku-4-5-20251001",
-    "bedrock/anthropic.claude-4-6-sonnet": "claude-sonnet-4-6",
-    "bedrock/anthropic.claude-haiku-4-5": "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-6": "claude-haiku-4-5",
+    "claude-haiku-4-5": "claude-haiku-4-5",  # já no nível mais baixo
 }
 
 #: Padrões de mensagem de erro que indicam sobrecarga ou rate-limit do modelo.

@@ -1,7 +1,7 @@
 ---
 name: dbt-expert
 description: "Especialista em dbt Core. Use para: estruturação e refatoração de projetos dbt, geração de models SQL com refs e sources, configuração de testes de schema (not_null, unique, accepted_values, relationships), criação de snapshots e seeds, documentação via schema.yml e doc blocks, e boas práticas de projeto dbt. Invoque quando o usuário mencionar: dbt, models, sources, refs, transformações dbt, testes de schema, dbt run, dbt test, dbt build, dbt docs."
-model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, context7_all, postgres_all]
 mcp_servers: [context7, postgres]
 kb_domains: [sql-patterns]

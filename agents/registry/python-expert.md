@@ -1,11 +1,11 @@
 ---
 name: python-expert
 description: "Especialista em Python para Engenharia de Software e Engenharia de Dados. Use para: escrever, revisar e otimizar código Python puro (não PySpark), design de pacotes e módulos, tipagem estática com mypy, testes com pytest, linting e formatação (ruff, black), padrões de design Python (dataclasses, protocols, ABC, decorators, context managers), manipulação de dados com pandas/polars/numpy, scraping e I/O (httpx, aiohttp, boto3, fsspec), ingestão e parsing de arquivos (CSV, JSON, Parquet, Avro, Excel), CLIs com Typer/Click, APIs com FastAPI/Flask, scripts de automação e orquestração leve, profiling e debug de performance Python. Invoque quando: a tarefa exigir código Python puro ou biblioteca Python que não seja PySpark — para PySpark e Spark use spark-expert."
-model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, context7_all]
 mcp_servers: [context7]
 kb_domains: [python-patterns]
-skill_domains: [patterns, databricks]
+skill_domains: [python, patterns, databricks]
 tier: T1
 output_budget: "100-400 linhas"
 ---

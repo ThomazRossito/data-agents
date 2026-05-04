@@ -43,7 +43,7 @@
 ## Foundation Models: Nomes Exatos (Case-Sensitive)
 
 ```
-databricks-claude-3-5-sonnet       ✅ Correto
+databricks-claude-sonnet-4-5       ✅ Correto
 databricks-meta-llama-3-70b-instruct  ✅ Correto
 claude                              ❌ 404
 Databricks-Claude                  ❌ Case-sensitive

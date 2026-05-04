@@ -111,7 +111,7 @@ predictions = response.json()["predictions"]
 from databricks.genai.agent_api import ResponsesAgent
 
 agent = ResponsesAgent(
-    model="databricks-claude-3-5-sonnet",  # Nome exato, case-sensitive
+    model="databricks-claude-sonnet-4-5",  # Nome exato, case-sensitive
     temperature=0.7,
     max_tokens=1024
 )
@@ -167,7 +167,7 @@ results = index.similarity_search(
 SELECT ai_query(
     'main.genai.ai_fn',
     'Sumarize este texto: ' || content,
-    model => 'databricks-claude-3-5-sonnet'
+    model => 'databricks-claude-sonnet-4-5'
 ) AS summary
 FROM main.docs.articles;
 
@@ -175,7 +175,7 @@ FROM main.docs.articles;
 SELECT ai_forecast(
     'main.genai.forecast_fn',
     STRUCT(date, sales, trend),
-    model => 'databricks-claude-3-5-sonnet'
+    model => 'databricks-claude-sonnet-4-5'
 ) AS predicted_sales
 FROM main.analytics.sales_history
 WHERE date >= current_date() - 30;

@@ -20,10 +20,10 @@ COMPRESSION_LOG_PATH: str = os.path.join(
 )
 
 # Pricing de referência (input tokens, pois é o que o compressor economiza).
-# claude-sonnet-4-6: $3/1M input, claude-opus-4-6: $15/1M input.
-# Supervisor migrado para Sonnet; T1 (Opus) usado apenas em tarefas complexas.
-# Média ponderada revisada: ~70% Sonnet + 30% Opus = ~$4/M tokens.
-AVG_INPUT_PRICE_PER_TOKEN: float = 4.0 / 1_000_000  # ~$4/1M tokens (mix atual)
+# claude-sonnet-4-6: $3/1M input, claude-haiku-4-5: $0.80/1M input.
+# Todos os tiers usam Sonnet por padrão; T0 (geral) usa Haiku direto.
+# Mix conservador estimado: ~95% Sonnet + 5% Haiku = ~$3/M tokens.
+AVG_INPUT_PRICE_PER_TOKEN: float = 3.0 / 1_000_000  # ~$3/1M tokens (mix atual)
 
 
 def _limits() -> tuple[int, int, int, int, int]:

@@ -1,7 +1,7 @@
 ---
 name: catalog-intelligence
 description: "Especialista em Inteligência de Catálogo de Dados. Use para: gerar comentários de AI para tabelas, colunas e schemas no Unity Catalog ou Fabric Lakehouse; calcular Data Maturity Score (Estate Scan) por domínio de dados; descobrir valor de negócio de tabelas e pipelines existentes; alinhar patrimônio de dados a casos de uso e KPIs de indústria. Invoque quando: usuário mencionar /catalog, comentários de catálogo, maturidade de dados, estate scan, valor de dados, ou quiser entender o que seus dados valem para o negócio."
-model: bedrock/anthropic.claude-4-6-sonnet
+model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, databricks_readonly, mcp__databricks__execute_sql, mcp__databricks__get_table_stats_and_schema, mcp__databricks__list_catalogs, mcp__databricks__list_schemas, mcp__databricks__list_tables, fabric_readonly, fabric_official_readonly, fabric_sql_readonly, mcp__fabric_sql__fabric_sql_list_tables, mcp__fabric_sql__fabric_sql_execute_query]
 mcp_servers: [databricks, fabric, fabric_community, fabric_official, fabric_sql]
 kb_domains: [databricks, fabric, governance, industry, shared]

@@ -34,19 +34,20 @@ make health-fabric
 
 ```
 Usuário → main.py / ui/chainlit_app.py
-  └─► Supervisor (claude-opus-4-6, sem MCP direto)
-        ├─► business-analyst   [T3] — intake de requisitos, /brief
-        ├─► sql-expert         [T1] — SQL, schemas, catálogos
-        ├─► spark-expert       [T1] — PySpark, DLT, Delta Lake
-        ├─► python-expert      [T1] — Python puro: pacotes, APIs, CLIs, testes
-        ├─► pipeline-architect [T1] — ETL/ELT cross-platform
-        ├─► migration-expert   [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
+  └─► Supervisor (claude-sonnet-4-6, sem MCP direto)
+        ├─► business-analyst      [T3] — intake de requisitos, /brief
+        ├─► sql-expert            [T1] — SQL, schemas, catálogos
+        ├─► spark-expert          [T1] — PySpark, DLT, Delta Lake
+        ├─► python-expert        [T1] — Python puro: pacotes, APIs, CLIs, testes
+        ├─► pipeline-architect   [T1] — ETL/ELT cross-platform
+        ├─► migration-expert     [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
         ├─► dbt-expert         [T2] — dbt Core: models, testes, snapshots
         ├─► data-quality-steward [T2] — validação, profiling, SLA
         ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
-        ├─► semantic-modeler     [T2] — modelos semânticos, DAX, Genie
-        ├─► business-monitor     [T2] — Q&A interativo sobre alertas (daemon em `scripts/monitor_daemon.py`)
-        └─► geral                [T3] — perguntas conceituais, zero MCP (Haiku 4.5)
+        ├─► semantic-modeler      [T2] — modelos semânticos, DAX, Genie
+        ├─► catalog-intelligence  [T2] — comentários AI, Data Maturity Score, valor de negócio (/catalog)
+        ├─► business-monitor      [T2] — Q&A interativo sobre alertas (daemon em `scripts/monitor_daemon.py`)
+        └─► geral                [T0] — perguntas conceituais, zero MCP (Haiku)
 ```
 
 **Regra central:** O Supervisor **nunca** executa código, acessa MCP ou gera SQL/PySpark.
@@ -100,12 +101,12 @@ tests/            ← pytest — atualizar quando adicionar agentes/MCPs
 ---
 name: nome-do-agente
 description: "Descrição objetiva. Use para: [casos de uso]. Invoque quando: [trigger]."
-model: claude-sonnet-4-6        # ou claude-opus-4-6 para T1 complexo
+model: claude-sonnet-4-6        # T0/geral usa claude-haiku-4-5; T1/T2/T3 usam claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, databricks_readonly, context7_all]
 mcp_servers: [databricks, context7]
 kb_domains: [databricks, sql-patterns]   # injeta index.md automaticamente
 skill_domains: [databricks, patterns]    # injeta índice de SKILL.md disponíveis
-tier: T2                                  # T1 | T2 | T3
+tier: T2                                  # T0 | T1 | T2 | T3
 ---
 # Nome do Agente
 
@@ -116,9 +117,10 @@ tier: T2                                  # T1 | T2 | T3
 **Tiers:**
 | Tier | Modelo padrão | maxTurns | Effort | Uso |
 |------|---------------|----------|--------|-----|
-| T1 | claude-opus-4-6 | 20 | high | Core: pipelines complexos, multi-platform |
+| T0 | claude-haiku-4-5 | 3 | low | Conversacional puro, zero MCP — somente `geral` |
+| T1 | claude-sonnet-4-6 | 20 | high | Core: pipelines complexos, multi-platform |
 | T2 | claude-sonnet-4-6 | 12 | medium | Especializados: qualidade, governança, semântica |
-| T3 | claude-opus-4-6 | 5 | low | Conversacionais: sem MCP, intake de requisitos |
+| T3 | claude-sonnet-4-6 | 5 | low | Conversacionais com tools limitadas |
 
 **Após criar o agente:**
 1. Adicionar ao `SUPERVISOR_SYSTEM_PROMPT` em `agents/prompts/supervisor_prompt.py`
@@ -231,6 +233,8 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | Agente | MCPs Configurados |
 |--------|-------------------|
 | business-analyst | tavily, firecrawl |
+| business-monitor | databricks, fabric_sql, postgres, memory_mcp |
+| catalog-intelligence | databricks, fabric, fabric_community, fabric_official, fabric_sql |
 | spark-expert | context7 |
 | sql-expert | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres |
 | pipeline-architect | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, github, firecrawl, memory_mcp |
@@ -332,8 +336,7 @@ def get_mcp_config() -> dict:
 **Novos campos em `Settings`:** Adicionar com default `""` e documentar com comentário
 explicando: o que é, como obter, plano gratuito se houver.
 
-**Agentes:** Tier T1 usa `claude-opus-4-6`, tiers T2/T3 usam `claude-sonnet-4-6`
-(salvo override via `TIER_MODEL_MAP` no `.env`).
+**Agentes:** Tier T0 usa `claude-haiku-4-5` (frontmatter direto, sem override por TIER_MODEL_MAP). Tiers T1/T2/T3 usam `claude-sonnet-4-6` por padrão (sobrescrito via `TIER_MODEL_MAP` no `.env`).
 
 **Testes:** Ao adicionar um agente, verificar se algum teste em `test_agents.py` precisa
 de atualização. Ao adicionar um MCP sem credenciais, adicionar ao `CREDENTIAL_FREE_MCPS`
@@ -419,7 +422,7 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
 | `registry/_template.md` | — | Template para criar novos agentes |
 
-**13 agentes no registry:** `business-analyst`, `business-monitor`, `data-quality-steward`,
+**13 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
 `dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `pipeline-architect`,
 `python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`.
 
@@ -585,7 +588,7 @@ Estrutura: `kb/<domain>/index.md` + `concepts/*.md` + `patterns/*.md`
 | `fabric/` | cross-platform, data-factory, deployment-pipelines, direct-lake, eventhouse-rti, git-integration, medallion, monitoring-dmv, notebook-manager, workspace-manager |
 | `migration/` | Skill completa de assessment e migração |
 | `patterns/` | data-quality, pipeline-design, spark-patterns, sql-generation, star-schema-design |
-| `python/` | fastapi-patterns, pandas-polars-patterns, pytest-patterns, python-packaging |
+| `python/` | fastapi-patterns, pandas-polars-patterns, pytest-patterns, python-packaging *(async-patterns e cli-patterns planejados — ainda não criados)* |
 
 ---
 
