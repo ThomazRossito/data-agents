@@ -25,7 +25,7 @@ from typing import Any
 
 logger = logging.getLogger("data_agents.summarizer")
 
-_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+_DEFAULT_MODEL = "claude-haiku-4-5"
 _MAX_OUTPUT_TOKENS = 2048
 
 # Preços Haiku 4.5 (USD por 1M tokens) — janeiro/2026.
