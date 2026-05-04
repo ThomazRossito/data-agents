@@ -62,18 +62,18 @@ A meta não é magia — é **remover o atrito entre intenção e execução** q
 
 1. **Não é um ChatOps genérico.** Se a pergunta não envolve dados, plataforma ou engenharia, o agente `geral` responde em Haiku e fim — não há MCP, não há orquestração. Para conversa ampla, use Claude direto.
 2. **Não é um produto SaaS.** Não há multi-tenant, billing, SLA gerenciado. É um repositório para rodar local ou em infra própria do cliente.
-3. **Não faz *fine-tuning* nem treina modelos customizados.** Usa Claude Opus 4.7 e Sonnet 4.6 via API; otimização é via prompt engineering, KBs, caching — não via pesos.
+3. **Não faz *fine-tuning* nem treina modelos customizados.** Usa Claude Sonnet 4.6 e Haiku 4.5 via API Anthropic direta; otimização é via prompt engineering, KBs, caching — não via pesos.
 4. **Não escreve em produção sem aprovação humana.** Hooks bloqueiam `DROP`, `DELETE`, `rm -rf`, `git reset --hard` e 18 outros padrões destrutivos. O Supervisor apresenta plano **antes** de delegação múltipla (S4 da Constituição).
 5. **Não substitui o *data engineer*.** O sistema acelera os 70% mais repetitivos do trabalho — os 30% de julgamento (desenho de schema crítico, decisão entre arquiteturas, SLA de pipeline) **continuam humanos**.
 6. **Não prescreve stack.** Databricks *ou* Fabric *ou* ambos *ou* nenhum — o sistema ativa só o que tem credencial. Não há "modo recomendado" que force uma escolha.
 
 ---
 
-## Estado atual (2026-04-18)
+## Estado atual (2026-05-04)
 
-- **12 agentes**, **13 MCPs** (6 custom, 7 de terceiros), **1026 testes** ✅.
-- Versão `v1.0.0` marcada em `CHANGELOG.md`.
-- Próximos marcos: skills nativas Anthropic 2026 (T5.3), evals automáticos (T6.2), `make bootstrap` (T6.3), dashboard de observabilidade (T6.5).
+- **13 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1100+ testes** ✅.
+- Modelos: Supervisor e especialistas em Sonnet 4.6; `geral` em Haiku 4.5 (T0).
+- Próximos marcos: evals automáticos (T6.2), `make bootstrap` (T6.3), async-patterns e cli-patterns skills (T6.4).
 
 ---
 

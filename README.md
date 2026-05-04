@@ -110,7 +110,7 @@ python main.py         # ou: make run
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion); auto-revisão de DDL |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
 | **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
-| **Geral** | `/geral` | T3 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
+| **Geral** | `/geral` | T0 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 > Refresh de Skills é um script independente — `python scripts/refresh_skills.py` (não é mais um agente).
 
