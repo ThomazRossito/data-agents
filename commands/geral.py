@@ -44,16 +44,13 @@ GERAL_SYSTEM = (
 
 def _geral_model() -> str:
     """
-    Modelo para /geral — usa Haiku (T3) por padrão.
+    Modelo para /geral — sempre Haiku (T0).
 
-    Tier map permite override via TIER_MODEL_MAP no .env.
-    Nunca usa prefixo bedrock/ — /geral faz chamada direta à API Anthropic.
+    T0 é intencionalmente excluído do TIER_MODEL_MAP para que o Haiku
+    não seja sobrescrito acidentalmente por um override global de T1/T2/T3.
     """
     tier_map: dict = getattr(settings, "tier_model_map", {}) or {}
-    # T3 override ou fallback para Haiku
-    model = tier_map.get("T3") or "claude-haiku-4-5-20251001"
-    # Strip bedrock prefix — Anthropic client não aceita
-    return model.replace("bedrock/anthropic.", "").replace("bedrock/", "")
+    return tier_map.get("T0") or "claude-haiku-4-5"
 
 
 def build_prompt_with_history(user_message: str, history: list[dict]) -> str:

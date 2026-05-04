@@ -403,11 +403,11 @@ make health-fabric
 
 | Variável | Default | Descrição |
 |----------|---------|-----------|
-| `DEFAULT_MODEL` | `claude-opus-4-6` | Modelo do Supervisor |
+| `DEFAULT_MODEL` | `claude-sonnet-4-6` | Modelo do Supervisor |
 | `MAX_BUDGET_USD` | 5.0 | Limite de custo por sessão (USD) |
 | `MAX_TURNS` | 50 | Limite de turnos por sessão |
-| `TIER_MODEL_MAP` | `{}` | Override de modelo por tier — ex: `{"T1": "claude-opus-4-6", "T2": "claude-sonnet-4-6", "T3": "claude-opus-4-6"}` |
-| `TIER_TURNS_MAP` | T1=20, T2=12, T3=5 | Override de número máximo de turns por tier |
+| `TIER_MODEL_MAP` | `{}` | Override de modelo por tier — ex: `{"T1": "claude-opus-4-6", "T2": "claude-sonnet-4-6", "T3": "claude-sonnet-4-6"}` (T0 não deve constar — protege o Haiku do `geral`) |
+| `TIER_TURNS_MAP` | T0=3, T1=20, T2=12, T3=5 | Override de número máximo de turns por tier |
 | `TIER_EFFORT_MAP` | high/medium/low | Nível de raciocínio por tier (high, medium, low) |
 | `INJECT_KB_INDEX` | true | Injeção automática de KBs nos agentes |
 | `IDLE_TIMEOUT_MINUTES` | 30 | Reset automático por inatividade |
