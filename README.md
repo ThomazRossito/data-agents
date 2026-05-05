@@ -198,7 +198,7 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente:
 ---
 
 <p align="center">
-  <img src="img/readme/migration_floe_futuristic.png" alt="Arquitetura Data Agents" width="80%">
+  <img src="img/readme/migration_flow_futuristic.png" alt="Arquitetura Data Agents" width="80%">
 </p>
 
 ---
