@@ -239,6 +239,28 @@ commands:
     skills: []
     prompt_template: '{task}'
     display_template: '[bold green]📡 [Monitor] Business Monitor — {agent}[/bold green]'
+  ontology:
+    agent: ontology-engineer
+    doma_mode: express
+    description: |-
+      Envia tarefa de ontologia OWL para o Ontology Engineer (DOMA Express). Use para: design de ontologias OWL 2, import/export de arquivos OWL/RDF/Turtle no Fabric OneLake, conversão entre formatos de serialização, validação de estrutura ontológica e integração de triples com Delta Lake.
+    skills:
+    - kb/semantic-web/index.md
+    - skills/ontology/fabric-ontology-owl/SKILL.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para ontology-engineer. Não crie PRD, não peça aprovação.
+
+      O agente deve:
+      1. Ler `kb/semantic-web/index.md` para entender o escopo atual (OWL) e o roadmap.
+      2. Ler `skills/ontology/fabric-ontology-owl/SKILL.md` para o playbook operacional.
+      3. Identificar o tipo de tarefa: design | import | export | conversão | validação.
+      4. Seguir o protocolo correspondente da SKILL.md.
+      5. Para tarefas que envolvam Fabric OneLake: usar mcp__fabric_official__onelake_* para upload/download de arquivos OWL.
+      6. Para execução de scripts rdflib em escala: gerar o notebook Spark completo e escalar para spark-expert se necessário.
+      7. Nunca armazenar PII como literal na A-Box sem aprovação do governance-auditor.
+
+      Tarefa: {task}
+    display_template: '[bold green]🧬 [DOMA Express] Direcionando para: {agent}[/bold green]'
   catalog:
     agent: catalog-intelligence
     doma_mode: express

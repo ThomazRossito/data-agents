@@ -228,6 +228,7 @@ def print_banner() -> None:
         "[dim]Slash: [bold]/plan[/bold] | [bold]/sql[/bold] | [bold]/spark[/bold] | "
         "[bold]/pipeline[/bold] | [bold]/fabric[/bold] | [bold]/semantic[/bold] | "
         "[bold]/quality[/bold] | [bold]/governance[/bold] | "
+        "[bold]/ontology[/bold] | "
         "[bold]/health[/bold] | [bold]/status[/bold] | [bold]/review[/bold] | "
         "[bold magenta]/party[/bold magenta] [magenta](multi-agente paralelo)[/magenta] | "
         "[bold cyan]/geral[/bold cyan] [cyan](Haiku)[/cyan] | "

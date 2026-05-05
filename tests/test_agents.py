@@ -100,6 +100,7 @@ class TestLoadAllAgents:
             "dbt-expert",
             "migration-expert",
             "catalog-intelligence",
+            "ontology-engineer",
         ]
         for name in expected:
             assert name in agents, f"Agente '{name}' não encontrado no registry"
@@ -881,6 +882,90 @@ class TestCachePrefix:
 
 
 # ─── Testes do migration-expert ──────────────────────────────────────────────
+
+
+class TestOntologyEngineer:
+    """Testes específicos para o ontology-engineer (T2)."""
+
+    def test_ontology_engineer_is_loaded(self):
+        """ontology-engineer deve ser carregado no registry."""
+        agents = load_all_agents()
+        assert "ontology-engineer" in agents, "ontology-engineer não encontrado no registry"
+
+    def test_ontology_engineer_tier_is_t2(self):
+        """ontology-engineer é especializado — deve ser Tier T2."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        assert meta.get("tier") == "T2", (
+            f"ontology-engineer deve ter tier: T2, mas tem: {meta.get('tier')}"
+        )
+
+    def test_ontology_engineer_model_is_sonnet(self):
+        """ontology-engineer é T2 — deve usar Sonnet."""
+        agents = load_all_agents()
+        agent = agents["ontology-engineer"]
+        assert "sonnet" in agent.model.lower(), (
+            f"ontology-engineer deve usar Sonnet, mas usa: {agent.model}"
+        )
+
+    def test_ontology_engineer_has_context7(self):
+        """ontology-engineer precisa de context7 para docs atualizadas de rdflib/owlready2."""
+        agents = load_all_agents()
+        agent = agents["ontology-engineer"]
+        context7_tools = [t for t in (agent.tools or []) if "context7" in t]
+        assert len(context7_tools) > 0, "ontology-engineer deve ter tools do context7"
+
+    def test_ontology_engineer_has_fabric_onelake_tools(self):
+        """ontology-engineer precisa das tools do Fabric Official para OneLake file ops."""
+        agents = load_all_agents()
+        agent = agents["ontology-engineer"]
+        fabric_tools = [t for t in (agent.tools or []) if "fabric" in t]
+        assert len(fabric_tools) > 0, (
+            "ontology-engineer deve ter tools do Fabric para OneLake (upload/download de ontologias)"
+        )
+
+    def test_ontology_engineer_has_no_databricks_platform_tools(self):
+        """ontology-engineer não acessa Databricks diretamente — foco em Fabric OneLake."""
+        agents = load_all_agents()
+        agent = agents["ontology-engineer"]
+        # context7 é permitido (utilitário sem credenciais); Databricks não é necessário
+        databricks_tools = [t for t in (agent.tools or []) if "mcp__databricks__" in t]
+        assert len(databricks_tools) == 0, (
+            f"ontology-engineer não deve ter tools diretas do Databricks: {databricks_tools}"
+        )
+
+    def test_ontology_engineer_has_bash(self):
+        """ontology-engineer deve ter Bash para executar rdflib localmente e converter formatos."""
+        agents = load_all_agents()
+        agent = agents["ontology-engineer"]
+        assert "Bash" in (agent.tools or []), (
+            "ontology-engineer deve ter Bash para execução local de scripts rdflib"
+        )
+
+    def test_ontology_engineer_has_semantic_web_kb_domain(self):
+        """ontology-engineer deve ter semantic-web em kb_domains."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        kb_domains = meta.get("kb_domains", [])
+        assert "semantic-web" in kb_domains, (
+            "ontology-engineer deve ter 'semantic-web' em kb_domains"
+        )
+
+    def test_ontology_engineer_has_ontology_skill_domain(self):
+        """ontology-engineer deve ter ontology em skill_domains."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        skill_domains = meta.get("skill_domains", [])
+        assert "ontology" in skill_domains, "ontology-engineer deve ter 'ontology' em skill_domains"
 
 
 class TestMigrationExpert:

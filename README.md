@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.1.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.2.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Databricks-MCP-FF3621" alt="Databricks">
   <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4" alt="Fabric">
@@ -14,12 +14,12 @@
 ---
 
 <p align="center">
-  <img src="img/readme/author_futuristic.png" alt="Arquitetura Data Agents" width="80%">
+  <img src="img/readme/author_futuristic.png" alt="Autor" width="80%">
 </p>
 
 ---
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **13 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **14 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -45,6 +45,9 @@ conda create -n data-agents python=3.12 && conda activate data-agents
 
 # 3. Instale dependências
 pip install -e ".[dev,ui,monitoring]"
+
+# 3a. (Opcional) Habilitar Ontology Engineer — rdflib + owlready2
+pip install -e ".[ontology]"
 
 # 4. Configure credenciais (escolha uma)
 make bootstrap         # wizard interativo: cria .env mínimo em ~2 min
@@ -99,6 +102,7 @@ python main.py         # ou: make run
 | **Catalog Intelligence** | `/catalog` | T2 | Documenta catálogo com AI, calcula Data Maturity Score, Business Value Engine e alinhamento a indústria |
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion); auto-revisão de DDL |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
+| **Ontology Engineer** | `/ontology` | T2 | Design de ontologias OWL 2, import/export de arquivos OWL/RDF/Turtle no Fabric OneLake, conversão entre formatos, triples → Delta Lake |
 | **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
 | **Geral** | `/geral` | T0 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
@@ -140,6 +144,7 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/semantic <tarefa>` | Modelagem semântica direta |
 | `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | Python puro direto para o python-expert |
+| `/ontology <tarefa>` | Web semântica: design OWL 2, import/export OneLake, conversão de formatos, triples → Delta |
 | `/monitor <pergunta>` | Q&A sobre alertas do daemon de monitoramento de negócio |
 | `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
@@ -167,33 +172,16 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 
 ---
 
-## Protocolo DOMA
+<p align="center">
+  <img src="img/readme/doma_protocol_futuristic.png" alt="Fluxo Doma " width="100%">
+</p>
 
-O Supervisor segue o **Método DOMA** (Data Orchestration Method for Agents) — um protocolo de 7 passos que garante que qualquer tarefa complexa seja bem planejada antes de ser executada:
 
-```
-Passo 0    KB-First: consulta as bases de conhecimento antes de qualquer plano
-Passo 0.5  Clarity Checkpoint: valida se a solicitação está clara o suficiente
-Passo 0.9  Spec-First: seleciona o template adequado para a tarefa
-Passo 1    Planejamento: cria um documento de requisitos (PRD) em output/prd/
-Passo 2    Aprovação: aguarda confirmação antes de executar
-Passo 3    Delegação: aciona os agentes especialistas na ordem certa
-Passo 4    Validação: verifica se o resultado segue as regras da Constituição
-```
+---
 
-Para perguntas simples e comandos diretos (`/sql`, `/spark`, etc.), o Supervisor usa **DOMA Express** — pula o planejamento e delega diretamente.
-
-### Workflows Colaborativos
-
-Para projetos end-to-end, o Supervisor encadeia agentes automaticamente:
-
-| Workflow | Quando usar | Agentes envolvidos |
-|----------|-------------|-------------------|
-| **WF-01** Pipeline End-to-End | "Crie um pipeline Bronze→Gold completo" | Spark → Quality → Semantic → Governance |
-| **WF-02** Star Schema | "Crie a camada Gold em Star Schema" | SQL → Spark → Quality → Semantic |
-| **WF-03** Migração Cross-Platform | "Migre do Databricks para o Fabric" | Architect → SQL → Spark → Quality + Governance |
-| **WF-04** Auditoria de Governança | "Gere um relatório de compliance" | Governance → Quality → Relatório |
-| **WF-05** Migração Relacional→Nuvem | "Migre o SQL Server para Databricks" | Migration Expert → SQL → Spark → Quality + Governance |
+<p align="center">
+  <img src="img/readme/migration_flow_futuristic.png" alt="Fluxo de Migração" width="100%">
+</p>
 
 ---
 
@@ -221,6 +209,47 @@ O agente **catalog-intelligence** transforma catálogos de dados brutos em ativo
 /catalog industry production.silver
 # → 🏭 Verticais detectadas: Financial Services | 3 use cases cobertos, 2 com gap
 ```
+
+---
+
+## Ontology Engineer — Web Semântica no Fabric
+
+O agente **ontology-engineer** traz suporte a **OWL 2** (Web Ontology Language) ao ecossistema de dados — design de ontologias de domínio, import/export de arquivos para o Microsoft Fabric OneLake e integração com Delta Lake para consultas SQL sobre grafos semânticos.
+
+> **Escopo atual:** OWL 2. **Roadmap:** SKOS → SPARQL endpoint → SHACL → Linked Data.
+
+### O que o agente faz
+
+| Tarefa | O que entrega |
+|--------|--------------|
+| **Design de ontologia** | T-Box em Turtle: classes, properties, axiomas, namespace canônico `https://ontologia.empresa.com.br/<dominio>/`, `rdfs:label` pt/en |
+| **Import — arquivo local** | Valida (zero ERRORs obrigatório) → normaliza para Turtle → upload OneLake → notebook Spark → Delta `ontology_triples` com schema canônico |
+| **Import — ontologia pública** | Busca com Tavily → scrape com Firecrawl → valida → upload em `Files/ontologies/raw/` (namespace original preservado) |
+| **Import — item nativo Fabric** | Descobre via `list_items` (tipo Ontology) → inspeciona com `get_item_schema` → exporta via Spark lendo Delta do Lakehouse gerado automaticamente |
+| **Export (Fabric → arquivo)** | Reconstrói grafo rdflib a partir do Delta → serializa em Turtle, RDF/XML, N-Triples ou JSON-LD |
+| **Conversão de formatos** | `.owl` → `.ttl` → `.nt` → `.jsonld` — valida que nenhum triple é perdido na conversão |
+| **Validação** | Detecta namespace placeholder (ERROR), `owl:Thing` como range (ERROR), `owl:Ontology`/`versionInfo`/labels ausentes (WARN) |
+| **Views SQL** | Gera `vw_ontology_classes`, `vw_class_hierarchy`, `vw_ontology_labels` sobre o Delta de triples |
+
+### Fabric Ontology Nativo
+
+O Fabric tem um tipo de item nativo **Ontology** (criado pela UI do Fabric). Quando criado, ele provisiona automaticamente: Lakehouse (`<nome>_lh`), SQL Endpoint, GraphModel (`<nome>_graph`) e opcionalmente um SemanticModel. O agente sabe descobrir e exportar esses itens — use `list_items` (não `onelake_list_files`).
+
+### Exemplo de uso
+
+```
+/ontology crie uma ontologia OWL para o domínio de RH com as classes Employee,
+Department e Role, e gere o notebook Spark para ingestão no Fabric.
+```
+
+O agente: (1) cria o Turtle com namespace `https://ontologia.empresa.com.br/hr/`, (2) valida com zero ERRORs, (3) faz upload para `Files/ontologies/domain/` via MCP OneLake, (4) gera o notebook Spark completo com schema canônico (`graph`, `loaded_at`), (5) cria as views SQL.
+
+### Infraestrutura
+
+- **Bibliotecas:** `rdflib>=7.0`, `owlready2>=0.47` — instalar com `pip install -e ".[ontology]"`
+- **Armazenamento:** OneLake Files (`Files/ontologies/`) + Delta Table `ontology_triples` com colunas `subject`, `predicate`, `object`, `graph`, `datatype`, `lang_tag`, `source_file`, `loaded_at`
+- **MCPs usados:** `fabric_official` (OneLake file ops + workspace items), `fabric_community` (descoberta), `context7` (docs rdflib), `tavily`/`firecrawl` (ontologias públicas W3C, OBO, Schema.org)
+- **Escalação:** `spark-expert` para notebooks em escala, `governance-auditor` para propriedades PII
 
 ---
 

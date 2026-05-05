@@ -218,6 +218,12 @@ def _query_sonnet_for_ids(query: str, index_content: str) -> tuple[list[str], fl
 
             # Extrair JSON array da resposta
             text = text.strip()
+            # Remover bloco de código markdown (```json ... ``` ou ``` ... ```)
+            if text.startswith("```"):
+                lines = text.splitlines()
+                # Remove primeira linha (```json ou ```) e última (```)
+                inner = lines[1:-1] if lines[-1].strip() == "```" else lines[1:]
+                text = "\n".join(inner).strip()
             if text.startswith("["):
                 try:
                     ids = json.loads(text)

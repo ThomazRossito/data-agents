@@ -1,8 +1,8 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 13 agentes especialistas
-em Engenharia, Qualidade, Governança e Análise de Dados.
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 14 agentes especialistas
+em Engenharia, Qualidade, Governança, Análise de Dados e Web Semântica.
 
 ---
 
@@ -46,6 +46,7 @@ Usuário → main.py / ui/chainlit_app.py
         ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
         ├─► semantic-modeler      [T2] — modelos semânticos, DAX, Genie
         ├─► catalog-intelligence  [T2] — comentários AI, Data Maturity Score, valor de negócio (/catalog)
+        ├─► ontology-engineer     [T2] — ontologias OWL 2, import/export OneLake, rdflib, triples → Delta (/ontology)
         ├─► business-monitor      [T2] — Q&A interativo sobre alertas (daemon em `scripts/monitor_daemon.py`)
         └─► geral                [T0] — perguntas conceituais, zero MCP (Haiku)
 ```
@@ -311,6 +312,7 @@ MEMORY_CAPTURE_ENABLED=true
 | `/python <tarefa>` | python-expert | Python puro: pacotes, testes, APIs, CLIs, automação |
 | `/genie <tarefa>` | semantic-modeler | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | semantic-modeler | Criar/publicar AI/BI Dashboards |
+| `/ontology <tarefa>` | ontology-engineer | OWL 2: design, import/export Fabric OneLake, conversão de formatos, triples → Delta |
 | `/monitor <pergunta>` | business-monitor | Q&A sobre alertas do daemon de monitoramento |
 | `/review <artefato>` | Supervisor | Review de código/pipeline |
 | `/health` | — | Status das plataformas configuradas |
@@ -422,8 +424,8 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
 | `registry/_template.md` | — | Template para criar novos agentes |
 
-**13 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
-`dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `pipeline-architect`,
+**14 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
+`dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `ontology-engineer`, `pipeline-architect`,
 `python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`.
 
 ### config/ — Configuração Central
