@@ -472,4 +472,169 @@ g = Graph()
 ```
 
 > **Nota:** Ontologias públicas armazenadas em `Files/ontologies/raw/` — NUNCA em `domain/`.
+
+---
+
+## Padrão 10: Delta Schema → Ontologia OWL (Reverse Mapping)
+
+> Use quando o usuário quer gerar uma ontologia a partir de tabelas Delta Lake existentes
+> no Fabric (Lakehouse). O agente inspeciona o schema das tabelas e infere a T-Box OWL 2.
+
+### Mapeamento de Tipos Spark → XSD
+
+| Tipo Spark / Delta | Tipo XSD OWL |
+|--------------------|-------------|
+| StringType         | xsd:string  |
+| IntegerType        | xsd:integer |
+| LongType           | xsd:long    |
+| DoubleType         | xsd:double  |
+| FloatType          | xsd:float   |
+| BooleanType        | xsd:boolean |
+| DateType           | xsd:date    |
+| TimestampType      | xsd:dateTime|
+| DecimalType(p,s)   | xsd:decimal |
+| ArrayType          | *(ignorar — sem equivalente direto em OWL 2 DL)* |
+| MapType            | *(ignorar — sem equivalente direto em OWL 2 DL)* |
+| StructType aninhado| *(criar classe auxiliar + ObjectProperty)* |
+
+### Convenção de Inferência de Classes e Propriedades
+
+```
+Tabela         → owl:Class  (nome em PascalCase singular, ex: dim_products → Product)
+Coluna simples → owl:DatatypeProperty  (nome camelCase, ex: product_name → hasProductName)
+Coluna *Key / *ID / *Id (FK aparente) → owl:ObjectProperty candidata (inferência heurística)
+Coluna PK (primary key)               → owl:DatatypeProperty + anotação rdfs:comment "primary key"
+```
+
+**Regra de nomeação:**
+- Remover prefixos `dim`, `fact`, `fct`, `lkp`, `ref` do nome da classe
+- Converter `snake_case` → `PascalCase` para classes e `camelCase` para propriedades
+- Prefixar datatype properties com `has` (ex: `hasProductName`, `hasSaleDate`)
+- Object properties: verbo semântico preferido (ex: `soldProduct`, `locatedAt`); se não inferível, usar `relatesTo<NomeClasse>`
+
+### Estratégia de Inferência de Object Properties (FK)
+
+```
+1. Colunas cujo nome termina em Key, ID, Id, _id, _key → candidatas FK
+2. Verificar se o prefixo do nome corresponde a outra tabela do Lakehouse
+   ex: ProductKey em factsales → dimproducts → ObjectProperty Sale → Product
+3. Se correspondência encontrada: criar ObjectProperty + rdfs:domain + rdfs:range explícitos
+4. Se ambígua ou não encontrada: criar como DatatypeProperty (xsd:long) + WARN no relatório
+5. NUNCA usar owl:Thing como range — se range for incerto, omitir range e registrar WARN
+```
+
+### Protocolo de Execução (8 Passos)
+
+```python
+# PASSO 1 — Listar tabelas do Lakehouse alvo
+# tables = mcp__fabric_community__list_tables(
+#     workspace_id   = "<FABRIC_WORKSPACE_ID>",
+#     lakehouse_name = "<nome_lakehouse>"
+# )
+
+# PASSO 2 — Inspecionar schema de cada tabela
+# for table in tables:
+#     schema = mcp__fabric_community__get_table_schema(
+#         workspace_id   = "<FABRIC_WORKSPACE_ID>",
+#         lakehouse_name = "<nome_lakehouse>",
+#         table_name     = table
+#     )
+
+# PASSO 3 — Inferir T-Box
+from rdflib import Graph, Namespace, URIRef, Literal
+from rdflib.namespace import OWL, RDF, RDFS, XSD
+
+DOMAIN = Namespace("https://ontologia.empresa.com.br/<dominio>/")
+g = Graph()
+g.bind("owl", OWL); g.bind("rdfs", RDFS); g.bind("xsd", XSD)
+g.bind("<prefixo>", DOMAIN)
+
+ont_uri = URIRef("https://ontologia.empresa.com.br/<dominio>/")
+g.add((ont_uri, RDF.type, OWL.Ontology))
+g.add((ont_uri, RDFS.label, Literal("<Nome> Ontologia", lang="pt")))
+g.add((ont_uri, OWL.versionInfo, Literal("1.0.0")))
+
+# Para cada tabela → classe; para cada coluna → DatatypeProperty ou ObjectProperty
+
+# PASSO 4 — Validar (zero ERRORs antes de prosseguir)
+# report = validate_owl_structure_from_graph(g)
+# if not report["valid"]:
+#     raise ValueError(f"ERRORs: {[i for i in report['issues'] if i.startswith('ERROR')]}")
+
+# PASSO 5 — Serializar localmente
+# g.serialize(destination="output/<dominio>_ontology.ttl", format="turtle")
+
+# PASSO 6 — Upload do TTL para OneLake Files
+# mcp__fabric_official__onelake_upload_file(
+#     workspace_id     = "<FABRIC_WORKSPACE_ID>",
+#     lakehouse_name   = "<nome_lakehouse>",
+#     destination_path = "ontologies/domain/<dominio>_ontology.ttl",
+#     local_file_path  = "output/<dominio>_ontology.ttl"
+# )
+
+# PASSO 7 — Criar Notebook Spark no workspace Fabric com o código de ingestão Delta
+# O notebook deve conter o código completo de ingestão (rdflib → DataFrame → ontology_triples).
+# Usar mcp__fabric_official__core_create-item para criar o item do tipo Notebook no workspace.
+# O usuário executa o notebook com "Run All" — não há tool MCP para execução remota de notebooks.
+#
+# mcp__fabric_official__core_create-item(
+#     workspace_id  = "<FABRIC_WORKSPACE_ID>",
+#     display_name  = "<dominio>_ontology_ingest",
+#     type          = "Notebook",
+#     definition    = { ... }   # corpo do notebook Spark com o código de ingestão
+# )
+# Consultar mcp__fabric_official__get_item_schema(type="Notebook") para o formato exato do definition.
+
+# PASSO 8 — Criar views SQL no SQL Analytics Endpoint via fabric_sql
+# Executar cada CREATE OR REPLACE VIEW diretamente. Não gerar código apenas — executar.
+#
+# mcp__fabric_sql__fabric_sql_execute(
+#     query = """
+#     CREATE OR REPLACE VIEW vw_<dominio>_classes AS
+#     SELECT subject AS class_uri, ...
+#     FROM <lakehouse>.ontology_triples
+#     WHERE predicate = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+#       AND object    = 'http://www.w3.org/2002/07/owl#Class'
+#       AND subject LIKE 'https://ontologia.empresa.com.br/<dominio>/%'
+#     """
+# )
+#
+# mcp__fabric_sql__fabric_sql_execute(
+#     query = """
+#     CREATE OR REPLACE VIEW vw_<dominio>_properties AS
+#     SELECT t1.subject AS property_uri, t1.object AS property_type, ...
+#     FROM <lakehouse>.ontology_triples t1 ...
+#     WHERE t1.predicate = 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+#       AND t1.object IN ('http://www.w3.org/2002/07/owl#ObjectProperty',
+#                         'http://www.w3.org/2002/07/owl#DatatypeProperty')
+#     """
+# )
+#
+# NOTA: As views só funcionam após o Notebook (Passo 7) ser executado pelo usuário,
+# pois dependem da tabela ontology_triples estar populada.
+```
+
+### O que fica pronto automaticamente vs. manual
+
+| Item | Automático (agente) | Manual (usuário) |
+|------|---------------------|------------------|
+| Arquivo `.ttl` no OneLake Files | Passo 6 | — |
+| Notebook Spark criado no workspace | Passo 7 | — |
+| Tabela Delta `ontology_triples` populada | — | Clicar "Run All" no notebook |
+| Views SQL criadas | Passo 8 | — (executa após o notebook) |
+
+> As views SQL (Passo 8) dependem de `ontology_triples` existir. O agente DEVE informar
+> ao usuário que precisa executar o notebook antes das views ficarem funcionais.
+
+### Relatório Mínimo Esperado
+
+O agente deve produzir ao final um `output/<dominio>_ontology.md` com:
+- Tabela origem → Classe OWL gerada
+- Colunas → Properties (tipo, range XSD/classe)
+- Object Properties inferidas (FK encontradas)
+- WARNs de colunas ignoradas (ArrayType, ambíguas) ou FKs não resolvidas
+- Contagem: classes, datatype properties, object properties, triples totais
+- Status de cada passo do protocolo (1–8)
+- Instrução explícita ao usuário: executar o notebook `<dominio>_ontology_ingest` no Fabric
+
 > `domain/` é reservado para ontologias de domínio criadas pelo projeto.

@@ -139,6 +139,7 @@ FABRIC_OFFICIAL_MCP_TOOLS = [
     "mcp__fabric_official__get_workspace",
     "mcp__fabric_official__list_items",
     "mcp__fabric_official__get_item",
+    "mcp__fabric_official__core_create-item",
     # API Specs & Best Practices (documentação local)
     "mcp__fabric_official__list_workload_types",
     "mcp__fabric_official__get_workload_api_spec",
@@ -147,14 +148,14 @@ FABRIC_OFFICIAL_MCP_TOOLS = [
     "mcp__fabric_official__get_best_practices",
 ]
 
-# Subset readonly do oficial — exclui as 3 operações destrutivas em OneLake
-# (upload_file, delete_file, create_directory). Usado pelo alias
-# `fabric_official_readonly` em agents/loader.py para agentes com escopo
-# de leitura (sql-expert, governance-auditor, data-quality-steward).
+# Subset readonly do oficial — exclui operações de escrita/criação.
+# Usado pelo alias `fabric_official_readonly` em agents/loader.py para agentes
+# com escopo de leitura (sql-expert, governance-auditor, data-quality-steward).
 _DESTRUCTIVE_OFFICIAL_SUFFIXES = (
     "onelake_upload_file",
     "onelake_delete_file",
     "onelake_create_directory",
+    "core_create-item",
 )
 FABRIC_OFFICIAL_MCP_READONLY_TOOLS = [
     t for t in FABRIC_OFFICIAL_MCP_TOOLS if not t.endswith(_DESTRUCTIVE_OFFICIAL_SUFFIXES)
