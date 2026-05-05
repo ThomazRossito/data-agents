@@ -957,6 +957,25 @@ class TestOntologyEngineer:
             "ontology-engineer deve ter 'semantic-web' em kb_domains"
         )
 
+    def test_ontology_engineer_has_fabric_sql_for_view_creation(self):
+        """ontology-engineer precisa de fabric_sql para criar views SQL diretamente no Fabric."""
+        agents = load_all_agents()
+        agent = agents["ontology-engineer"]
+        fabric_sql_tools = [t for t in (agent.tools or []) if "fabric_sql" in t]
+        assert len(fabric_sql_tools) > 0, (
+            "ontology-engineer deve ter tools do fabric_sql para executar CREATE VIEW "
+            "diretamente no SQL Analytics Endpoint — não apenas gerar o código"
+        )
+
+    def test_fabric_official_has_core_create_item(self):
+        """fabric_official deve ter core_create-item para criar Notebooks no workspace."""
+        from mcp_servers.fabric.server_config import FABRIC_OFFICIAL_MCP_TOOLS
+
+        assert "mcp__fabric_official__core_create-item" in FABRIC_OFFICIAL_MCP_TOOLS, (
+            "FABRIC_OFFICIAL_MCP_TOOLS deve incluir core_create-item "
+            "(cria Notebooks, Lakehouses e outros itens nativos do Fabric)"
+        )
+
     def test_ontology_engineer_has_ontology_skill_domain(self):
         """ontology-engineer deve ter ontology em skill_domains."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR

@@ -139,6 +139,7 @@ FABRIC_OFFICIAL_MCP_TOOLS = [
     "mcp__fabric_official__get_workspace",
     "mcp__fabric_official__list_items",
     "mcp__fabric_official__get_item",
+    "mcp__fabric_official__core_create-item",
     # API Specs & Best Practices (documentação local)
     "mcp__fabric_official__list_workload_types",
     "mcp__fabric_official__get_workload_api_spec",

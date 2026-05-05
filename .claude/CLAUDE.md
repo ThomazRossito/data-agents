@@ -244,6 +244,7 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | governance-auditor | databricks, fabric, fabric_community, tavily, postgres, memory_mcp |
 | semantic-modeler | databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7 |
 | migration-expert | migration_source, databricks, fabric, fabric_sql, context7 |
+| ontology-engineer | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql |
 | python-expert | context7 |
 | geral | *(nenhum — resposta direta sem MCP)* |
 
