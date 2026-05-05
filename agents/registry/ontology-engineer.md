@@ -7,6 +7,7 @@ mcp_servers: [context7, tavily, firecrawl, fabric, fabric_community, fabric_offi
 kb_domains: [semantic-web, fabric, governance]
 skill_domains: [ontology]
 tier: T2
+permission_mode: bypassPermissions
 output_budget: "80-300 linhas"
 ---
 # Ontology Engineer

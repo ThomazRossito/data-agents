@@ -158,6 +158,7 @@ class AgentMeta:
     kb_domains: list[str] = field(default_factory=list)
     max_turns: int | None = None
     effort: str | None = None
+    permission_mode: str | None = None
     path: Path = field(default_factory=Path)
 
 
@@ -204,6 +205,7 @@ def preload_registry(
                 kb_domains=metadata.get("kb_domains", []),
                 max_turns=int(max_turns_raw) if max_turns_raw is not None else None,
                 effort=str(effort_raw) if effort_raw is not None else None,
+                permission_mode=metadata.get("permission_mode"),
                 path=path,
             )
         except Exception as e:
@@ -498,6 +500,21 @@ def load_agent(
         agent_effort = cast(Literal["low", "medium", "high", "max"], tier_effort_map[tier])
         logger.debug(f"Agente '{name}': effort={agent_effort} (tier={tier} map)")
 
+    # Permission mode por agente (Ch. 5 — Agent Loop):
+    # Controla se o agente pode chamar tools de escrita sem confirmação do usuário.
+    # Prioridade: frontmatter > None (herda o modo global do Supervisor).
+    # Valores válidos: 'default', 'acceptEdits', 'plan', 'bypassPermissions', 'dontAsk', 'auto'
+    permission_mode_raw = metadata.get("permission_mode")
+    agent_permission_mode: (
+        Literal["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"] | None
+    ) = None
+    if permission_mode_raw is not None:
+        agent_permission_mode = cast(
+            Literal["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"],
+            str(permission_mode_raw),
+        )
+        logger.debug(f"Agente '{name}': permissionMode={agent_permission_mode} (frontmatter)")
+
     # Cache prefix injection (Ch. 9 — Fork Agents & Prompt Cache):
     # Prepend um bloco idêntico byte-a-byte ao topo de todos os agentes.
     # O Claude API detecta o prefixo comum e o cacheia, evitando reprocessamento.
@@ -562,12 +579,14 @@ def load_agent(
         mcpServers=mcp_servers if mcp_servers else None,
         maxTurns=agent_max_turns,
         effort=agent_effort,
+        permissionMode=agent_permission_mode,
     )
 
     logger.info(
         f"Agente carregado: '{name}' | tier={tier} | model={model} | "
         f"tools={len(tools)} | mcp_servers={len(mcp_servers)} | "
         f"maxTurns={agent_max_turns} | effort={agent_effort} | "
+        f"permissionMode={agent_permission_mode} | "
         f"kb_injected={len(kb_domains) if kb_content else 0} | "
         f"skills_injected={len(skill_domains) if skills_content else 0} | "
         f"cache_prefix={bool(prefix)}"
