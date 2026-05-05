@@ -1,6 +1,7 @@
 name: CI — Lint, Type-check & Tests
 
 on:
+  workflow_dispatch:
   push:
     branches: ["main", "develop"]
     paths:
