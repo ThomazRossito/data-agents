@@ -572,18 +572,28 @@ g.add((ont_uri, OWL.versionInfo, Literal("1.0.0")))
 #     local_file_path  = "output/<dominio>_ontology.ttl"
 # )
 
-# PASSO 7 — Criar Notebook Spark no workspace Fabric com o código de ingestão Delta
-# O notebook deve conter o código completo de ingestão (rdflib → DataFrame → ontology_triples).
-# Usar mcp__fabric_official__core_create-item para criar o item do tipo Notebook no workspace.
-# O usuário executa o notebook com "Run All" — não há tool MCP para execução remota de notebooks.
+# PASSO 7 — Gerar arquivo .ipynb localmente com o código de ingestão Delta
 #
-# mcp__fabric_official__core_create-item(
-#     workspace_id  = "<FABRIC_WORKSPACE_ID>",
-#     display_name  = "<dominio>_ontology_ingest",
-#     type          = "Notebook",
-#     definition    = { ... }   # corpo do notebook Spark com o código de ingestão
-# )
-# Consultar mcp__fabric_official__get_item_schema(type="Notebook") para o formato exato do definition.
+# LIMITAÇÃO CONHECIDA: mcp__fabric_official__core_create-item para notebooks requer
+# o payload definition encodado em base64 no formato IPYNB, que o MCP oficial não
+# encoda automaticamente. Tentativas de criar notebooks via MCP resultam em erro de payload.
+#
+# ALTERNATIVA CORRETA: gerar o arquivo .ipynb localmente e instruir o usuário a
+# importá-lo no Fabric (Home → Import Notebook → selecionar o arquivo).
+#
+# O agente deve:
+# 1. Gerar o arquivo output/<dominio>_ontology_ingest.ipynb com o código Spark completo
+# 2. Informar ao usuário: "Importe o notebook no Fabric: Home → Import Notebook →
+#    selecione output/<dominio>_ontology_ingest.ipynb → Execute Run All"
+#
+# Estrutura mínima do .ipynb:
+# {
+#   "nbformat": 4, "nbformat_minor": 2,
+#   "metadata": {"language_info": {"name": "python"}, "kernelspec": {"name": "synapse_pyspark"}},
+#   "cells": [
+#     {"cell_type": "code", "source": ["# %pip install rdflib==7.1.1\n", ...], "outputs": [], "metadata": {}}
+#   ]
+# }
 
 # PASSO 8 — Criar views SQL no SQL Analytics Endpoint via fabric_sql
 # Executar cada CREATE OR REPLACE VIEW diretamente. Não gerar código apenas — executar.
@@ -619,12 +629,17 @@ g.add((ont_uri, OWL.versionInfo, Literal("1.0.0")))
 | Item | Automático (agente) | Manual (usuário) |
 |------|---------------------|------------------|
 | Arquivo `.ttl` no OneLake Files | Passo 6 | — |
-| Notebook Spark criado no workspace | Passo 7 | — |
-| Tabela Delta `ontology_triples` populada | — | Clicar "Run All" no notebook |
+| Arquivo `.ipynb` gerado localmente | Passo 7 | — |
+| Notebook importado no workspace Fabric | — | Home → Import Notebook → selecionar o `.ipynb` |
+| Tabela Delta `ontology_triples` populada | — | Clicar "Run All" no notebook importado |
 | Views SQL criadas | Passo 8 | — (executa após o notebook) |
 
+> **Limitação de API:** `core_create-item` para notebooks requer payload base64 IPYNB que
+> o MCP oficial não encoda automaticamente. O agente gera o `.ipynb` localmente — o usuário
+> importa no Fabric em 3 cliques (Home → Import Notebook → arquivo).
+>
 > As views SQL (Passo 8) dependem de `ontology_triples` existir. O agente DEVE informar
-> ao usuário que precisa executar o notebook antes das views ficarem funcionais.
+> ao usuário que precisa importar e executar o notebook antes das views ficarem funcionais.
 
 ### Relatório Mínimo Esperado
 
