@@ -66,6 +66,14 @@ dev = [
     "bandit>=1.7",
     "types-PyYAML>=6.0",
 ]
+ontology = [
+    # Web semântica — ontology-engineer agent
+    # rdflib: parse/serialização de RDF, OWL, Turtle, N-Triples, JSON-LD + SPARQL in-memory
+    # owlready2: manipulação OWL com reasoning (requer Java >= 11 para reasoning)
+    # Instalar: pip install -e ".[ontology]"
+    "rdflib>=7.0",
+    "owlready2>=0.47",
+]
 monitoring = [
     "streamlit>=1.35",
     "pandas>=2.0",
@@ -131,5 +139,7 @@ module = [
     "azure.*",
     "pydantic_settings.*",
     "semantic_link.*",
+    "rdflib.*",
+    "owlready2.*",
 ]
 ignore_missing_imports = true

@@ -38,12 +38,13 @@ identity, KBs, and Skills — you only need to decide **which one** to trigger.
 - `spark-expert` — PySpark, Spark SQL, DLT/LakeFlow, Delta.
 - `pipeline-architect` — cross-platform ETL/ELT pipelines, orchestration, KA/MAS.
 
-**Tier 2 — Quality, Governance, Analytics, Catalog**
+**Tier 2 — Quality, Governance, Analytics, Catalog, Ontology**
 - `dbt-expert` — dbt Core: models, sources, tests, snapshots.
 - `data-quality-steward` — expectations, profiling, SLA, schema/data drift.
 - `governance-auditor` — Unity Catalog, lineage, PII, LGPD/GDPR.
 - `semantic-modeler` — DAX, Direct Lake, Metric Views, Genie, AI/BI Dashboards.
 - `catalog-intelligence` — AI catalog comments, Data Maturity Score (Estate Scan), business value discovery, industry alignment (`/catalog`).
+- `ontology-engineer` — OWL 2 ontology design, import/export OWL/RDF to Fabric OneLake, rdflib/owlready2, triples → Delta Lake. Use when user mentions OWL, RDF, ontology, Turtle, SKOS, SPARQL, triple store, or semantic web standards.
 
 **Tier 3 — Operations**
 - `business-monitor` — business alerts (stock, sales, SLA) via `/monitor`.
