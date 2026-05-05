@@ -957,6 +957,18 @@ class TestOntologyEngineer:
             "ontology-engineer deve ter 'semantic-web' em kb_domains"
         )
 
+    def test_ontology_engineer_has_bypass_permissions(self):
+        """ontology-engineer precisa de bypassPermissions para fazer uploads no OneLake sem bloqueio."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
+
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        assert meta.get("permission_mode") == "bypassPermissions", (
+            "ontology-engineer deve ter permission_mode: bypassPermissions — "
+            "sem isso o upload para OneLake e execução de SQL são bloqueados pelo SDK"
+        )
+
     def test_ontology_engineer_has_fabric_sql_for_view_creation(self):
         """ontology-engineer precisa de fabric_sql para criar views SQL diretamente no Fabric."""
         agents = load_all_agents()

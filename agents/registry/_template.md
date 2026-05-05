@@ -6,6 +6,7 @@ tools: [Read, Grep, Glob, Write]
 mcp_servers: []
 kb_domains: []
 tier: T1
+# permission_mode: bypassPermissions  # descomente para agentes que fazem writes em sistemas externos (OneLake, SQL, APIs)
 ---
 # Agent Name
 
