@@ -197,6 +197,12 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente:
 
 ---
 
+<p align="center">
+  <img src="img/readme/migration_floe_futuristic.png" alt="Arquitetura Data Agents" width="80%">
+</p>
+
+---
+
 ## Catalog Intelligence
 
 O agente **catalog-intelligence** transforma catálogos de dados brutos em ativos documentados, avaliados e alinhados ao negócio. Opera sobre Unity Catalog (Databricks) e Fabric Lakehouse.
