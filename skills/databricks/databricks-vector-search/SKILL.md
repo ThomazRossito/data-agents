@@ -1,7 +1,6 @@
 ---
 name: databricks-vector-search
-updated_at: 2026-04-23
-source: web_search
+description: "Patterns for Databricks Vector Search: create endpoints and indexes, query with filters, manage embeddings. Use when building RAG applications, semantic search, or similarity matching. Covers both storage-optimized and standard endpoints."
 ---
 
 # Databricks Vector Search
@@ -19,7 +18,7 @@ Use this skill when:
 
 ## Overview
 
-Databricks Vector Search (Mosaic AI Vector Search, GA) provides managed vector similarity search with automatic embedding generation and Delta Lake integration.
+Databricks Vector Search provides managed vector similarity search with automatic embedding generation and Delta Lake integration.
 
 | Component | Description |
 |-----------|-------------|
@@ -30,18 +29,10 @@ Databricks Vector Search (Mosaic AI Vector Search, GA) provides managed vector s
 
 ## Endpoint Types
 
-> ⚠️ Breaking change em março/2026: Empty endpoints não geram mais cobrança. A cobrança começa apenas após a criação do primeiro índice, e cessa automaticamente 24h após a exclusão do último índice.
-
 | Type | Latency | Capacity | Cost | Best For |
 |------|---------|----------|------|----------|
-| **Standard** | 20-50ms | 320M vectors (768 dim) | Higher | Real-time, low-latency; suporta `min_qps` (Beta) |
-| **Storage-Optimized** | ~250ms | 1B+ vectors (768 dim) | Menor | Large-scale, cost-sensitive; 10-20x faster indexing |
-
-**Notas de endpoint:**
-- Storage-Optimized está em **Public Preview**.
-- `Continuous sync` e `columns_to_sync` **não são suportados** em Storage-Optimized.
-- Embedding dimension em Storage-Optimized deve ser **divisível por 16**.
-- Standard endpoints suportam `min_qps` (Beta) para capacity scaling automático por QPS mínimo desejado.
+| **Standard** | 20-50ms | 320M vectors (768 dim) | Higher | Real-time, low-latency |
+| **Storage-Optimized** | 300-500ms | 1B+ vectors (768 dim) | 7x lower | Large-scale, cost-sensitive |
 
 ## Index Types
 
@@ -50,76 +41,57 @@ Databricks Vector Search (Mosaic AI Vector Search, GA) provides managed vector s
 | **Delta Sync (managed)** | Databricks computes | Auto from Delta | Easiest setup |
 | **Delta Sync (self-managed)** | You provide | Auto from Delta | Custom embeddings |
 | **Direct Access** | You provide | Manual CRUD | Real-time updates |
-| **Full-Text Search (Beta)** | None (keyword BM25) | Triggered only | Keyword-only, sem embeddings; só Storage-Optimized |
-
-## Search Modes
-
-| Mode | `query_type` | Disponibilidade |
-|------|-------------|----------------|
-| ANN (vector similarity) | `"ANN"` (default) | Standard + Storage-Optimized |
-| Hybrid (ANN + BM25) | `"HYBRID"` | Standard + Storage-Optimized |
-| Full-text keyword | `"FULL_TEXT"` (Beta) | Standard + Storage-Optimized |
-| Dedicated Full-Text Index | N/A (index-level) | Storage-Optimized + TRIGGERED only |
 
 ## Quick Start
 
 ### Create Endpoint
 
 ```python
-from databricks.vector_search.client import VectorSearchClient
+from databricks.sdk import WorkspaceClient
 
-vsc = VectorSearchClient()
+w = WorkspaceClient()
 
 # Create a standard endpoint
-endpoint = vsc.create_endpoint(
+endpoint = w.vector_search_endpoints.create_endpoint(
     name="my-vs-endpoint",
     endpoint_type="STANDARD"  # or "STORAGE_OPTIMIZED"
 )
-# Ou aguardar o endpoint ficar online:
-endpoint = vsc.create_endpoint_and_wait(name="my-vs-endpoint", endpoint_type="STANDARD")
+# Note: Endpoint creation is asynchronous; check status with get_endpoint()
 ```
-
-> **Tip:** use `vsc.endpoint_exists("my-vs-endpoint")` para checagem idempotente antes de criar.
 
 ### Create Delta Sync Index (Managed Embeddings)
 
 ```python
-from databricks.vector_search.client import VectorSearchClient
-
-vsc = VectorSearchClient()
-
 # Source table must have: primary key column + text column
-# Standard endpoints: source table needs Change Data Feed enabled
-index = vsc.create_delta_sync_index(
+index = w.vector_search_indexes.create_index(
+    name="catalog.schema.my_index",
     endpoint_name="my-vs-endpoint",
-    index_name="catalog.schema.my_index",
-    source_table_name="catalog.schema.documents",
     primary_key="id",
-    pipeline_type="TRIGGERED",       # ou "CONTINUOUS" (não suportado em Storage-Optimized)
-    embedding_source_column="content",
-    embedding_model_endpoint_name="databricks-gte-large-en",
-    # Opcional: modelo separado para queries (ex.: menor latência)
-    model_endpoint_name_for_query="databricks-gte-large-en"
+    index_type="DELTA_SYNC",
+    delta_sync_index_spec={
+        "source_table": "catalog.schema.documents",
+        "embedding_source_columns": [
+            {
+                "name": "content",  # Text column to embed
+                "embedding_model_endpoint_name": "databricks-gte-large-en"
+            }
+        ],
+        "pipeline_type": "TRIGGERED"  # or "CONTINUOUS"
+    }
 )
 ```
-
-> **Nota (`model_endpoint_name_for_query`):** permite usar um endpoint de embedding de alta throughput na ingestão e um endpoint de menor latência nas queries. Se omitido, o mesmo modelo é usado em ambos.
 
 ### Query Index
 
 ```python
-from databricks.vector_search.client import VectorSearchClient
-
-vsc = VectorSearchClient()
-index = vsc.get_index(endpoint_name="my-vs-endpoint", index_name="catalog.schema.my_index")
-
-results = index.similarity_search(
-    query_text="What is machine learning?",
+results = w.vector_search_indexes.query_index(
+    index_name="catalog.schema.my_index",
     columns=["id", "content", "metadata"],
+    query_text="What is machine learning?",
     num_results=5
 )
 
-for doc in results["result"]["data_array"]:
+for doc in results.result.data_array:
     score = doc[-1]  # Similarity score is last column
     print(f"Score: {score}, Content: {doc[1][:100]}...")
 ```
@@ -129,8 +101,8 @@ for doc in results["result"]["data_array"]:
 ### Create Storage-Optimized Endpoint
 
 ```python
-# Para deployments large-scale e cost-effective
-endpoint = vsc.create_endpoint_and_wait(
+# For large-scale, cost-effective deployments
+endpoint = w.vector_search_endpoints.create_endpoint(
     name="my-storage-endpoint",
     endpoint_type="STORAGE_OPTIMIZED"
 )
@@ -140,14 +112,21 @@ endpoint = vsc.create_endpoint_and_wait(
 
 ```python
 # Source table must have: primary key + embedding vector column
-index = vsc.create_delta_sync_index(
+index = w.vector_search_indexes.create_index(
+    name="catalog.schema.my_index",
     endpoint_name="my-vs-endpoint",
-    index_name="catalog.schema.my_index",
-    source_table_name="catalog.schema.documents",
     primary_key="id",
-    pipeline_type="TRIGGERED",
-    embedding_vector_column="embedding",   # coluna com embeddings pré-computados
-    embedding_dimension=1024
+    index_type="DELTA_SYNC",
+    delta_sync_index_spec={
+        "source_table": "catalog.schema.documents",
+        "embedding_vector_columns": [
+            {
+                "name": "embedding",  # Pre-computed embedding column
+                "embedding_dimension": 768
+            }
+        ],
+        "pipeline_type": "TRIGGERED"
+    }
 )
 ```
 
@@ -155,95 +134,66 @@ index = vsc.create_delta_sync_index(
 
 ```python
 import json
-from databricks.vector_search.client import VectorSearchClient
-
-vsc = VectorSearchClient()
 
 # Create index for manual CRUD
-index = vsc.create_direct_access_index(
+index = w.vector_search_indexes.create_index(
+    name="catalog.schema.direct_index",
     endpoint_name="my-vs-endpoint",
-    index_name="catalog.schema.direct_index",
     primary_key="id",
-    embedding_vector_column="embedding",
-    embedding_dimension=1024,
-    schema={
-        "id": "string",
-        "text": "string",
-        "embedding": "array<float>",
-        "metadata": "string"
+    index_type="DIRECT_ACCESS",
+    direct_access_index_spec={
+        "embedding_vector_columns": [
+            {"name": "embedding", "embedding_dimension": 768}
+        ],
+        "schema_json": json.dumps({
+            "id": "string",
+            "text": "string",
+            "embedding": "array<float>",
+            "metadata": "string"
+        })
     }
 )
 
 # Upsert data
-index.upsert([
-    {"id": "1", "text": "Hello", "embedding": [0.1, 0.2, ...], "metadata": "doc1"},
-    {"id": "2", "text": "World", "embedding": [0.3, 0.4, ...], "metadata": "doc2"},
-])
+w.vector_search_indexes.upsert_data_vector_index(
+    index_name="catalog.schema.direct_index",
+    inputs_json=json.dumps([
+        {"id": "1", "text": "Hello", "embedding": [0.1, 0.2, ...], "metadata": "doc1"},
+        {"id": "2", "text": "World", "embedding": [0.3, 0.4, ...], "metadata": "doc2"},
+    ])
+)
 
 # Delete data
-index.delete(["1", "2"])
-```
-
-### Standard Endpoint — High QPS (Beta)
-
-```python
-# min_qps: apenas Standard endpoints; Storage-Optimized retorna erro
-endpoint = vsc.create_endpoint(
-    name="high-throughput-endpoint",
-    endpoint_type="STANDARD",
-    min_qps=1000  # Beta — sujeito a mudanças
+w.vector_search_indexes.delete_data_vector_index(
+    index_name="catalog.schema.direct_index",
+    primary_keys=["1", "2"]
 )
 ```
 
 ### Query with Embedding Vector
 
 ```python
-results = index.similarity_search(
-    query_vector=[0.1, 0.2, 0.3, ...],  # Seu vetor de 1024 dimensões
+# When you have pre-computed query embedding
+results = w.vector_search_indexes.query_index(
+    index_name="catalog.schema.my_index",
     columns=["id", "text"],
+    query_vector=[0.1, 0.2, 0.3, ...],  # Your 768-dim vector
     num_results=10
 )
 ```
 
 ### Hybrid Search (Semantic + Keyword)
 
-Hybrid search combina vector similarity (ANN) com BM25 keyword scoring. Use quando queries contêm termos exatos que devem ser encontrados — SKUs, códigos de erro, nomes próprios, terminologia técnica. Veja [search-modes.md](search-modes.md) para guia de decisão entre ANN e hybrid.
+Hybrid search combines vector similarity (ANN) with BM25 keyword scoring. Use it when queries contain exact terms that must match — SKUs, error codes, proper nouns, or technical terminology — where pure semantic search might miss keyword-specific results. See [search-modes.md](search-modes.md) for detailed guidance on choosing between ANN and hybrid search.
 
 ```python
-results = index.similarity_search(
-    query_text="SPARK-12345 executor memory error",
+# Combines vector similarity with keyword matching
+results = w.vector_search_indexes.query_index(
+    index_name="catalog.schema.my_index",
     columns=["id", "content"],
+    query_text="SPARK-12345 executor memory error",
     query_type="HYBRID",
     num_results=10
-)
-```
-
-### Full-Text Search / Keyword-Only Search (Beta)
-
-> ⚠️ Nova feature (Beta): `query_type="FULL_TEXT"` disponível em ambos os tipos de endpoint a partir de 2025. Retorna até 200 resultados baseados em keyword matching sem embeddings.
-
-```python
-# Full-text keyword search em índice existente (standard ou storage-optimized)
-results = index.similarity_search(
-    query_text="executor memory error",
-    columns=["id", "content"],
-    query_type="FULL_TEXT",
-    num_results=20
-)
-```
-
-#### Índice dedicado Full-Text (sem embeddings, só Storage-Optimized + TRIGGERED)
-
-```python
-# Requer: storage-optimized endpoint + pipeline_type="TRIGGERED"
-# NÃO inclui embedding_source_column, embedding_vector_column nem embedding_dimension
-index = vsc.create_delta_sync_index(
-    endpoint_name="my-storage-endpoint",
-    index_name="catalog.schema.fulltext_index",
-    source_table_name="catalog.schema.documents",
-    primary_key="id",
-    pipeline_type="TRIGGERED"
-    # Sem colunas de embedding → índice keyword-only BM25
 )
 ```
 
@@ -252,18 +202,19 @@ index = vsc.create_delta_sync_index(
 ### Standard Endpoint Filters (Dictionary)
 
 ```python
-# filters_json usa formato de dicionário serializado como JSON string
-results = index.similarity_search(
-    query_text="machine learning",
+# filters_json uses dictionary format
+results = w.vector_search_indexes.query_index(
+    index_name="catalog.schema.my_index",
     columns=["id", "content"],
+    query_text="machine learning",
     num_results=10,
-    filters={"category": "ai", "status": ["active", "pending"]}
+    filters_json='{"category": "ai", "status": ["active", "pending"]}'
 )
 ```
 
-### Storage-Optimized Filters (SQL-like string)
+### Storage-Optimized Filters (SQL-like)
 
-Storage-Optimized endpoints usam sintaxe SQL-like via parâmetro `filters` (string):
+Storage-Optimized endpoints use SQL-like filter syntax via the `databricks-vectorsearch` package's `filters` parameter (accepts a string):
 
 ```python
 from databricks.vector_search.client import VectorSearchClient
@@ -271,7 +222,7 @@ from databricks.vector_search.client import VectorSearchClient
 vsc = VectorSearchClient()
 index = vsc.get_index(endpoint_name="my-storage-endpoint", index_name="catalog.schema.my_index")
 
-# SQL-like filter syntax para storage-optimized
+# SQL-like filter syntax for storage-optimized endpoints
 results = index.similarity_search(
     query_text="machine learning",
     columns=["id", "content"],
@@ -279,45 +230,28 @@ results = index.similarity_search(
     filters="category = 'ai' AND status IN ('active', 'pending')"
 )
 
-# Mais exemplos:
+# More filter examples
 # filters="price > 100 AND price < 500"
 # filters="department LIKE 'eng%'"
 # filters="created_at >= '2024-01-01'"
-# filters="language = 'en' AND country = 'us'"
 ```
-
-> **Nota:** Para Storage-Optimized, os resultados são "over-fetched" e o filtro é aplicado sobre os resultados buscados. É possível que não haja resultados mesmo com matches no dataset se os scores desses documentos não estiverem entre os top-k.
 
 ### Trigger Index Sync
 
 ```python
-# Para TRIGGERED pipeline type, sync manual
-index.sync()
-
-# Ou via SDK client:
-vsc.get_index(endpoint_name="my-vs-endpoint", index_name="catalog.schema.my_index").sync()
+# For TRIGGERED pipeline type, manually sync
+w.vector_search_indexes.sync_index(
+    index_name="catalog.schema.my_index"
+)
 ```
 
 ### Scan All Index Entries
 
 ```python
-# Recuperar todos os vetores (debugging/export)
-scan_result = index.scan(num_results=100)
-```
-
-### Save and Sync Computed Embeddings (writeback)
-
-```python
-# Persiste embeddings gerados automaticamente em UC table: {index_name}_writeback_table
-index = vsc.create_delta_sync_index(
-    endpoint_name="my-vs-endpoint",
+# Retrieve all vectors (for debugging/export)
+scan_result = w.vector_search_indexes.scan_index(
     index_name="catalog.schema.my_index",
-    source_table_name="catalog.schema.documents",
-    primary_key="id",
-    pipeline_type="TRIGGERED",
-    embedding_source_column="content",
-    embedding_model_endpoint_name="databricks-gte-large-en",
-    sync_computed_embeddings=True   # salva embeddings em UC table _writeback_table
+    num_results=100
 )
 ```
 
@@ -325,9 +259,9 @@ index = vsc.create_delta_sync_index(
 
 | Topic | File | Description |
 |-------|------|-------------|
-| Index Types | [index-types.md](index-types.md) | Detailed comparison of Delta Sync (managed/self-managed) vs Direct Access vs Full-Text |
+| Index Types | [index-types.md](index-types.md) | Detailed comparison of Delta Sync (managed/self-managed) vs Direct Access |
 | End-to-End RAG | [end-to-end-rag.md](end-to-end-rag.md) | Complete walkthrough: source table → endpoint → index → query → agent integration |
-| Search Modes | [search-modes.md](search-modes.md) | When to use semantic (ANN) vs hybrid vs full-text search, decision guide |
+| Search Modes | [search-modes.md](search-modes.md) | When to use semantic (ANN) vs hybrid search, decision guide |
 | Operations | [troubleshooting-and-operations.md](troubleshooting-and-operations.md) | Monitoring, cost optimization, capacity planning, migration |
 
 ## CLI Quick Reference
@@ -362,45 +296,32 @@ databricks vector-search indexes delete-index \
 
 | Issue | Solution |
 |-------|----------|
-| **Index sync slow** | Use Storage-Optimized endpoints (10-20x faster indexing) |
+| **Index sync slow** | Use Storage-Optimized endpoints (20x faster indexing) |
 | **Query latency high** | Use Standard endpoint for <100ms latency |
-| **filters_json not working** | Storage-Optimized usa SQL-like string via `filters`; Standard aceita dict |
-| **Embedding dimension mismatch** | Verifique que query e index usam mesma dimensão |
-| **Index not updating** | Cheque `pipeline_type`; use `index.sync()` para TRIGGERED |
-| **Out of capacity** | Upgrade para Storage-Optimized (1B+ vectors) |
-| **`query_vector` truncado por MCP tool** | MCP tool calls serializam arrays como JSON e podem truncar vetores grandes (ex.: 1024-dim). Prefira `query_text` (para managed embedding indexes) ou use SDK/CLI diretamente |
-| **Storage-Optimized + `min_qps`** | `min_qps` só funciona em Standard; Storage-Optimized retorna erro |
-| **Storage-Optimized + Continuous sync** | Continuous sync não é suportado; use TRIGGERED |
-| **Embedding endpoint timeout** | Desative Scale-to-Zero no endpoint de embedding para evitar cold start no primeiro sync |
-| **`_id` como nome de coluna** | Coluna `_id` é reservada; renomeie antes de criar o índice |
-| **Self-managed → managed embeddings** | Não é possível converter; crie um novo índice e recompute embeddings |
+| **filters_json not working** | Storage-Optimized uses SQL-like string filters via `databricks-vectorsearch` package's `filters` parameter |
+| **Embedding dimension mismatch** | Ensure query and index dimensions match |
+| **Index not updating** | Check pipeline_type; use sync_index() for TRIGGERED |
+| **Out of capacity** | Upgrade to Storage-Optimized (1B+ vectors) |
+| **`query_vector` truncated by MCP tool** | MCP tool calls serialize arrays as JSON and can truncate large vectors (e.g. 1024-dim). Use `query_text` instead (for managed embedding indexes), or use the Databricks SDK/CLI to pass raw vectors |
 
 ## Embedding Models
 
-Databricks disponibiliza modelos de embedding via Foundation Model APIs:
+Databricks provides built-in embedding models:
 
 | Model | Dimensions | Context Window | Use Case |
 |-------|------------|----------------|----------|
-| `databricks-gte-large-en` | 1024 | 8192 tokens | English text, high quality (recomendado) |
+| `databricks-gte-large-en` | 1024 | 8192 tokens | English text, high quality |
 | `databricks-bge-large-en` | 1024 | 512 tokens | English text, general purpose |
-| `databricks-qwen3-embedding-0p6b` | até 1024 (configurável) | ~32K tokens | Multilingual (100+ langs), documentos longos |
-
-**Recomendações por endpoint:**
-- Standard: use `databricks-gte-large-en` com **provisioned throughput** serving endpoint.
-- Storage-Optimized: use o model name diretamente (ex.: `databricks-gte-large-en`) — o endpoint usa `ai_query` com batch inference na ingestão. Opcionalmente, especifique `model_endpoint_name_for_query` com um endpoint de menor latência para queries.
 
 ```python
-# Managed embeddings — padrão
-index = vsc.create_delta_sync_index(
-    ...,
-    embedding_source_column="content",
-    embedding_model_endpoint_name="databricks-gte-large-en",
-    # Opcional: endpoint separado para queries (ex.: provisioned throughput)
-    model_endpoint_name_for_query="my-gte-provisioned-endpoint"
-)
+# Use with managed embeddings
+embedding_source_columns=[
+    {
+        "name": "content",
+        "embedding_model_endpoint_name": "databricks-gte-large-en"
+    }
+]
 ```
-
-> **Cosine similarity:** O Vector Search usa distância L2. Para usar cosine similarity, normalize seus vetores antes de indexá-los — quando normalizados, o ranking por L2 é equivalente ao de cosine.
 
 ## MCP Tools
 
@@ -463,7 +384,7 @@ all_indexes = manage_vs_index(action="list")
 
 ### query_vs_index - Query (Hot Path)
 
-Query index with `query_text`, `query_vector`, or hybrid (`query_type="HYBRID"`), ou full-text keyword (`query_type="FULL_TEXT"`). Prefira `query_text` sobre `query_vector` — MCP tool calls podem truncar arrays grandes de embeddings (1024-dim).
+Query index with `query_text`, `query_vector`, or hybrid (`query_type="HYBRID"`). Prefer `query_text` over `query_vector` — MCP tool calls can truncate large embedding arrays (1024-dim).
 
 ```python
 # Query an index
@@ -481,15 +402,6 @@ results = query_vs_index(
     query_text="SPARK-12345 memory error",
     query_type="HYBRID",
     num_results=10
-)
-
-# Full-text keyword search (Beta)
-results = query_vs_index(
-    index_name="catalog.schema.my_index",
-    columns=["id", "content"],
-    query_text="executor memory error",
-    query_type="FULL_TEXT",
-    num_results=20
 )
 ```
 
@@ -519,22 +431,17 @@ manage_vs_data(action="scan", index_name="catalog.schema.my_index", num_results=
 
 ## Notes
 
-- **Storage-Optimized é mais novo** — melhor para a maioria dos casos, exceto quando você precisa de latência <100ms. Public Preview em abril/2026.
-- **Delta Sync recomendado** — mais simples que Direct Access para a maioria dos cenários.
-- **Hybrid search** — disponível para Delta Sync e Direct Access em ambos os tipos de endpoint.
-- **Full-text search (Beta)** — `query_type="FULL_TEXT"` funciona em índices existentes (ambos endpoints); índice dedicado Full-Text apenas em Storage-Optimized + TRIGGERED.
-- **`columns_to_sync` matters** — apenas colunas sincronizadas ficam disponíveis nos resultados de query; inclua todas as colunas necessárias. (Não suportado em Storage-Optimized.)
-- **Filter syntax differs by endpoint** — Standard usa dict-format (`{"col": "val"}`), Storage-Optimized usa SQL-like string (`"col = 'val'"`).
-- **`model_endpoint_name_for_query`** — parâmetro opcional para usar um modelo de embedding diferente em queries (ex.: endpoint de menor latência) vs ingestão.
-- **`usage_policy_id`** substitui `budget_policy_id` (depreciado) para rastreio de custos em endpoints e índices.
-- **Empty endpoints não cobram** — a partir de março/2026, cobrança só começa após criação do primeiro índice.
-- **Management vs runtime** — MCP tools acima gerenciam o ciclo de vida; para tool-calling em agentes em runtime, use `VectorSearchRetrieverTool` ou o Databricks managed Vector Search MCP server (`/api/2.0/mcp/vector-search/{catalog}/{schema}/{index_name}`).
-- **Service principals** — para produção, prefira service principals a PATs: podem ser até 100ms mais rápidos por query.
+- **Storage-Optimized is newer** — better for most use cases unless you need <100ms latency
+- **Delta Sync recommended** — easier than Direct Access for most scenarios
+- **Hybrid search** — available for both Delta Sync and Direct Access indexes
+- **`columns_to_sync` matters** — only synced columns are available in query results; include all columns you need
+- **Filter syntax differs by endpoint** — Standard uses dict-format filters, Storage-Optimized uses SQL-like string filters. Use the `databricks-vectorsearch` package's `filters` parameter which accepts both formats
+- **Management vs runtime** — MCP tools above handle lifecycle management; for agent tool-calling at runtime, use `VectorSearchRetrieverTool` or the Databricks managed Vector Search MCP server
 
 ## Related Skills
 
-- **[databricks-model-serving](../databricks-model-serving/SKILL.md)** - Deploy agents que usam VectorSearchRetrieverTool
-- **[databricks-agent-bricks](../databricks-agent-bricks/SKILL.md)** - Knowledge Assistants usam RAG sobre documentos indexados
-- **[databricks-unstructured-pdf-generation](../databricks-unstructured-pdf-generation/SKILL.md)** - Geração de documentos para indexar no Vector Search
-- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - Gerenciamento dos catálogos e tabelas que alimentam Delta Sync indexes
-- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - Construção de Delta tables usadas como fontes do Vector Search
+- **[databricks-model-serving](../databricks-model-serving/SKILL.md)** - Deploy agents that use VectorSearchRetrieverTool
+- **[databricks-agent-bricks](../databricks-agent-bricks/SKILL.md)** - Knowledge Assistants use RAG over indexed documents
+- **[databricks-unstructured-pdf-generation](../databricks-unstructured-pdf-generation/SKILL.md)** - Generate documents to index in Vector Search
+- **[databricks-unity-catalog](../databricks-unity-catalog/SKILL.md)** - Manage the catalogs and tables that back Delta Sync indexes
+- **[databricks-spark-declarative-pipelines](../databricks-spark-declarative-pipelines/SKILL.md)** - Build Delta tables used as Vector Search sources

@@ -1,7 +1,6 @@
 ---
 name: databricks-spark-declarative-pipelines
-updated_at: 2026-04-23
-source: web_search
+description: "Creates, configures, and updates Databricks Lakeflow Spark Declarative Pipelines (SDP/LDP) using serverless compute. Handles data ingestion with streaming tables, materialized views, CDC, SCD Type 2, and Auto Loader ingestion patterns. Use when building data pipelines, working with Delta Live Tables, ingesting streaming data, implementing change data capture, or when the user mentions SDP, LDP, DLT, Lakeflow pipelines, streaming tables, or bronze/silver/gold medallion architectures."
 ---
 
 # Lakeflow Spark Declarative Pipelines (SDP)
@@ -82,8 +81,6 @@ Use this when the pipeline is **part of an existing DAB project**:
 - There's already a `databricks.yml` file in the project
 - User is adding a pipeline to an existing app/demo
 
-> ⚠️ **Renaming (março/2026):** "Databricks Asset Bundles" foi oficialmente renomeado para **Declarative Automation Bundles**. O arquivo de configuração continua sendo `databricks.yml` e os comandos `databricks bundle *` permanecem inalterados. Apenas a nomenclatura de marketing/documentação mudou.
-
 → See [1-project-initialization.md](references/1-project-initialization.md) for adding pipelines to existing bundles
 
 ### Option C: Rapid Iteration with MCP Tools (no bundle management)
@@ -129,7 +126,6 @@ Before writing pipeline code, make sure you have:
 | **SQL Syntax** | `CREATE OR REFRESH STREAMING TABLE`, `CREATE OR REFRESH MATERIALIZED VIEW` |
 | **Python Import** | `from pyspark import pipelines as dp` |
 | **Primary Decorators** | `@dp.table()`, `@dp.materialized_view()`, `@dp.temporary_view()` |
-| **Open-source base** | `pyspark.pipelines` disponível no Apache Spark a partir da versão **4.1** |
 
 ### Legacy APIs (Do NOT Use)
 
@@ -142,8 +138,6 @@ Before writing pipeline code, make sure you have:
 | `PARTITION BY` + `ZORDER` | `CLUSTER BY` (Liquid Clustering) |
 | `input_file_name()` | `_metadata.file_path` |
 | `target` parameter | `schema` parameter |
-
-> ℹ️ O módulo `dlt` ainda funciona por compatibilidade reversa, mas Databricks recomenda migrar para `pyspark.pipelines`. Código escrito com o módulo open-source roda sem modificação no Databricks Runtime.
 
 ### Streaming Table vs Materialized View
 
@@ -198,7 +192,6 @@ After choosing your workflow (see [Choose Your Workflow](#choose-your-workflow))
 - **[Python Language Reference](https://docs.databricks.com/aws/en/ldp/developer/python-ref)** - `pyspark.pipelines` API
 - **[Loading Data](https://docs.databricks.com/aws/en/ldp/load)** - Auto Loader, Kafka, Kinesis ingestion
 - **[Change Data Capture (CDC)](https://docs.databricks.com/aws/en/ldp/cdc)** - AUTO CDC, SCD Type 1/2
-- **[Release Notes 2026](https://docs.databricks.com/aws/en/release-notes/dlt/2026)** - Novidades e breaking changes recentes
 
 
 ### Medallion Architecture
@@ -253,14 +246,14 @@ For detailed syntax, see [sql/1-syntax-basics.md](references/sql/1-syntax-basics
 ## Best Practices (2026)
 
 ### Project Structure
-- **Standalone pipeline projects**: Use `databricks pipelines init` for Declarative Automation Bundle (antigo Asset Bundle) with multi-environment support
+- **Standalone pipeline projects**: Use `databricks pipelines init` for Asset Bundle with multi-environment support
 - **Pipeline in existing bundle**: Add to `resources/*.pipeline.yml`
 - **Rapid iteration/prototyping**: Use MCP tools, formalize in bundle later
 - See **[1-project-initialization.md](references/1-project-initialization.md)** for project setup details
 
 ### Minimal pipeline config pointers
-- Define parameters in your pipeline's configuration and access them in code with spark.conf.get("key").
-- In Declarative Automation Bundles (DAB), set these under resources.pipelines.<pipeline>.configuration; validate with databricks bundle validate.
+- Define parameters in your pipeline’s configuration and access them in code with spark.conf.get("key").
+- In Databricks Asset Bundles, set these under resources.pipelines.<pipeline>.configuration; validate with databricks bundle validate.
 
 ### Modern Defaults
 - **Always use raw `.sql`/`.py` files for the transformations files** - NO notebooks in your pipeline. Pipeline code must be plain files.
@@ -268,9 +261,7 @@ For detailed syntax, see [sql/1-syntax-basics.md](references/sql/1-syntax-basics
 - **Serverless compute** - Do not use classic clusters unless explicitly required (R, RDD APIs, JAR libraries)
 - **Unity Catalog** (required for serverless)
 - **CLUSTER BY** (Liquid Clustering), not PARTITION BY with ZORDER - see [sql/5-performance.md](references/sql/5-performance.md) or [python/5-performance.md](references/python/5-performance.md)
-- **CLUSTER BY AUTO** - use when você não tem certeza sobre as melhores chaves de clustering; o Databricks as escolhe automaticamente. Disponível em `CREATE OR REFRESH STREAMING TABLE` e `CREATE OR REFRESH MATERIALIZED VIEW`.
 - **read_files()** for SQL cloud storage ingestion - always consume a folder, not a single file - see [sql/2-ingestion.md](references/sql/2-ingestion.md)
-- **Serverless performance mode** - serverless pipelines agora suportam dois modos: *Performance optimized* (padrão desde set/2025 na UI; menor latência) e *Standard* (menor custo, latência um pouco maior). Standard não é suportado em pipelines contínuos. Configure via UI ou JSON da pipeline.
 
 ### Multi-Schema Patterns
 
@@ -350,9 +341,6 @@ If validation reveals problems, trace upstream to find the root cause:
 | **SCD2: query column not found** | Lakeflow uses `__START_AT` and `__END_AT` (double underscore), not `START_AT`/`END_AT`. Use `WHERE __END_AT IS NULL` for current rows. See [sql/4-cdc-patterns.md](references/sql/4-cdc-patterns.md). |
 | **AUTO CDC parse error at APPLY/SEQUENCE** | Put `APPLY AS DELETE WHEN` **before** `SEQUENCE BY`. Only list columns in `COLUMNS * EXCEPT (...)` that exist in the source (omit `_rescued_data` unless bronze uses rescue data). Omit `TRACK HISTORY ON *` if it causes "end of input" errors; default is equivalent. See [sql/4-cdc-patterns.md](references/sql/4-cdc-patterns.md). |
 | **"Cannot create streaming table from batch query"** | In a streaming table query, use `FROM STREAM read_files(...)` so `read_files` leverages Auto Loader; `FROM read_files(...)` alone is batch. See [sql/2-ingestion.md](references/sql/2-ingestion.md) and [read_files — Usage in streaming tables](https://docs.databricks.com/aws/en/sql/language-manual/functions/read_files#usage-in-streaming-tables). |
-| **Schema incompatible change requer full refresh** | A partir de 2026, **type widening** (ex: INT→LONG, FLOAT→DOUBLE) **não exige** full pipeline reset. Outros tipos de incompatibilidade ainda exigem. |
-| **Multiple CDC flows conflitando no mesmo destino** | Use o parâmetro `name` de `dp.create_auto_cdc_flow()` para nomear cada fluxo independentemente. Múltiplos fluxos podem escrever na mesma streaming table (ex: updates incrementais + backfill). |
-| **Conflito ao disparar update enquanto pipeline já roda** | Pipelines agora suportam **queued execution mode** — múltiplos requests são enfileirados automaticamente ao invés de falhar com conflito. Não é necessário coordenação manual de retry. |
 
 **For detailed errors**, the `result["message"]` from `manage_pipeline(action="create_or_update")` includes suggested next steps. Use `manage_pipeline(action="get", pipeline_id=...)` which includes recent events and error details.
 
@@ -374,17 +362,6 @@ For advanced configuration options (development mode, continuous pipelines, cust
 | **Serverless Terms** | Must accept serverless terms of use |
 | **CDC Features** | Requires serverless (or Pro/Advanced with classic clusters) |
 
-### Serverless Performance Modes
-
-> ℹ️ **Novidade (GA jun/2025):** Serverless pipelines agora suportam dois modos de performance configuráveis.
-
-| Mode | Quando usar | Observação |
-|------|-------------|-----------|
-| **Performance optimized** (padrão na UI desde set/2025) | Workloads com SLA apertado, pipelines contínuos | Startup mais rápido, maior custo DBU |
-| **Standard** | Batch agendado, tolerante a latência de 4–6 min de startup | Até 70% mais barato que performance-optimized; **não suportado em pipelines contínuos** |
-
-Configure via UI (toggle "Performance optimized") ou via JSON da pipeline. APIs, Terraform e SDKs já usavam performance-optimized como padrão antes de set/2025.
-
 ### Serverless Limitations (When Classic Clusters Required)
 | Limitation | Workaround |
 |------------|-----------|
@@ -398,32 +375,11 @@ Configure via UI (toggle "Performance optimized") ou via JSON da pipeline. APIs,
 ### General Constraints
 | Constraint | Details |
 |------------|---------|
-| **Schema Evolution** | Streaming tables require full refresh for incompatible changes. **Type widening** (INT→LONG, FLOAT→DOUBLE etc.) agora é suportado sem full refresh (2026). |
+| **Schema Evolution** | Streaming tables require full refresh for incompatible changes |
 | **SQL Limitations** | PIVOT clause unsupported |
 | **Sinks** | Python only, streaming only, append flows only |
 
 **Default to serverless** unless user explicitly requires R, RDD APIs, or JAR libraries.
-
----
-
-## New Features Noteworthy (2025–2026)
-
-| Feature | Disponível desde | Detalhes |
-|---------|-----------------|---------|
-| **`CLUSTER BY AUTO`** | 2025 | Liquid clustering automático — Databricks escolhe as chaves. Use quando não souber as melhores chaves. Ex: `CLUSTER BY AUTO` na DDL da streaming table/MV. |
-| **Expectations no Unity Catalog** | Nov/2025 | Regras de qualidade centralizadas e versionadas no UC, compartilháveis entre múltiplos pipelines. |
-| **Queued execution mode** | Nov/2025 | Múltiplos requests de update são enfileirados em vez de falhar com conflito. |
-| **Continuous pipeline graceful restart** | Nov/2025 | Pipelines contínuos com mais de 7 dias reiniciam com downtime mínimo e causa `INFRASTRUCTURE_MAINTENANCE`. |
-| **Type widening sem full refresh** | Jan/2026 | Alargamento de tipos de coluna (INT→LONG, FLOAT→DOUBLE) sem precisar resetar o pipeline. |
-| **`create_auto_cdc_flow` com `name` e `once`** | 2025.30 | Parâmetro `name` permite múltiplos fluxos CDC independentes no mesmo destino. Parâmetro `once` suporta backfill pontual. |
-| **Move tables entre pipelines (GA)** | 2025.29 | `ALTER STREAMING TABLE`/`ALTER MATERIALIZED VIEW` para mover tabelas entre pipelines via SQL. |
-| **`ALTER STREAMING TABLE` / `ALTER MATERIALIZED VIEW` GA** | Fev/2026 | Aplicar row filters, column masks, tags, comentários em tabelas gerenciadas por pipelines via `ALTER`. |
-| **Drop automático de tabelas inativas** | 2025–2026 | Pipeline pode ser configurado para dropar tabelas que não estão mais na definição. |
-| **MANAGE permissions auto-propagadas** | 2025–2026 | Permissões `MANAGE` propagadas automaticamente a MVs e streaming tables no UC. |
-| **SCD Type 2 auto-coalesce de duplicatas** | 2025–2026 | Registros duplicados com a mesma chave natural são coalescidos automaticamente. |
-| **Declarative Automation Bundles (renome)** | Mar/2026 | "Databricks Asset Bundles" renomeado para "Declarative Automation Bundles". CLI e YAML inalterados. |
-
----
 
 ## Related Skills
 

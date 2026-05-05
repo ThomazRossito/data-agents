@@ -48,6 +48,15 @@ logger = logging.getLogger("data_agents.refresh_skills")
 
 _SKILLS_DIR = _PROJECT_ROOT / "skills"
 
+# Repositório oficial da Databricks com as skills canônicas.
+# Só skills do domínio "databricks" têm upstream aqui; fabric/patterns/python não.
+_AIDEVKIT_RAW_BASE = (
+    "https://raw.githubusercontent.com/databricks-solutions/ai-dev-kit/main/databricks-skills"
+)
+_AIDEVKIT_API_URL = (
+    "https://api.github.com/repos/databricks-solutions/ai-dev-kit/contents/databricks-skills"
+)
+
 # Preços Anthropic (USD por 1M tokens) — Sonnet 4.6 (ajuste quando mudar modelo).
 # Batch API aplica 50% de desconto sobre input e output.
 _PRICE_INPUT_PER_MTOK = 3.00
@@ -73,6 +82,10 @@ learn.microsoft.com/fabric, docs.getdbt.com, spark.apache.org.
 
 ## Regras de edição
 
+- Quando o user prompt incluir "SKILL.md UPSTREAM (ai-dev-kit)", trate-o como a versão
+  canônica mais recente do repositório oficial Databricks. Incorpore melhorias estruturais
+  e novos conteúdos do upstream, mas preserve enriquecimentos da versão local que não
+  existem no upstream (breaking change notices, observações de projeto, exemplos customizados).
 - Preserve a estrutura de seções da SKILL atual — não reorganize sem motivo.
 - Preserve o tom opinionado do projeto ("use X, evite Y porque Z").
 - Atualize apenas o que mudou na plataforma: APIs depreciadas ou renomeadas,
@@ -190,19 +203,42 @@ def _estimate_cost(input_tokens: int, output_tokens: int, batch: bool = True) ->
     return base * _BATCH_DISCOUNT if batch else base
 
 
-def _build_user_prompt(skill_path: Path, current_content: str) -> str:
+def _build_user_prompt(
+    skill_path: Path, current_content: str, upstream_content: str | None = None
+) -> str:
     rel_path = skill_path.relative_to(_PROJECT_ROOT)
     today = datetime.now().strftime("%Y-%m-%d")
-    return (
-        f"Arquivo: `{rel_path}`\n"
-        f"Data de hoje: {today}\n\n"
-        f"SKILL.md ATUAL:\n\n{current_content}\n\n"
-        f"Busque documentação atualizada da biblioteca/ferramenta correspondente e "
-        f"devolva o arquivo atualizado conforme as regras do system prompt."
-    )
+    parts = [
+        f"Arquivo: `{rel_path}`",
+        f"Data de hoje: {today}",
+        "",
+        "SKILL.md ATUAL (versão local, já enriquecida com contexto do projeto):",
+        "",
+        current_content,
+    ]
+    if upstream_content is not None:
+        parts += [
+            "",
+            "SKILL.md UPSTREAM (ai-dev-kit — versão canônica mais recente do repositório oficial Databricks):",
+            "",
+            upstream_content,
+            "",
+            "Incorpore melhorias estruturais e novos conteúdos do upstream, preservando "
+            "enriquecimentos da versão local que não existem no upstream. Em seguida, "
+            "valide/atualize via web_search e devolva o arquivo conforme as regras do system prompt.",
+        ]
+    else:
+        parts += [
+            "",
+            "Busque documentação atualizada da biblioteca/ferramenta correspondente e "
+            "devolva o arquivo atualizado conforme as regras do system prompt.",
+        ]
+    return "\n".join(parts)
 
 
-def _build_batch_request(skill_path: Path, custom_id: str, model: str) -> dict:
+def _build_batch_request(
+    skill_path: Path, custom_id: str, model: str, upstream_content: str | None = None
+) -> dict:
     """Monta uma entrada de batch para uma skill."""
     current_content = skill_path.read_text(encoding="utf-8")
     return {
@@ -213,10 +249,71 @@ def _build_batch_request(skill_path: Path, custom_id: str, model: str) -> dict:
             "system": _SYSTEM_PROMPT,
             "tools": [{"type": "web_search_20250305", "name": "web_search", "max_uses": 5}],
             "messages": [
-                {"role": "user", "content": _build_user_prompt(skill_path, current_content)}
+                {
+                    "role": "user",
+                    "content": _build_user_prompt(skill_path, current_content, upstream_content),
+                }
             ],
         },
     }
+
+
+def _get_upstream_url(skill_path: Path) -> str | None:
+    """Retorna a URL raw do ai-dev-kit para a skill, ou None se não aplicável."""
+    domain = skill_path.parent.parent.name
+    if domain != "databricks":
+        return None
+    skill_dir = skill_path.parent.name
+    return f"{_AIDEVKIT_RAW_BASE}/{skill_dir}/SKILL.md"
+
+
+async def _fetch_url(url: str) -> str | None:
+    """Busca o conteúdo de uma URL via HTTP. Retorna None em 404 ou falha."""
+    import asyncio as _asyncio
+    import urllib.error
+    import urllib.request
+
+    def _fetch() -> str | None:
+        try:
+            with urllib.request.urlopen(url, timeout=10) as resp:  # nosec B310
+                if resp.status == 200:
+                    return resp.read().decode("utf-8")
+        except urllib.error.HTTPError as e:
+            if e.code != 404:
+                logger.warning(f"HTTP {e.code} ao buscar {url}")
+        except Exception as e:
+            logger.warning(f"Falha ao buscar {url}: {e}")
+        return None
+
+    return await _asyncio.to_thread(_fetch)
+
+
+async def _list_aidevkit_skills() -> list[str]:
+    """Lista os nomes das pastas de skills disponíveis no ai-dev-kit via GitHub API."""
+    import asyncio as _asyncio
+    import json
+    import urllib.request
+
+    def _fetch() -> list[str]:
+        with urllib.request.urlopen(_AIDEVKIT_API_URL, timeout=15) as resp:  # nosec B310
+            data = json.loads(resp.read().decode("utf-8"))
+            return [
+                item["name"]
+                for item in data
+                if item["type"] == "dir"
+                and not item["name"].startswith("_")
+                and item["name"].upper() != "TEMPLATE"
+            ]
+
+    return await _asyncio.to_thread(_fetch)
+
+
+async def _fetch_upstream_skill(skill_path: Path) -> str | None:
+    """Busca o SKILL.md upstream do ai-dev-kit. Retorna None se não aplicável ou falhar."""
+    url = _get_upstream_url(skill_path)
+    if url is None:
+        return None
+    return await _fetch_url(url)
 
 
 def _process_batch_result(skill_path: Path, message) -> dict:
@@ -330,13 +427,27 @@ async def run_refresh(
         metrics["refreshed"] = len(to_refresh)
         return metrics
 
+    # Busca upstreams do ai-dev-kit em paralelo (só domínio databricks)
+    print("Verificando upstream ai-dev-kit...\n")
+    upstream_results = await asyncio.gather(
+        *[_fetch_upstream_skill(p) for p in to_refresh], return_exceptions=True
+    )
+    upstream_map: dict[Path, str | None] = {}
+    for skill_path, result in zip(to_refresh, upstream_results):
+        upstream_map[skill_path] = result if not isinstance(result, Exception) else None
+
+    upstream_count = sum(1 for v in upstream_map.values() if v is not None)
+    print(f"  Upstream encontrado: {upstream_count}/{len(to_refresh)} skills\n")
+
     # custom_id → skill_path para mapear resultados do batch de volta aos arquivos
     id_to_path: dict[str, Path] = {}
     requests: list[dict] = []
     for i, skill_path in enumerate(to_refresh):
         custom_id = f"skill-{i:03d}"
         id_to_path[custom_id] = skill_path
-        requests.append(_build_batch_request(skill_path, custom_id, model))
+        requests.append(
+            _build_batch_request(skill_path, custom_id, model, upstream_map.get(skill_path))
+        )
 
     print(f"\nSubmetendo batch com {len(requests)} skills ao Anthropic...\n")
 
@@ -399,6 +510,67 @@ async def run_refresh(
     return metrics
 
 
+async def run_sync_upstream() -> dict:
+    """Sincroniza skills diretamente do ai-dev-kit → skills/databricks/ sem custo (sem Batch API)."""
+    print(f"\n{'=' * 60}")
+    print(f"Sync Upstream ai-dev-kit — {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    print(f"Fonte: {_AIDEVKIT_RAW_BASE}")
+    print(f"{'=' * 60}\n")
+
+    metrics: dict = {"added": 0, "updated": 0, "unchanged": 0, "errors": 0, "details": []}
+
+    print("Listando skills disponíveis no ai-dev-kit...\n")
+    try:
+        skill_names = await _list_aidevkit_skills()
+    except Exception as e:
+        print(f"  ✗ Erro ao listar skills: {e}")
+        metrics["errors"] += 1
+        return metrics
+
+    print(f"  {len(skill_names)} skills encontradas\n")
+
+    urls = [f"{_AIDEVKIT_RAW_BASE}/{name}/SKILL.md" for name in skill_names]
+    contents = await asyncio.gather(*[_fetch_url(u) for u in urls], return_exceptions=True)
+
+    target_dir = _SKILLS_DIR / "databricks"
+    for skill_name, content in zip(skill_names, contents):
+        if isinstance(content, Exception) or content is None:
+            print(f"  ✗ {skill_name} — falha no fetch")
+            metrics["errors"] += 1
+            metrics["details"].append({"skill": skill_name, "status": "error"})
+            continue
+
+        skill_file = target_dir / skill_name / "SKILL.md"
+        is_new = not skill_file.exists()
+
+        if not is_new and skill_file.read_text(encoding="utf-8") == content:
+            print(f"  ✓  {skill_name} — sem alterações")
+            metrics["unchanged"] += 1
+            metrics["details"].append({"skill": skill_name, "status": "unchanged"})
+            continue
+
+        skill_file.parent.mkdir(parents=True, exist_ok=True)
+        skill_file.write_text(content, encoding="utf-8")
+
+        if is_new:
+            print(f"  ✨ {skill_name} — nova skill adicionada")
+            metrics["added"] += 1
+        else:
+            print(f"  ✅ {skill_name} — atualizada")
+            metrics["updated"] += 1
+        metrics["details"].append({"skill": skill_name, "status": "added" if is_new else "updated"})
+
+    print(f"\n{'=' * 60}")
+    print(
+        f"Resultado: {metrics['added']} novas | "
+        f"{metrics['updated']} atualizadas | "
+        f"{metrics['unchanged']} sem alteração | "
+        f"{metrics['errors']} erros"
+    )
+    print(f"{'=' * 60}\n")
+    return metrics
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Atualiza Skills operacionais com documentação recente (via Anthropic Messages API + web_search)."
@@ -418,8 +590,18 @@ def main() -> None:
     parser.add_argument("--force", action="store_true", help="Atualiza todas.")
     parser.add_argument("--dry-run", action="store_true", help="Lista sem modificar.")
     parser.add_argument("--model", type=str, default=None, help="Override do modelo Anthropic.")
+    parser.add_argument(
+        "--sync-upstream",
+        action="store_true",
+        help="Sincroniza skills diretamente do ai-dev-kit (sem AI, sem custo). Ignora --domains/--interval/--model.",
+    )
 
     args = parser.parse_args()
+
+    if args.sync_upstream:
+        setup_logging(log_level="WARNING", enable_console=False)
+        asyncio.run(run_sync_upstream())
+        return
 
     domains = args.domains or [
         d.strip() for d in settings.skill_refresh_domains.split(",") if d.strip()

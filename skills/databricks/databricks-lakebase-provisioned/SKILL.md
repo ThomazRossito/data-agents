@@ -1,44 +1,31 @@
 ---
 name: databricks-lakebase-provisioned
 description: "Patterns and best practices for Lakebase Provisioned (Databricks managed PostgreSQL) for OLTP workloads. Use when creating Lakebase instances, connecting applications or Databricks Apps to PostgreSQL, implementing reverse ETL via synced tables, storing agent or chat memory, or configuring OAuth authentication for Lakebase."
-updated_at: 2026-04-23
-source: web_search
 ---
 
 # Lakebase Provisioned
 
 Patterns and best practices for using Lakebase Provisioned (Databricks managed PostgreSQL) for OLTP workloads.
 
-> ⚠️ **Breaking change em 2026-03-12 — "Autoscaling by default":**
-> A partir de 12 de março de 2026, todas as novas instâncias Lakebase são criadas como **projetos Lakebase Autoscaling**, mesmo quando você usa a API `w.database.create_database_instance()` ou o CLI. Instâncias existentes de Lakebase Provisioned **não são afetadas** e continuam funcionando normalmente. Automation existente continua operando, mas novas instâncias rodam na plataforma Autoscaling com precificação Autoscaling. Capacity units (`CU_1`, `CU_2`, `CU_4`, `CU_8`) são mapeados automaticamente para ranges de CU do Autoscaling. Veja [Autoscaling by default](https://docs.databricks.com/aws/en/oltp/upgrade-to-autoscaling) para detalhes completos.
->
-> Novo desenvolvimento de features está focado em Lakebase Autoscaling. Considere a skill [`databricks-lakebase-autoscaling`] para projetos novos que exijam scale-to-zero, branching ou instant restore.
-
 ## When to Use
 
 Use this skill when:
-- Mantendo instâncias **existentes** de Lakebase Provisioned em produção
-- Building applications que precisam de PostgreSQL para cargas transacionais usando a **Database Instance API** (ainda funcional para novas instâncias, que rodarão como Autoscaling sob o capô)
+- Building applications that need a PostgreSQL database for transactional workloads
 - Adding persistent state to Databricks Apps
-- Implementing reverse ETL from Delta Lake to an operational database (synced tables via `w.database` — a API Postgres ainda não suporta provisionamento programático de sync tables)
+- Implementing reverse ETL from Delta Lake to an operational database
 - Storing chat/agent memory for LangChain applications
 
 ## Overview
 
-Lakebase Provisioned é a oferta original do Databricks para banco de dados PostgreSQL gerenciado para cargas OLTP. Está **GA (Generally Available)** desde janeiro de 2026. Ela fornece um banco PostgreSQL totalmente gerenciado integrado ao Unity Catalog com autenticação via token OAuth.
-
-> ℹ️ **Lakebase Autoscaling** é a versão mais recente, com autoscaling, scale-to-zero, branching e instant restore. Desde março de 2026, novas instâncias são criadas como Autoscaling mesmo via Database Instance API.
+Lakebase Provisioned is Databricks' managed PostgreSQL database service for OLTP (Online Transaction Processing) workloads. It provides a fully managed PostgreSQL-compatible database that integrates with Unity Catalog and supports OAuth token-based authentication.
 
 | Feature | Description |
 |---------|-------------|
-| **Managed PostgreSQL** | Instâncias totalmente gerenciadas com provisionamento automático |
-| **OAuth Authentication** | Autenticação via token Databricks SDK (expiração em 1 hora) |
-| **Unity Catalog** | Registro de bancos para governança |
-| **Reverse ETL** | Sync de Delta tables para PostgreSQL (apenas via Database Instance API) |
-| **Apps Integration** | Suporte first-class em Databricks Apps |
-| **Readable Secondaries** | Nós HA com endpoint read-only separado; acessíveis do SQL Editor |
-| **SQL Editor** | Conexão direta de read-only para readable secondaries via SQL Editor (desde dez/2025) |
-| **Bundles (DAB)** | Deploy de instâncias, catálogos e synced tables via `databricks bundle deploy` |
+| **Managed PostgreSQL** | Fully managed instances with automatic provisioning |
+| **OAuth Authentication** | Token-based auth via Databricks SDK (1-hour expiry) |
+| **Unity Catalog** | Register databases for governance |
+| **Reverse ETL** | Sync data from Delta tables to PostgreSQL |
+| **Apps Integration** | First-class support in Databricks Apps |
 
 **Available Regions (AWS):** us-east-1, us-east-2, us-west-2, eu-central-1, eu-west-1, ap-south-1, ap-southeast-1, ap-southeast-2
 
@@ -54,29 +41,14 @@ import uuid
 w = WorkspaceClient()
 
 # Create a database instance
-# NOTA: a partir de março/2026 novas instâncias são criadas como Autoscaling projects.
-# A API Database Instance continua funcionando, mas o resultado roda na plataforma Autoscaling.
 instance = w.database.create_database_instance(
     name="my-lakebase-instance",
-    capacity="CU_1",  # CU_1, CU_2, CU_4, CU_8 → mapeados para CU ranges do Autoscaling
+    capacity="CU_1",  # CU_1, CU_2, CU_4, CU_8
     stopped=False
 )
 print(f"Instance created: {instance.name}")
 print(f"DNS endpoint: {instance.read_write_dns}")
 ```
-
-### Mapeamento de Capacity para Autoscaling CUs
-
-Quando criado via `create_database_instance` após março/2026, o `capacity` é mapeado automaticamente:
-
-| Provisioned Capacity | Autoscaling Min CU | Autoscaling Max CU |
-|---------------------|--------------------|--------------------|
-| `CU_1` | 4 | 8 |
-| `CU_2` | 8 | 16 |
-| `CU_4` | 16 | 32 |
-| `CU_8` | 64 (fixo) | 64 (fixo) |
-
-> RAM por unidade: no Provisioned, 1 capacity unit = 16 GB RAM. No Autoscaling, 1 CU = 2 GB RAM.
 
 ## Common Patterns
 
@@ -114,36 +86,11 @@ cred = w.database.generate_database_credential(
 )
 
 # Connect using psycopg3
-conn_string = (
-    f"host={instance.read_write_dns} "
-    f"dbname=postgres "
-    f"user={w.current_user.me().user_name} "
-    f"password={cred.token} "
-    f"sslmode=require"
-)
+conn_string = f"host={instance.read_write_dns} dbname=postgres user={w.current_user.me().user_name} password={cred.token} sslmode=require"
 with psycopg.connect(conn_string) as conn:
     with conn.cursor() as cur:
         cur.execute("SELECT version()")
         print(cur.fetchone())
-```
-
-### Connect to Readable Secondary (Read-Only)
-
-Para workloads read-only, use o endpoint `-ro-` separado (disponível quando HA com readable secondaries está ativo):
-
-```python
-# O endpoint read-only usa o formato: instance-ro-{uuid} em vez de instance-{uuid}
-# Disponível via instance.read_only_dns quando readable secondaries estão habilitados
-instance = w.database.get_database_instance(name="my-lakebase-instance")
-
-if hasattr(instance, 'read_only_dns') and instance.read_only_dns:
-    ro_conn_string = (
-        f"host={instance.read_only_dns} "
-        f"dbname=postgres "
-        f"user={w.current_user.me().user_name} "
-        f"password={cred.token} "
-        f"sslmode=require"
-    )
 ```
 
 ### SQLAlchemy with Token Refresh (Production)
@@ -274,37 +221,6 @@ mlflow.langchain.log_model(
 )
 ```
 
-### Databricks Asset Bundles (DAB)
-
-Desde agosto de 2025, é possível declarar instâncias, catálogos e synced tables em bundles e fazer deploy com um único comando:
-
-```yaml
-# databricks.yml
-resources:
-  database_instances:
-    my_lakebase:
-      name: my-lakebase-instance
-      capacity: CU_1
-
-  database_catalogs:
-    my_catalog:
-      name: my-lakebase-catalog
-      instance_name: my-lakebase-instance
-
-  synced_database_tables:
-    my_synced_table:
-      instance_name: my-lakebase-instance
-      source_table: catalog.schema.delta_table
-      target_table: my-lakebase-catalog.schema.postgres_table
-      scheduling_policy: TRIGGERED
-```
-
-```bash
-databricks bundle deploy
-```
-
-> Ao fazer deploy de um bundle com uma instância de banco de dados, a instância inicia imediatamente após o deploy.
-
 ## MCP Tools
 
 The following MCP tools are available for managing Lakebase infrastructure. Use `type="provisioned"` for Lakebase Provisioned.
@@ -321,7 +237,6 @@ The following MCP tools are available for managing Lakebase infrastructure. Use 
 **Example usage:**
 ```python
 # Create a provisioned database
-# NOTA: a partir de março/2026 criará um projeto Autoscaling sob o capô
 manage_lakebase_database(
     action="create_or_update",
     name="my-lakebase-instance",
@@ -340,8 +255,6 @@ manage_lakebase_database(action="delete", name="my-lakebase-instance", type="pro
 ```
 
 ### manage_lakebase_sync - Reverse ETL
-
-> ⚠️ **Nota (2026):** Provisionamento programático de synced tables **não é suportado na Postgres API** (Lakebase Autoscaling). Use sempre a **Database Instance API** (`manage_lakebase_sync`) para sync tables. Esse gap será fechado em versão futura.
 
 | Action | Description | Required Params |
 |--------|-------------|-----------------|
@@ -363,13 +276,6 @@ manage_lakebase_sync(
 manage_lakebase_sync(action="delete", table_name="lakebase_catalog.schema.postgres_table")
 ```
 
-**Limitações de synced tables (confirmadas na doc oficial):**
-- Continuous sync: atualiza no mínimo a cada **15 segundos**.
-- Cada sync pode usar até **16 conexões** simultâneas com a instância.
-- Apenas **schema changes aditivos** (ex.: nova coluna) são refletidos em modo Triggered/Continuous.
-- Duplicate primary keys causam falha no pipeline — use `timeseries_key` para deduplicação (com penalidade de performance).
-- Mapeamento de `TIMESTAMP` foi alterado em **agosto de 2025**: tabelas criadas antes disso mapeiam para `TIMESTAMP WITHOUT TIME ZONE`; novas seguem o novo mapeamento.
-
 ### generate_lakebase_credential - OAuth Tokens
 
 Generate OAuth token (~1hr) for PostgreSQL connections. Use as password with `sslmode=require`.
@@ -388,7 +294,6 @@ generate_lakebase_credential(instance_names=["my-lakebase-instance"])
 
 ```bash
 # Create instance
-# NOTA: a partir de março/2026 cria um projeto Autoscaling
 databricks database create-database-instance \
     --name my-lakebase-instance \
     --capacity CU_1
@@ -411,21 +316,6 @@ databricks database stop-database-instance --name my-lakebase-instance
 databricks database start-database-instance --name my-lakebase-instance
 ```
 
-## High Availability & Readable Secondaries
-
-Para habilitar HA e readable secondaries via API REST:
-
-```bash
-curl -s -X PATCH \
-  --header "Authorization: Bearer ${DATABRICKS_TOKEN}" \
-  $DBR_URL/database/instances/my-instance \
-  -d '{"node_count": 3, "enable_readable_secondaries": true}'
-```
-
-- Com HA ativo, o endpoint read-only segue o padrão `instance-ro-{uuid}`.
-- Readable secondaries podem ser consultados diretamente do **SQL Editor** do Databricks (GA desde dez/2025).
-- Se `node_count` for 1, HA e readable secondaries são desabilitados.
-
 ## Common Issues
 
 | Issue | Solution |
@@ -435,36 +325,28 @@ curl -s -X PATCH \
 | **Connection refused** | Ensure instance is not stopped; check `instance.state` |
 | **Permission denied** | User must be granted access to the Lakebase instance |
 | **SSL required error** | Always use `sslmode=require` in connection string |
-| **Sync table TIMESTAMP mismatch** | Tabelas criadas antes de agosto/2025 usam `TIMESTAMP WITHOUT TIME ZONE`; recrie a synced table para obter o mapeamento atual |
-| **Sync table failing with PSQLException 0x00** | Null bytes (`0x00`) em colunas STRING/ARRAY/MAP/STRUCT não são suportados em Postgres TEXT/JSONB; corrija os dados na tabela Delta de origem |
-| **Pricing inesperada em nova instância** | Novas instâncias (desde março/2026) usam precificação Lakebase Autoscaling, não Provisioned |
 
 ## SDK Version Requirements
 
-- **Databricks SDK for Python**: >= 0.61.0 (0.103.0 recomendado — versão mais recente, lançada 2026-04-20)
+- **Databricks SDK for Python**: >= 0.61.0 (0.81.0+ recommended for full API support)
 - **psycopg**: 3.x (supports `hostaddr` parameter for DNS workaround)
 - **SQLAlchemy**: 2.x with `postgresql+psycopg` driver
-- **Python**: >= 3.10 (requisito do SDK a partir de versões recentes)
 
 ```python
-%pip install -U "databricks-sdk>=0.103.0" "psycopg[binary]>=3.0" sqlalchemy
+%pip install -U "databricks-sdk>=0.81.0" "psycopg[binary]>=3.0" sqlalchemy
 ```
-
-> O SDK está em Beta mas é suportado para uso em produção. Recomenda-se fixar a versão minor (ex: `>=0.103.0,<0.104.0`) para evitar quebras em futuras atualizações.
 
 ## Notes
 
-- **Capacity values** usam compute unit sizing: `CU_1`, `CU_2`, `CU_4`, `CU_8`. A partir de março/2026, são mapeados para CU ranges do Autoscaling em novas instâncias.
-- **Lakebase está GA** desde janeiro de 2026 (saiu de preview).
-- **Lakebase Autoscaling** é a versão mais recente e recebe todo o desenvolvimento de novas features. Esta skill foca em **Lakebase Provisioned** para instâncias existentes e casos onde a Database Instance API é obrigatória (ex.: sync tables programáticos).
-- Para memory/state em agentes LangChain, use `databricks-langchain[memory]` que inclui suporte a Lakebase.
-- Tokens são short-lived (1 hora) — apps em produção **DEVEM** implementar token refresh.
-- **Scale-to-zero** está desabilitado por padrão em novas instâncias criadas via Database Instance API (comportamento idêntico ao Provisioned original). Pode ser habilitado via Postgres API ou UI do Autoscaling.
+- **Capacity values** use compute unit sizing: `CU_1`, `CU_2`, `CU_4`, `CU_8`.
+- **Lakebase Autoscaling** is a newer offering with automatic scaling but limited regional availability. This skill focuses on **Lakebase Provisioned** which is more widely available.
+- For memory/state in LangChain agents, use `databricks-langchain[memory]` which includes Lakebase support.
+- Tokens are short-lived (1 hour) - production apps MUST implement token refresh.
 
 ## Related Skills
 
 - **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - full-stack apps that can use Lakebase for persistence
 - **[databricks-app-python](../databricks-app-python/SKILL.md)** - Python apps with Lakebase backend
 - **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - SDK used for instance management and token generation
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps and Lakebase resources via DAB
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps with Lakebase resources
 - **[databricks-jobs](../databricks-jobs/SKILL.md)** - scheduling reverse ETL sync jobs

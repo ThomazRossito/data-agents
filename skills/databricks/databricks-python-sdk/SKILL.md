@@ -1,9 +1,6 @@
 ---
 name: databricks-python-sdk
 description: "Databricks development guidance including Python SDK, Databricks Connect, CLI, and REST API. Use when working with databricks-sdk, databricks-connect, or Databricks APIs."
-updated_at: 2026-04-23
-sdk_version: ">=0.103.0"
-source: web_search
 ---
 
 # Databricks Development Guide
@@ -20,32 +17,19 @@ This skill provides guidance for Databricks SDK, Databricks Connect, CLI, and RE
 - Use existing virtual environment at `.venv` or use `uv` to create one
 - For Spark operations: `uv pip install databricks-connect`
 - For SDK operations: `uv pip install databricks-sdk`
-- **Python >=3.10 required** (SDK v0.103.0+ dropped support for 3.8/3.9)
-- Databricks CLI version should be **0.298.0** or higher (latest as of 2026-04-22)
+- Databricks CLI version should be 0.278.0 or higher
 
 ## Configuration
 
 - Default profile name: `DEFAULT`
 - Config file: `~/.databrickscfg`
 - Environment variables: `DATABRICKS_HOST`, `DATABRICKS_TOKEN`
-- **New:** `default_profile` can now be set in the `[__settings__]` section of `~/.databrickscfg` for consistent default profile resolution across CLI and SDKs:
-
-```ini
-[__settings__]
-default_profile = MY_PROFILE
-
-[MY_PROFILE]
-host = https://your-workspace.cloud.databricks.com
-token = dapi...
-```
 
 ---
 
 ## Databricks Connect (Spark Operations)
 
-> ⚠️ **GA em 2025-10-28:** Databricks Connect para serverless compute é agora **Geralmente Disponível (GA)**. Sessões serverless não expiram mais após 10 minutos de inatividade.
-
-Use `databricks-connect` para rodar código Spark localmente contra um cluster ou serverless Databricks.
+Use `databricks-connect` for running Spark code locally against a Databricks cluster.
 
 ```python
 from databricks.connect import DatabricksSession
@@ -56,21 +40,12 @@ spark = DatabricksSession.builder.getOrCreate()
 # With explicit profile
 spark = DatabricksSession.builder.profile("MY_PROFILE").getOrCreate()
 
-# Sempre criar uma nova sessão (em vez de reutilizar a existente)
-# Útil em ambientes multi-sessão; desabilitado por padrão em notebooks
-spark = DatabricksSession.builder.create()
-
 # Use spark as normal
 df = spark.sql("SELECT * FROM catalog.schema.table")
 df.show()
 ```
 
 **IMPORTANT:** Do NOT set `.master("local[*]")` - this will cause issues with Databricks Connect.
-
-**Restrição de dependências:**
-- `pandas`: apenas `1.0.5 <= pandas < 3` é suportado — pandas 3.x quebra `pyspark.pandas`.
-- `pyarrow`: requer `>=11.0.0`.
-- `py4j`: `>=0.10.9.7,<0.10.9.10`.
 
 ---
 
@@ -106,10 +81,8 @@ response = w.api_client.do(
 
 ## Databricks CLI
 
-> ⚠️ **Depreciado em 0.298.0:** `databricks auth env` foi depreciado. O comando está oculto nos menus de ajuda e emite aviso de depreciação para stderr; será removido em versão futura. Evite usá-lo em scripts.
-
 ```bash
-# Check version (should be >= 0.298.0)
+# Check version (should be >= 0.278.0)
 databricks --version
 
 # Use specific profile
@@ -149,8 +122,6 @@ DBUtils:         /dbutils.html
 | `workspace` | repos, secrets, workspace, git_credentials |
 | `files` | files, dbfs |
 | `ml` | experiments, model_registry |
-| `environments` | environments *(novo em releases recentes)* |
-| `postgres` | postgres *(Lakebase — managed PostgreSQL)* |
 
 ---
 
@@ -189,8 +160,6 @@ w = WorkspaceClient(
 # Use a named profile from ~/.databrickscfg
 w = WorkspaceClient(profile="MY_PROFILE")
 ```
-
-**Ordem de autenticação padrão:** O SDK tenta primeiro PAT (`auth_type='pat'`); se falhar, tenta Workload Identity Federation (WIF). Para OIDC, forneça `host`, `client_id` e opcionalmente `token_audience`.
 
 ---
 
@@ -260,8 +229,6 @@ print(f"Run completed: {run.state.result_state}")
 # Get run output
 output = w.jobs.get_run_output(run_id=run.run_id)
 ```
-
-**Novo em releases recentes:** `Task`, `RunTask` e `SubmitTask` agora possuem campo `alert_task` e `RunOutput` possui `alert_output`, para integração com alertas SQL.
 
 ### SQL Statement Execution
 **Doc:** https://databricks-sdk-py.readthedocs.io/en/latest/workspace/sql/statement_execution.html
@@ -465,8 +432,6 @@ w.pipelines.start_update(pipeline_id="abc123")
 w.pipelines.stop_and_wait(pipeline_id="abc123")
 ```
 
-**Novo em releases recentes:** `IngestionPipelineDefinition` suporta campos `connector_type` e `data_staging_options`.
-
 ### Secrets
 **Doc:** https://databricks-sdk-py.readthedocs.io/en/latest/workspace/workspace/secrets.html
 
@@ -504,27 +469,6 @@ dbutils.fs.rm("dbfs:/path", recurse=True)
 # Secrets (same as w.secrets but dbutils interface)
 value = dbutils.secrets.get(scope="my-scope", key="my-key")
 ```
-
-### Environments (novo serviço)
-**Doc:** https://databricks-sdk-py.readthedocs.io/en/latest/workspace/compute/environments.html
-
-```python
-# Novo serviço workspace-level adicionado em releases recentes
-# Permite gerenciar ambientes de execução (serverless environments)
-for env in w.environments.list():
-    print(env)
-```
-
-### Postgres / Lakebase
-**Doc:** https://databricks-sdk-py.readthedocs.io/en/latest/workspace/catalog/postgres.html
-
-```python
-# Gerenciamento de instâncias PostgreSQL gerenciadas (Lakebase)
-# update_role() adicionado em releases recentes
-w.postgres.update_role(...)
-```
-
-> Consulte a skill relacionada **[databricks-lakebase-provisioned](../databricks-lakebase-provisioned/SKILL.md)** para padrões completos de uso do Lakebase.
 
 ---
 
@@ -630,17 +574,6 @@ except PermissionDenied:
     print("Access denied")
 ```
 
-### Pinning the SDK version (recomendado)
-
-Durante o período Beta, Databricks recomenda **fixar a versão minor** do SDK para evitar regressões causadas por breaking changes em campos de modelos de ML/Feature Store:
-
-```toml
-# pyproject.toml
-dependencies = [
-    "databricks-sdk>=0.103.0,<0.104.0",
-]
-```
-
 ---
 
 ## When Uncertain
@@ -680,8 +613,6 @@ If I'm unsure about a method, I should:
 | Pipelines | https://databricks-sdk-py.readthedocs.io/en/latest/workspace/pipelines/pipelines.html |
 | Secrets | https://databricks-sdk-py.readthedocs.io/en/latest/workspace/workspace/secrets.html |
 | DBUtils | https://databricks-sdk-py.readthedocs.io/en/latest/dbutils.html |
-| Environments | https://databricks-sdk-py.readthedocs.io/en/latest/workspace/compute/environments.html |
-| Postgres (Lakebase) | https://databricks-sdk-py.readthedocs.io/en/latest/workspace/catalog/postgres.html |
 
 ## Related Skills
 
