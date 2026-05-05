@@ -134,7 +134,7 @@ Antes de qualquer resposta técnica:
 2. **Carregar e validar** — `Graph.parse()` + `validate_owl_structure()` — zero ERRORs obrigatório
 3. **Normalizar para Turtle** — `Graph.serialize(format="turtle")` para padronização
 4. **Upload do TTL para OneLake** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/raw/` (externas) ou `domain/` (domínio do projeto)
-5. **Criar Notebook Spark no workspace** — `mcp__fabric_official__core_create-item` (type=Notebook) com código completo de ingestão: `%pip install rdflib`, schema canônico com `graph` e `loaded_at`, `.saveAsTable()`. Consultar `get_item_schema(type="Notebook")` para o formato do definition. O usuário executa o notebook com "Run All".
+5. **Gerar arquivo `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo de ingestão (`%pip install rdflib`, schema canônico com `graph` e `loaded_at`, `.saveAsTable()`). LIMITAÇÃO: `core_create-item` para notebooks requer payload base64 que o MCP oficial não encoda — gerar `.ipynb` local é a alternativa correta. Instruir o usuário: "Importe no Fabric: Home → Import Notebook → selecione o arquivo → Run All".
 6. **Criar views SQL via fabric_sql** — `mcp__fabric_sql__fabric_sql_execute` para cada view: `vw_ontology_classes`, `vw_class_hierarchy`, `vw_ontology_labels`. NOTA: executar as views após informar ao usuário que o notebook precisa ser rodado primeiro para popular `ontology_triples`.
 7. **Relatório final** — formato de resposta padrão, incluindo instrução explícita: "Execute o notebook `<nome>_ingest` no Fabric com Run All para popular a tabela Delta."
 
@@ -183,7 +183,7 @@ Seguir **Padrão 10** de `kb/semantic-web/patterns/owl-fabric-patterns.md` integ
 4. **Validar** — `validate_owl_structure_from_graph()` — zero ERRORs
 5. **Serializar** — `output/<dominio>_ontology.ttl`
 6. **Upload TTL** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/domain/`
-7. **Criar Notebook no workspace** — `mcp__fabric_official__core_create-item` (type=Notebook) com código de ingestão Delta completo. Informar ao usuário que deve executar com "Run All".
+7. **Gerar `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo. `core_create-item` para notebooks requer base64 IPYNB que o MCP não encoda — gerar local é a alternativa. Instrução ao usuário: "Home → Import Notebook → selecione o `.ipynb` → Run All".
 8. **Criar views SQL** — `mcp__fabric_sql__fabric_sql_execute` para `vw_<dominio>_classes` e `vw_<dominio>_properties`. Informar dependência do notebook.
 
 ### Protocolo: Conversão de Formato
