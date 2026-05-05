@@ -1,14 +1,9 @@
 ---
 name: databricks-mlflow-evaluation
-updated_at: 2026-04-23
-source: web_search
+description: "MLflow 3 GenAI agent evaluation. Use when writing mlflow.genai.evaluate() code, creating @scorer functions, using built-in scorers (Guidelines, Correctness, Safety, RetrievalGroundedness), building eval datasets from traces, setting up trace ingestion and production monitoring, aligning judges with MemAlign from domain expert feedback, or running optimize_prompts() with GEPA for automated prompt improvement."
 ---
 
 # MLflow 3 GenAI Evaluation
-
-> ⚠️ Breaking change em MLflow 3.11+: `litellm` e `gepa` foram **removidos** dos extras `genai` do pacote MLflow (`pip install mlflow[genai]`). Instale o pacote `gepa` separadamente se usar `GepaPromptOptimizer` fora do ambiente Databricks gerenciado. A API `mlflow.genai.optimize_prompts()` em si continua funcional.
-
-> ⚠️ Novo em MLflow 3.5+: A API de `optimize_prompts()` agora recebe um objeto `optimizer=` explícito (`GepaPromptOptimizer` ou `MetaPromptOptimizer`) em vez de configuração implícita. Veja Workflow 8.
 
 ## Before Writing Any Code
 
@@ -50,12 +45,10 @@ For debugging slow or expensive agent execution.
 | Step | Action | Reference Files |
 |------|--------|-----------------|
 | 1 | Profile latency by span | `patterns-trace-analysis.md` (Patterns 4-6) |
-| 2 | Analyze token usage + costs | `patterns-trace-analysis.md` (Pattern 9) |
+| 2 | Analyze token usage | `patterns-trace-analysis.md` (Pattern 9) |
 | 3 | Detect context issues | `patterns-context-optimization.md` (Section 5) |
 | 4 | Apply optimizations | `patterns-context-optimization.md` (Sections 1-4, 6) |
 | 5 | Re-evaluate to measure impact | `patterns-evaluation.md` (Pattern 6-7) |
-
-> 💡 MLflow 3.10+ rastreia custo automaticamente por span de LLM — use a UI de traces para inspecionar gastos sem código adicional.
 
 ### Workflow 4: Regression Detection
 
@@ -79,8 +72,6 @@ For creating project-specific evaluation metrics.
 | 2 | Choose scorer pattern | `patterns-scorers.md` (Patterns 4-11) |
 | 3 | For multi-agent scorers | `patterns-scorers.md` (Patterns 13-16) |
 | 4 | Test with evaluation | `patterns-evaluation.md` (Pattern 1) |
-
-> ⚠️ Restrição importante: scorers de código customizado (`@scorer`) funcionam **apenas** em avaliação offline (`mlflow.genai.evaluate()`). Para monitoramento de produção (scheduled scorers), só são suportados scorers do tipo LLM judge: built-ins, `make_judge()` e `Guidelines`.
 
 ### Workflow 6: Unity Catalog Trace Ingestion & Production Monitoring
 
@@ -108,33 +99,15 @@ For aligning an LLM judge to match domain expert preferences. A well-aligned jud
 | 5 | Register aligned judge to experiment | `patterns-judge-alignment.md` (Pattern 5) |
 | 6 | Re-evaluate with aligned judge (baseline) | `patterns-judge-alignment.md` (Pattern 6) |
 
-### Workflow 8: Automated Prompt Optimization with GEPA ou MetaPrompt
-
-> ⚠️ Breaking change em MLflow 3.5+: `optimize_prompts()` agora requer o argumento `optimizer=` com um objeto explícito (`GepaPromptOptimizer` ou `MetaPromptOptimizer`). A instalação do pacote `gepa` não é mais automática via `pip install mlflow[genai]` — instale separadamente em ambientes fora do Databricks gerenciado.
+### Workflow 8: Automated Prompt Optimization with GEPA
 
 For automatically improving a registered system prompt using `optimize_prompts()`. Works with any scorer, but paired with an aligned judge (Workflow 7) gives the most domain-accurate signal. For the full end-to-end loop combining alignment and optimization, see `user-journeys.md` Journey 10.
-
-MLflow suporta dois algoritmos de otimização:
-- **GEPA (`GepaPromptOptimizer`)** — refinamento iterativo via reflexão em linguagem natural; preferível quando qualidade é crítica e custo computacional é aceitável.
-- **MetaPrompting (`MetaPromptOptimizer`)** — reestrutura o prompt de forma mais rápida; opera em modo zero-shot (sem dados de treino) ou few-shot; preferível para iterações rápidas.
 
 | Step | Action | Reference Files |
 |------|--------|-----------------|
 | 1 | Build optimization dataset (inputs + expectations) | `patterns-prompt-optimization.md` (Pattern 1) |
-| 2 | Choose optimizer (`GepaPromptOptimizer` ou `MetaPromptOptimizer`) | `patterns-prompt-optimization.md` (Pattern 2) |
-| 3 | Run `optimize_prompts()` com `optimizer=` e `scorer` | `patterns-prompt-optimization.md` (Pattern 2) |
-| 4 | Register new version, promote conditionally | `patterns-prompt-optimization.md` (Pattern 3) |
-
-### Workflow 9: Multi-turn / Conversational Evaluation *(novo em MLflow 3.7+)*
-
-For evaluating conversational agents across multiple turns. Use session-level scorers and, from MLflow 3.10+, `ConversationSimulator` for automated scenario testing.
-
-| Step | Action | Reference Files |
-|------|--------|-----------------|
-| 1 | Instrument agent with `mlflow.update_current_trace(metadata={"mlflow.trace.session": session_id})` | `patterns-trace-ingestion.md` (tracing section) |
-| 2 | Retrieve sessions via `mlflow.search_sessions()` | `patterns-trace-analysis.md` |
-| 3 | Evaluate com scorers multi-turn (`ConversationCompleteness`, `UserFrustration`, etc.) | `patterns-evaluation.md` |
-| 4 | (Opcional) Simular conversas com `ConversationSimulator` | `patterns-evaluation.md` (Pattern: ConversationSimulator) |
+| 2 | Run optimize_prompts() with GEPA + scorer | `patterns-prompt-optimization.md` (Pattern 2) |
+| 3 | Register new version, promote conditionally | `patterns-prompt-optimization.md` (Pattern 3) |
 
 ## Reference Files Quick Lookup
 
@@ -149,28 +122,20 @@ For evaluating conversational agents across multiple turns. Use session-level sc
 | `patterns-context-optimization.md` | Token/latency fixes | When agent is slow or expensive |
 | `patterns-trace-ingestion.md` | UC trace setup, monitoring | When setting up trace storage or production monitoring |
 | `patterns-judge-alignment.md` | MemAlign judge alignment, labeling sessions, SME feedback | When aligning judges to domain expert preferences |
-| `patterns-prompt-optimization.md` | GEPA / MetaPrompt optimization: build dataset, optimize_prompts(), promote | When running automated prompt improvement |
+| `patterns-prompt-optimization.md` | GEPA optimization: build dataset, optimize_prompts(), promote | When running automated prompt improvement |
 | `user-journeys.md` | High-level workflows, full domain-expert optimization loop | When starting a new evaluation project or running the full align + optimize cycle |
 
 ## Critical API Facts
 
 - **Use:** `mlflow.genai.evaluate()` (NOT `mlflow.evaluate()`)
 - **Data format:** `{"inputs": {"query": "..."}}` (nested structure required)
-- **predict_fn:** Receives `**unpacked kwargs` (not a dict); async functions são detectadas e envolvidas automaticamente (MLflow 3.8+)
-- **Async timeout:** Configure com `MLFLOW_GENAI_EVAL_ASYNC_TIMEOUT` (default: 300s)
-- **Concurrency de scorers:** Controle com `MLFLOW_GENAI_EVAL_MAX_SCORER_WORKERS` (default: 10); use `=1` para execução sequencial e evitar rate limits
-- **inference_params:** Scorers LLM-as-a-Judge (`Correctness`, `Guidelines`, etc.) aceitam `inference_params={"temperature": 0.0, "max_tokens": 500}` para controlar o modelo juiz
-- **Scorers em produção:** Apenas LLM judges (built-ins, `make_judge()`, `Guidelines`) suportam monitoramento automático de produção — `@scorer` de código customizado **não é suportado** para scheduled scorers
+- **predict_fn:** Receives `**unpacked kwargs` (not a dict)
 - **MemAlign:** Scorer-agnostic (works with any `feedback_value_type` -- float, bool, categorical); token-heavy on the embedding model so set `embedding_model` explicitly
 - **Label schema name matching:** The label schema `name` in the labeling session MUST match the judge `name` used in `evaluate()` for `align()` to pair scores
 - **Aligned judge scores:** May be lower than unaligned judge scores -- this is expected and means the judge is now more accurate, not that the agent regressed
-- **optimize_prompts:** Requires MLflow >= 3.5.0; use `optimizer=GepaPromptOptimizer(reflection_model="...")` ou `optimizer=MetaPromptOptimizer()`; pacote `gepa` deve ser instalado separadamente em MLflow 3.11+
 - **GEPA optimization dataset:** Must have both `inputs` AND `expectations` per record (different from eval dataset)
 - **Episodic memory:** Lazily loaded -- `get_scorer()` results won't show episodic memory on print until the judge is first used
-- **Multi-turn scorers built-in:** `ConversationCompleteness`, `UserFrustration`, `ConversationalSafety`, `ConversationalToolCallEfficiency`, `ConversationalRoleAdherence` — disponíveis a partir de MLflow 3.7-3.8
-- **ConversationSimulator:** Disponível a partir do MLflow 3.10; use `from mlflow.genai.simulators import ConversationSimulator`; requer `goal` por test case; suporta `persona`, `simulation_guidelines`, `context` e `max_turns`
-- **DeepEval / RAGAS:** Acesse via `get_judge` API (MLflow 3.8+) para usar métricas desses frameworks como scorers MLflow nativos
-- **Trace Cost Tracking:** A partir do MLflow 3.10, custo por span de LLM é calculado automaticamente e exibido na UI — sem código adicional necessário
+- **optimize_prompts:** Requires MLflow >= 3.5.0
 
 See `GOTCHAS.md` for complete list.
 

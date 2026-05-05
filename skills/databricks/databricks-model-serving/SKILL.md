@@ -1,8 +1,6 @@
 ---
 name: databricks-model-serving
 description: "Deploy and query Databricks Model Serving endpoints. Use when (1) deploying MLflow models or AI agents to endpoints, (2) creating ChatAgent/ResponsesAgent agents, (3) integrating UC Functions or Vector Search tools, (4) querying deployed endpoints, (5) checking endpoint status. Covers classical ML models, custom pyfunc, and GenAI agents."
-updated_at: 2026-04-23
-source: web_search
 ---
 
 # Databricks Model Serving
@@ -19,7 +17,7 @@ Deploy MLflow models and AI agents to scalable REST API endpoints.
 
 ## Prerequisites
 
-- **DBR 16.4 LTS+** recommended (LTS lançado maio 2025, pré-instala pacotes GenAI e Python 3.11)
+- **DBR 16.1+** recommended (pre-installed GenAI packages)
 - Unity Catalog enabled workspace
 - Model Serving enabled
 
@@ -27,47 +25,38 @@ Deploy MLflow models and AI agents to scalable REST API endpoints.
 
 ALWAYS use exact endpoint names from this table. NEVER guess or abbreviate.
 
-> ⚠️ **Breaking changes em modelos (abril/maio 2026):**
-> - `databricks-claude-3-7-sonnet` — **APOSENTADO** (não disponível). Migrar para `databricks-claude-sonnet-4-5` ou `databricks-claude-sonnet-4-6`.
-> - `databricks-claude-opus-4` e `databricks-claude-sonnet-4` — **Depreciados em 14 abr 2026**, aposentadoria em **15 jun 2026**. Migrar para as versões `4.6`.
-> - `databricks-meta-llama-3-1-405b-instruct` — **Indisponível para pay-per-token**; aposentadoria para provisioned throughput em **15 mai 2026**.
-> - `databricks-gemini-3-pro` — **Aposentado em 26 mar 2026**. Chamadas redirecionadas temporariamente para `databricks-gemini-3-1-pro` até 7 jun 2026.
-> - `databricks-gpt-5-1-codex-max` e `databricks-gpt-5-1-codex-mini` — Requerem **cross geography routing** habilitado.
-
 ### Chat / Instruct Models
 
 | Endpoint Name | Provider | Notes |
 |--------------|----------|-------|
 | `databricks-gpt-5-2` | OpenAI | Latest GPT, 400K context |
 | `databricks-gpt-5-1` | OpenAI | Instant + Thinking modes |
-| `databricks-gpt-5-1-codex-max` | OpenAI | Code-specialized (high perf) — requer cross-geo routing |
-| `databricks-gpt-5-1-codex-mini` | OpenAI | Code-specialized (cost-opt) — requer cross-geo routing |
+| `databricks-gpt-5-1-codex-max` | OpenAI | Code-specialized (high perf) |
+| `databricks-gpt-5-1-codex-mini` | OpenAI | Code-specialized (cost-opt) |
 | `databricks-gpt-5` | OpenAI | 400K context, reasoning |
 | `databricks-gpt-5-mini` | OpenAI | Cost-optimized reasoning |
 | `databricks-gpt-5-nano` | OpenAI | High-throughput, lightweight |
 | `databricks-gpt-oss-120b` | OpenAI | Open-weight, 128K context |
 | `databricks-gpt-oss-20b` | OpenAI | Lightweight open-weight |
 | `databricks-claude-opus-4-6` | Anthropic | Most capable, 1M context |
-| `databricks-claude-sonnet-4-6` | Anthropic | Hybrid reasoning (substituto recomendado de sonnet-4 e claude-3-7-sonnet) |
+| `databricks-claude-sonnet-4-6` | Anthropic | Hybrid reasoning |
 | `databricks-claude-sonnet-4-5` | Anthropic | Hybrid reasoning |
 | `databricks-claude-opus-4-5` | Anthropic | Deep analysis, 200K context |
-| `databricks-claude-sonnet-4` | Anthropic | ⚠️ Depreciado — aposentadoria 15 jun 2026; migrar para `sonnet-4-6` |
+| `databricks-claude-sonnet-4` | Anthropic | Hybrid reasoning |
 | `databricks-claude-opus-4-1` | Anthropic | 200K context, 32K output |
 | `databricks-claude-haiku-4-5` | Anthropic | Fastest, cost-effective |
+| `databricks-claude-3-7-sonnet` | Anthropic | Retiring April 2026 |
 | `databricks-meta-llama-3-3-70b-instruct` | Meta | 128K context, multilingual |
+| `databricks-meta-llama-3-1-405b-instruct` | Meta | Retiring May 2026 (PT) |
 | `databricks-meta-llama-3-1-8b-instruct` | Meta | Lightweight, 128K context |
-| `databricks-llama-4-maverick` | Meta | MoE architecture (provisioned throughput, Public Preview) |
+| `databricks-llama-4-maverick` | Meta | MoE architecture |
 | `databricks-gemini-3-1-pro` | Google | 1M context, hybrid reasoning |
-| `databricks-gemini-3-flash` | Google | Fast, cost-efficient — requer cross-geo routing |
-| `databricks-gemini-2-5-pro` | Google | 1M context, Deep Think; Function calling e Structured output suportados |
-| `databricks-gemini-2-5-flash` | Google | 1M context, hybrid reasoning; Function calling e Structured output suportados |
+| `databricks-gemini-3-pro` | Google | 1M context, hybrid reasoning |
+| `databricks-gemini-3-flash` | Google | Fast, cost-efficient |
+| `databricks-gemini-2-5-pro` | Google | 1M context, Deep Think |
+| `databricks-gemini-2-5-flash` | Google | 1M context, hybrid reasoning |
 | `databricks-gemma-3-12b` | Google | 128K context, multilingual |
-| `databricks-qwen3-next-80b-a3b-instruct` | Alibaba | Efficient MoE (Beta, us-west-2 e ap-northeast-1) |
-
-> **Modelos removidos da tabela:**
-> - `databricks-claude-3-7-sonnet` — APOSENTADO
-> - `databricks-meta-llama-3-1-405b-instruct` — indisponível pay-per-token, aposentadoria PT mai 2026
-> - `databricks-gemini-3-pro` — APOSENTADO (redirecionado para `gemini-3-1-pro` até jun 2026)
+| `databricks-qwen3-next-80b-a3b-instruct` | Alibaba | Efficient MoE |
 
 ### Embedding Models
 
@@ -81,10 +70,9 @@ ALWAYS use exact endpoint names from this table. NEVER guess or abbreviate.
 
 - **Agent LLM**: `databricks-meta-llama-3-3-70b-instruct` (good balance of quality/cost)
 - **Embedding**: `databricks-gte-large-en`
-- **Code tasks**: `databricks-gpt-5-1-codex-mini` ou `databricks-gpt-5-1-codex-max` (requerem cross-geo routing)
-- **Reasoning agents**: `databricks-claude-sonnet-4-6` (substituto recomendado de claude-3-7-sonnet e claude-sonnet-4)
+- **Code tasks**: `databricks-gpt-5-1-codex-mini` or `databricks-gpt-5-1-codex-max`
 
-> Estes são endpoints pay-per-token disponíveis em todos os workspaces. Para produção, considere o modo provisioned throughput. Consulte os [modelos suportados](https://docs.databricks.com/aws/en/machine-learning/foundation-model-apis/supported-models) — a lista evolui rapidamente.
+> These are pay-per-token endpoints available in every workspace. For production, consider provisioned throughput mode. See [supported models](https://docs.databricks.com/aws/en/machine-learning/foundation-model-apis/supported-models).
 
 ## Reference Files
 
@@ -106,16 +94,14 @@ ALWAYS use exact endpoint names from this table. NEVER guess or abbreviate.
 
 ### Step 1: Install Packages (in notebook or via MCP)
 
-> ⚠️ **MLflow versão**: a versão mínima recomendada foi atualizada. Use `mlflow>=3.6.0`; o MLflow atual é **3.11.x** — prefira não fixar em versão exata para aproveitar correções recentes. Verifique compatibilidade com `databricks-agents` antes de fixar versão.
-
 ```python
-%pip install -U mlflow databricks-langchain langgraph databricks-agents pydantic
+%pip install -U mlflow==3.6.0 databricks-langchain langgraph==0.3.4 databricks-agents pydantic
 dbutils.library.restartPython()
 ```
 
-Ou via MCP:
+Or via MCP:
 ```
-execute_code(code="%pip install -U mlflow databricks-langchain langgraph databricks-agents pydantic")
+execute_code(code="%pip install -U mlflow==3.6.0 databricks-langchain langgraph==0.3.4 databricks-agents pydantic")
 ```
 
 ### Step 2: Create Agent File
@@ -289,30 +275,24 @@ manage_serving_endpoint(
 
 | Issue | Solution |
 |-------|----------|
-| **Invalid output format** | Use `self.create_text_output_item(text, id)` como primeira opção; a partir do MLflow 3.x dicts também são aceitos via alias `PyFuncOutput` (ver nota abaixo) |
+| **Invalid output format** | Use `self.create_text_output_item(text, id)` - NOT raw dicts! |
 | **Endpoint NOT_READY** | Deployment takes ~15 min. Use `manage_serving_endpoint(action="get")` to poll. |
 | **Package not found** | Specify exact versions in `pip_requirements` when logging model |
 | **Tool timeout** | Use job-based deployment, not synchronous calls |
 | **Auth error on endpoint** | Ensure `resources` specified in `log_model` for auto passthrough |
 | **Model not found** | Check Unity Catalog path: `catalog.schema.model_name` |
-| **max_tokens não definido com Claude Sonnet 4** | Sempre especifique `max_tokens` explicitamente — o default é apenas 1.000 tokens |
-| **Endpoint de modelo aposentado** | Consulte a tabela de modelos nesta SKILL; substitua imediatamente `claude-3-7-sonnet` → `claude-sonnet-4-6` e `gemini-3-pro` → `gemini-3-1-pro` |
 
-### ResponsesAgent Output Format
+### Critical: ResponsesAgent Output Format
 
-> ⚠️ **Atualização MLflow 3.x**: a partir de versões recentes do MLflow 3, `dict` foi adicionado ao type alias `PyFuncOutput` para `ResponsesAgent`/`ChatAgent`/`ChatModel`. O padrão com métodos helper continua sendo o **recomendado** por ser mais seguro e explícito, mas dicts válidos também são aceitos.
+**WRONG** - raw dicts don't work:
+```python
+return ResponsesAgentResponse(output=[{"role": "assistant", "content": "..."}])
+```
 
-**RECOMENDADO** - use helper methods (mais seguro, explícito):
+**CORRECT** - use helper methods:
 ```python
 return ResponsesAgentResponse(
     output=[self.create_text_output_item(text="...", id="msg_1")]
-)
-```
-
-**TAMBÉM ACEITO** (a partir de MLflow 3.x recente) — apenas se o dict seguir o schema correto:
-```python
-return ResponsesAgentResponse(
-    output=[{"type": "message", "role": "assistant", "content": [{"type": "output_text", "text": "..."}]}]
 )
 ```
 
@@ -320,21 +300,6 @@ Available helper methods:
 - `self.create_text_output_item(text, id)` - text responses
 - `self.create_function_call_item(id, call_id, name, arguments)` - tool calls
 - `self.create_function_call_output_item(call_id, output)` - tool results
-
-### ResponsesAgent Streaming (MLflow 3.x)
-
-O `ResponsesAgent` agora suporta streaming nativo via `predict_stream`:
-
-```python
-class MyAgent(ResponsesAgent):
-    def predict(self, context, request):
-        # resposta completa
-        ...
-
-    def predict_stream(self, context, request):
-        # yield ResponsesAgentStreamEvent objects para streaming
-        ...
-```
 
 ---
 
@@ -349,7 +314,5 @@ class MyAgent(ResponsesAgent):
 ## Resources
 
 - [Model Serving Documentation](https://docs.databricks.com/machine-learning/model-serving/)
-- [MLflow ResponsesAgent](https://mlflow.org/docs/latest/genai/serving/responses-agent)
+- [MLflow 3 ResponsesAgent](https://mlflow.org/docs/latest/llms/responses-agent-intro/)
 - [Agent Framework](https://docs.databricks.com/generative-ai/agent-framework/)
-- [Supported Foundation Models](https://docs.databricks.com/aws/en/machine-learning/foundation-model-apis/supported-models)
-- [Retired Models](https://docs.databricks.com/aws/en/machine-learning/foundation-model-apis/retired-models)

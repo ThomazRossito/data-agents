@@ -1,8 +1,6 @@
 ---
 name: databricks-app-python
 description: "Builds Python-based Databricks applications using Dash, Streamlit, Gradio, Flask, FastAPI, or Reflex. Handles OAuth authorization (app and user auth), app resources, SQL warehouse and Lakebase connectivity, model serving integration, foundation model APIs, LLM integration, and deployment. Use when building Python web apps, dashboards, ML demos, or REST APIs for Databricks, or when the user mentions Streamlit, Dash, Gradio, Flask, FastAPI, Reflex, or Databricks app."
-updated_at: 2026-04-23
-source: web_search
 ---
 
 # Databricks Python Application
@@ -28,8 +26,7 @@ Copy this checklist and verify each item:
 - [ ] Auth strategy decided: app auth, user auth, or both
 - [ ] App resources identified (SQL warehouse, Lakebase, serving endpoint, etc.)
 - [ ] Backend data strategy decided (SQL warehouse, Lakebase, or SDK)
-- [ ] Dependency strategy decided: pip (requirements.txt) or uv (pyproject.toml + uv.lock)
-- [ ] Deployment method: CLI, DABs (Declarative Automation Bundles), or Git repository
+- [ ] Deployment method: CLI or DABs
 ```
 
 ---
@@ -53,7 +50,7 @@ Copy this checklist and verify each item:
 
 | Concept | Details |
 |---------|---------|
-| **Runtime** | Python 3.11, Ubuntu 22.04, 2 vCPU, 6 GB RAM (default Medium) |
+| **Runtime** | Python 3.11, Ubuntu 22.04, 2 vCPU, 6 GB RAM |
 | **Pre-installed** | Dash 2.18.1, Streamlit 1.38.0, Gradio 4.44.0, Flask 3.0.3, FastAPI 0.115.0 |
 | **Auth (app)** | Service principal via `Config()` — auto-injected `DATABRICKS_CLIENT_ID`/`DATABRICKS_CLIENT_SECRET` |
 | **Auth (user)** | `x-forwarded-access-token` header — see [1-authorization.md](1-authorization.md) |
@@ -71,7 +68,7 @@ Copy this checklist and verify each item:
 
 **Frameworks**: See [3-frameworks.md](3-frameworks.md) for Databricks-specific patterns per framework — covers Dash, Streamlit, Gradio, Flask, FastAPI, and Reflex with auth integration, deployment commands, and Cookbook links. (Keywords: Dash, Streamlit, Gradio, Flask, FastAPI, Reflex, framework selection)
 
-**Deployment**: Use [4-deployment.md](4-deployment.md) when deploying your app — covers Databricks CLI, Declarative Automation Bundles (DABs), Git repository deployment, app.yaml configuration, and post-deployment verification. (Keywords: deploy, CLI, DABs, declarative automation bundles, asset bundles, app.yaml, logs, git)
+**Deployment**: Use [4-deployment.md](4-deployment.md) when deploying your app — covers Databricks CLI, Asset Bundles (DABs), app.yaml configuration, and post-deployment verification. (Keywords: deploy, CLI, DABs, asset bundles, app.yaml, logs)
 
 **Lakebase**: Use [5-lakebase.md](5-lakebase.md) when using Lakebase (PostgreSQL) as your app's data layer — covers auto-injected env vars, psycopg2/asyncpg patterns, and when to choose Lakebase vs SQL warehouse. (Keywords: Lakebase, PostgreSQL, psycopg2, asyncpg, transactional, PGHOST)
 
@@ -107,8 +104,7 @@ app-directory/
 ├── app.py                 # Main application (or framework-specific name)
 ├── models.py              # Pydantic data models
 ├── backend.py             # Data access layer
-├── requirements.txt       # Additional Python dependencies (pip-based)
-│                          # OR pyproject.toml + uv.lock (uv-based — see Dependency Management)
+├── requirements.txt       # Additional Python dependencies
 ├── app.yaml               # Databricks Apps configuration
 └── README.md
 ```
@@ -167,90 +163,6 @@ class EntityIn(BaseModel):
 
 ---
 
-## Dependency Management
-
-> ⚠️ **New in March 2026**: Databricks Apps now supports `uv` + `pyproject.toml` as an alternative to `requirements.txt`. Choose one strategy per app — they are mutually exclusive at deploy time.
-
-The platform selects the install strategy based on which files are present:
-
-| Strategy | Files required | Python version |
-|----------|---------------|----------------|
-| **pip** (default) | `requirements.txt` | Fixed: Python 3.11 |
-| **uv** | `pyproject.toml` + `uv.lock` (no `requirements.txt`) | Any version via `requires-python` |
-
-**Rule**: `requirements.txt` always takes precedence — if both exist, `uv` is ignored.
-
-### pip / requirements.txt (standard)
-
-```txt
-# requirements.txt
-# Override a pre-installed package version
-dash==2.10.0
-# Add packages not pre-installed
-requests==2.31.0
-numpy==1.24.3
-scikit-learn>=1.2.0,<1.3.0
-```
-
-- Pre-installed packages do **not** need to be listed unless you need a different version.
-- To install wheels from Unity Catalog volumes, hardcode the full path: `/Volumes/<catalog>/<schema>/<volume>/my_package-1.0.0-py3-none-any.whl`
-- Environment variable references are **not** supported inside `requirements.txt` — always hardcode paths.
-
-### uv / pyproject.toml (recommended for new projects needing reproducibility or a custom Python version)
-
-```toml
-# pyproject.toml
-[project]
-name = "my-app"
-requires-python = ">=3.12"   # can be any version, unlike pip-based apps
-dependencies = [
-    "dash==2.10.0",
-    "requests==2.31.0",
-]
-```
-
-Generate the lockfile locally before deploying:
-
-```bash
-uv lock   # generates uv.lock — commit both files
-```
-
-Pre-installed libraries are **not** available for uv-based apps — declare all dependencies in `pyproject.toml`.
-
-### Node.js dependencies
-
-If your app includes a frontend (e.g., React + Vite bundled with FastAPI), add a `package.json` in the app root. Databricks runs `npm install` automatically during deployment.
-
-```jsonc
-// package.json (example for React + Vite)
-{
-  "name": "my-app",
-  "scripts": { "build": "vite build frontend" },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "vite": "^5.0.0"
-  }
-}
-```
-
-> Note: No Node.js libraries are pre-installed. List **all** Node.js packages under `dependencies`, not `devDependencies`, if they are needed for `npm run build` (setting `NODE_ENV=production` skips `devDependencies`).
-
----
-
-## Compute Sizing
-
-> ⚠️ **New in January 2026 (GA)**: App compute sizing is now generally available. You can choose between Medium and Large at app creation time or in the UI.
-
-| Size | vCPUs | Memory | Use When |
-|------|-------|--------|----------|
-| **Medium** (default) | 2 vCPU | 6 GB | Most apps, prototypes, lightweight APIs |
-| **Large** | 4 vCPU | 12 GB | Heavy computation, large model inference, high-concurrency dashboards |
-
-Configure via the Databricks UI or `app.yaml`. See [Configure compute resources for a Databricks app](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/).
-
----
-
 ## Common Issues
 
 | Issue | Solution |
@@ -260,14 +172,11 @@ Configure via the Databricks UI or `app.yaml`. See [Configure compute resources 
 | **App won't start** | Check `app.yaml` command matches framework; check `databricks apps logs <name>` |
 | **Resource not accessible** | Add resource via UI, verify SP has permissions, use `valueFrom` in app.yaml |
 | **Import error on deploy** | Add missing packages to `requirements.txt` (pre-installed packages don't need listing) |
-| **Import error on deploy (uv)** | With uv, pre-installed packages are NOT available — declare ALL deps in `pyproject.toml` |
-| **Lakebase app crashes on start** | `psycopg2`/`asyncpg` are NOT pre-installed — MUST add to `requirements.txt` or `pyproject.toml` |
+| **Lakebase app crashes on start** | `psycopg2`/`asyncpg` are NOT pre-installed — MUST add to `requirements.txt` |
 | **Port conflict** | Apps must bind to `DATABRICKS_APP_PORT` env var (defaults to 8000). Never use 8080. Streamlit is auto-configured; for others, read the env var in code or use 8000 in app.yaml command |
 | **Streamlit: set_page_config error** | `st.set_page_config()` must be the first Streamlit command |
 | **Dash: unstyled layout** | Add `dash-bootstrap-components`; use `dbc.themes.BOOTSTRAP` |
 | **Slow queries** | Use Lakebase for transactional/low-latency; SQL warehouse for analytical queries |
-| **uv.lock missing** | Run `uv lock` locally and commit `uv.lock` alongside `pyproject.toml` before deploying |
-| **requirements.txt + pyproject.toml conflict** | If both exist, pip/requirements.txt always wins — remove `requirements.txt` to activate uv |
 
 ---
 
@@ -275,34 +184,12 @@ Configure via the Databricks UI or `app.yaml`. See [Configure compute resources 
 
 | Constraint | Details |
 |------------|---------|
-| **Runtime** | Python 3.11, Ubuntu 22.04 LTS (pip-based); any Python version (uv-based) |
-| **Compute (default)** | 2 vCPUs, 6 GB memory (Medium) |
-| **Compute (large)** | 4 vCPUs, 12 GB memory (Large) — GA since January 2026 |
-| **Node.js** | Node.js 22.16 available; no pre-installed libraries — use `package.json` |
-| **Pre-installed frameworks** | Dash, Streamlit, Gradio, Flask, FastAPI, Shiny (pip-based apps only) |
-| **Custom packages (pip)** | Add to `requirements.txt` in app root |
-| **Custom packages (uv)** | Declare all in `pyproject.toml` + commit `uv.lock` |
+| **Runtime** | Python 3.11, Ubuntu 22.04 LTS |
+| **Compute** | 2 vCPUs, 6 GB memory (default) |
+| **Pre-installed frameworks** | Dash, Streamlit, Gradio, Flask, FastAPI, Shiny |
+| **Custom packages** | Add to `requirements.txt` in app root |
 | **Network** | Apps can reach Databricks APIs; external access depends on workspace config |
 | **User auth** | Public Preview — workspace admin must enable before adding scopes |
-| **Git deployment** | GA since April 2026 — configure Git ref and source path in app settings |
-
----
-
-## Deployment Options
-
-> ⚠️ **Rename in March 2026**: "Databricks Asset Bundles (DABs)" has been officially renamed to **Declarative Automation Bundles**. The CLI commands and YAML schema are unchanged — only the marketing name changed. References in docs and older guides using "DABs" or "Asset Bundles" refer to the same tool.
-
-Three supported deployment methods:
-
-| Method | When to Use |
-|--------|-------------|
-| **Databricks CLI** (`databricks apps deploy`) | Quick manual deploys, dev iteration |
-| **Declarative Automation Bundles** (formerly DABs) | CI/CD pipelines, multi-environment promotion |
-| **Git repository** (April 2026) | Source-of-truth Git workflows; enforce Git-only deployments workspace-wide |
-
-For Git deployment: configure a Git reference and source code path in the app settings. Optionally enforce Git-only deployments at the workspace level.
-
-See [4-deployment.md](4-deployment.md) for full details.
 
 ---
 
@@ -313,13 +200,12 @@ See [4-deployment.md](4-deployment.md) for full details.
 - **[Authorization](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/auth)** — app auth and user auth
 - **[Resources](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/resources)** — SQL warehouse, Lakebase, serving, secrets
 - **[app.yaml Reference](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/app-runtime)** — command and env config
-- **[System Environment](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/system-env)** — runtime details, env vars, port bindings
-- **[Manage Dependencies](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/dependencies)** — pip, uv, and Node.js dependency management
+- **[System Environment](https://docs.databricks.com/aws/en/dev-tools/databricks-apps/system-env)** — pre-installed packages, runtime details
 
 ## Related Skills
 
 - **[databricks-app-apx](../databricks-app-apx/SKILL.md)** - full-stack apps with FastAPI + React
-- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps via Declarative Automation Bundles (formerly DABs)
+- **[databricks-bundles](../databricks-bundles/SKILL.md)** - deploying apps via DABs
 - **[databricks-python-sdk](../databricks-python-sdk/SKILL.md)** - backend SDK integration
 - **[databricks-lakebase-provisioned](../databricks-lakebase-provisioned/SKILL.md)** - adding persistent PostgreSQL state
 - **[databricks-model-serving](../databricks-model-serving/SKILL.md)** - serving ML models for app integration

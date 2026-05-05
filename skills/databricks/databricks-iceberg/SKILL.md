@@ -1,7 +1,6 @@
 ---
 name: databricks-iceberg
-updated_at: "2026-04-23"
-source: web_search
+description: "Apache Iceberg tables on Databricks — Managed Iceberg tables, External Iceberg Reads (fka Uniform), Compatibility Mode, Iceberg REST Catalog (IRC), Iceberg v3, Snowflake interop, PyIceberg, OSS Spark, external engine access and credential vending. Use when creating Iceberg tables, enabling External Iceberg Reads (uniform) on Delta tables (including Streaming Tables and Materialized Views via compatibility mode), configuring external engines to read Databricks tables via Unity Catalog IRC, integrating with Snowflake catalog to read Foreign Iceberg tables"
 ---
 
 # Apache Iceberg on Databricks
@@ -26,16 +25,11 @@ Databricks provides multiple ways to work with Apache Iceberg: native managed Ic
 
 | Concept | Summary |
 |---------|---------|
-| **Managed Iceberg Table** | Native Iceberg table created with `USING ICEBERG` — full read/write in Databricks and via external Iceberg engines; Public Preview, DBR 16.4 LTS+ |
-| **External Iceberg Reads (UniForm)** | Delta table that auto-generates Iceberg metadata — read as Iceberg externally, write as Delta internally; requires DBR 14.3 LTS+ |
+| **Managed Iceberg Table** | Native Iceberg table created with `USING ICEBERG` — full read/write in Databricks and via external Iceberg engines |
+| **External Iceberg Reads (Uniform)** | Delta table that auto-generates Iceberg metadata — read as Iceberg externally, write as Delta internally |
 | **Compatibility Mode** | UniForm variant for streaming tables and materialized views in SDP pipelines |
-| **Iceberg REST Catalog (IRC)** | Unity Catalog's built-in REST endpoint implementing the Iceberg REST Catalog spec — lets external engines (Spark, PyIceberg, Snowflake) access UC-managed Iceberg data; Public Preview, DBR 16.4 LTS+ |
-| **Iceberg v3** | Next-gen format (**Public Preview, DBR 18.0+**) — deletion vectors, VARIANT type, row lineage |
-| **Foreign Iceberg Table** | Iceberg table managed by an external catalog (e.g. AWS Glue, Snowflake Horizon) — read-only in Databricks via Lakehouse Federation; Public Preview, DBR 16.4 LTS+ |
-
-> ⚠️ **Atualização de versão em abril 2026:** Iceberg v3 **não é mais Beta** — passou a **Public Preview no DBR 18.0+** (atualizado em docs.databricks.com em 21/04/2026). O requisito mínimo anterior de DBR 17.3+ está desatualizado. Use `'format-version' = '3'` apenas em clusters com DBR 18.0+.
-
-> ⚠️ **Atualização de versão de cliente em abril 2026:** Databricks recomenda oficialmente clientes Iceberg **1.9.2+** (antes citava-se 1.9.0+) para leitura e escrita via IRC.
+| **Iceberg REST Catalog (IRC)** | Unity Catalog's built-in REST endpoint implementing the Iceberg REST Catalog spec — lets external engines (Spark, PyIceberg, Snowflake) access UC-managed Iceberg data |
+| **Iceberg v3** | Next-gen format (Beta, DBR 17.3+) — deletion vectors, VARIANT type, row lineage |
 
 ---
 
@@ -66,19 +60,12 @@ TBLPROPERTIES (
 CLUSTER BY (event_date)
 AS SELECT * FROM raw_events;
 
--- CLUSTER BY on Iceberg v3 (DBR-only syntax, requer DBR 18.0+ — Public Preview): no TBLPROPERTIES needed
+-- CLUSTER BY on Iceberg v3 (DBR-only syntax): no TBLPROPERTIES needed
 CREATE TABLE my_catalog.my_schema.events
 USING ICEBERG
 TBLPROPERTIES ('format-version' = '3')
 CLUSTER BY (event_date)
 AS SELECT * FROM raw_events;
-
--- Iceberg v3 com Deletion Vectors habilitados explicitamente (requer DBR 18.0+)
-CREATE TABLE catalog.schema.table (c1 INT)
-USING ICEBERG
-TBLPROPERTIES (
-  'iceberg.enableDeletionVectors' = 'true'
-);
 ```
 
 ### Enable UniForm on an Existing Delta Table
@@ -92,25 +79,6 @@ SET TBLPROPERTIES (
 );
 ```
 
-### Enable UniForm + Iceberg v3 (Delta table) — DBR 18.0+
-
-```sql
--- Nova tabela Delta com UniForm e v3 habilitados
-CREATE TABLE catalog.schema.table (c1 INT)
-TBLPROPERTIES(
-  'delta.enableDeletionVectors'            = 'true',
-  'delta.enableIcebergCompatV3'            = 'true',
-  'delta.universalFormat.enabledFormats'   = 'iceberg'
-);
-
--- Upgrade de tabela Delta existente para IcebergCompatV3
-ALTER TABLE catalog.schema.table
-SET TBLPROPERTIES(
-  'delta.enableIcebergCompatV3' = 'true',
-  'delta.enableIcebergCompatV2' = 'false'
-);
-```
-
 ---
 
 ## Read/Write Capability Matrix
@@ -120,7 +88,6 @@ SET TBLPROPERTIES(
 | Managed Iceberg (`USING ICEBERG`) | Yes | Yes | Yes | Yes |
 | Delta + UniForm | Yes (as Delta) | Yes (as Delta) | Yes (as Iceberg) | No |
 | Delta + Compatibility Mode | Yes (as Delta) | Yes | Yes (as Iceberg) | No |
-| Foreign Iceberg Table | Yes (read-only) | No | Yes (via IRC, sem auto-refresh) | No |
 
 ---
 
@@ -143,9 +110,8 @@ SET TBLPROPERTIES(
 - **Making a streaming table or MV readable as Iceberg** → [2-uniform-and-compatibility.md](2-uniform-and-compatibility.md) (Compatibility Mode section)
 - **Choosing between Managed Iceberg vs UniForm vs Compatibility Mode** → decision table in [2-uniform-and-compatibility.md](2-uniform-and-compatibility.md)
 - **Exposing Databricks tables to external engines via REST API** → [3-iceberg-rest-catalog.md](3-iceberg-rest-catalog.md)
-- **Integrating Databricks com Snowflake (any direction, including Azure storage)** → [4-snowflake-interop.md](4-snowflake-interop.md)
+- **Integrating Databricks with Snowflake (either direction)** → [4-snowflake-interop.md](4-snowflake-interop.md)
 - **Connecting PyIceberg, OSS Spark, Flink, EMR, or Kafka** → [5-external-engine-interop.md](5-external-engine-interop.md)
-- **Sharing foreign Iceberg tables externally** → use Delta Sharing (Public Preview, abril 2026) — providers add foreign Iceberg tables to a share; recipients access data in read-only format
 
 ---
 
@@ -155,17 +121,11 @@ SET TBLPROPERTIES(
 |-------|----------|
 | **No Change Data Feed (CDF)** | CDF is not supported on managed Iceberg tables. Use Delta + UniForm if you need CDF. |
 | **UniForm async delay** | Iceberg metadata generation is asynchronous. After a write, there may be a brief delay before external engines see the latest data. Check status with `DESCRIBE EXTENDED table_name`. |
-| **Compression codec change** | Managed Iceberg tables and tables with Iceberg reads enabled use `zstd` compression by default (not `snappy`). Older Iceberg readers that don't support zstd will fail. Verify reader compatibility or set `write.parquet.compression-codec` to `snappy`. |
-| **Snowflake 1000-commit limit** | Snowflake processes at most 1000 Delta commit files per refresh cycle. High-frequency writers must compact metadata. Multiple refreshes can be chained — each continues from where the previous stopped. |
-| **Deletion vectors with UniForm** | UniForm requires deletion vectors to be disabled (`delta.enableDeletionVectors = false`). If your table has deletion vectors enabled, run `REORG TABLE ... APPLY (PURGE)` before enabling UniForm. For Iceberg v3 + UniForm, use `delta.enableIcebergCompatV3 = 'true'` (DVs são suportados nesse caso). |
+| **Compression codec change** | Managed Iceberg tables use `zstd` compression by default (not `snappy`). Older Iceberg readers that don't support zstd will fail. Verify reader compatibility or set `write.parquet.compression-codec` to `snappy`. |
+| **Snowflake 1000-commit limit** | Snowflake's Iceberg catalog integration can only see the last 1000 Iceberg commits. High-frequency writers must compact metadata or Snowflake will lose visibility of older data. |
+| **Deletion vectors with UniForm** | UniForm requires deletion vectors to be disabled (`delta.enableDeletionVectors = false`). If your table has deletion vectors enabled, disable them before enabling UniForm. |
 | **No shallow clone for Iceberg** | `SHALLOW CLONE` is not supported for Iceberg tables. Use `DEEP CLONE` or `CREATE TABLE ... AS SELECT` instead. |
-| **Version mismatch with external engines** | Ensure external engines use an Iceberg library version compatible with the format version of your tables. Iceberg v3 tables require Iceberg library **1.9.2+** (recomendação oficial atualizada em abril 2026). |
-| **No Structured Streaming sink** | Cannot use `writeStream` directly to write to Iceberg tables. Use `INSERT INTO` or `MERGE` in batch, or SDP streaming tables with Compatibility Mode for external reads. |
-| **IP access list blocking IRC connections** | If workspace has IP access lists enabled, add the client egress CIDR to the allowlist. Symptoms: connection timeout or `403 Forbidden` even with valid credentials. |
-| **Foreign Iceberg tables not auto-refreshed via IRC** | When reading foreign Iceberg tables through the Iceberg REST Catalog API, metadata is **not** automatically refreshed. Run `REFRESH FOREIGN TABLE` manually before querying to get the latest snapshot. |
-| **Managed Iceberg table creation fails** | Managed Iceberg tables can only be created if **Predictive Optimization is enabled** for table maintenance at the catalog or schema level. |
-| **Iceberg v2 row-level deletes fail** | Iceberg v2 position deletes and equality-based deletes are **not supported** on Databricks. Use Iceberg v3 with deletion vectors (`'iceberg.enableDeletionVectors' = 'true'`) for row-level deletions. |
-| **Snowflake write to UC on Azure** | Snowflake write support para tabelas Iceberg gerenciadas por Unity Catalog no Azure é GA desde 06/04/2026 (suporte a Azure Data Lake Storage Gen2 com external volumes). |
+| **Version mismatch with external engines** | Ensure external engines use an Iceberg library version compatible with the format version of your tables. Iceberg v3 tables require Iceberg library 1.9.0+. |
 
 ---
 
@@ -180,10 +140,9 @@ SET TBLPROPERTIES(
 
 ## Resources
 
-- **[Iceberg Overview](https://docs.databricks.com/aws/en/iceberg/)** — main hub for Iceberg on Databricks (atualizado 21/04/2026)
-- **[UniForm / External Iceberg Reads](https://docs.databricks.com/aws/en/delta/uniform.html)** — Delta Universal Format (previously called UniForm)
+- **[Iceberg Overview](https://docs.databricks.com/aws/en/iceberg/)** — main hub for Iceberg on Databricks
+- **[UniForm](https://docs.databricks.com/aws/en/delta/uniform.html)** — Delta Universal Format
 - **[Iceberg REST Catalog](https://docs.databricks.com/aws/en/external-access/iceberg)** — IRC endpoint and external engine access
 - **[Compatibility Mode](https://docs.databricks.com/aws/en/external-access/compatibility-mode)** — UniForm for streaming tables and MVs
-- **[Iceberg v3](https://docs.databricks.com/aws/en/iceberg/iceberg-v3)** — next-gen format features (Public Preview, DBR 18.0+)
+- **[Iceberg v3](https://docs.databricks.com/aws/en/iceberg/iceberg-v3)** — next-gen format features (Beta)
 - **[Foreign Tables](https://docs.databricks.com/aws/en/query-data/foreign-tables.html)** — reading external catalog data
-- **[Managed Tables (Delta + Iceberg)](https://docs.databricks.com/aws/en/tables/managed)** — UC managed table concepts and DDL

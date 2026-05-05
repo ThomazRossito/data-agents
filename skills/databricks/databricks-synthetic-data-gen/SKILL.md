@@ -1,8 +1,6 @@
 ---
 name: databricks-synthetic-data-gen
 description: "Generate realistic synthetic data using Spark + Faker (strongly recommended). Supports serverless execution, multiple output formats (Parquet/JSON/CSV/Delta), and scales from thousands to millions of rows. For small datasets (<10K rows), can optionally generate locally and upload to volumes. Use when user mentions 'synthetic data', 'test data', 'generate data', 'demo dataset', 'Faker', or 'sample data'."
-updated_at: 2026-04-23
-source: web_search
 ---
 
 > Catalog and schema are **always user-supplied** — never default to any value. If the user hasn't provided them, ask. For any UC write, **always create the schema if it doesn't exist** before writing data.
@@ -44,7 +42,7 @@ Synthetic data should demonstrate how Databricks helps solve real business probl
 7. **Present plan for approval** — Show tables, distributions, assumptions before writing code
 8. **Master tables first** — Generate parent tables, write to Delta, then create children with valid FKs
 9. **Use Spark + Faker + Pandas UDFs** — Scalable, parallel. Polars only if user explicitly wants local + <30K rows
-10. **Use Databricks Connect Serverless by default to generate data** — Use `databricks-connect>=17.3` (current stable LTS; latest PyPI release is 18.1.x). Update with `uv` if required (avoid using execute_code unless instructed to not use Databricks Connect)
+10. **Use Databricks Connect Serverless by default to generate data** — Update databricks-connect on python 3.12 if required (avoid using execute_code unless instructed to not use Databricks Connect)
 11. **No `.cache()` or `.persist()`** — Not supported on serverless. Write to Delta, read back for joins
 12. **No Python loops or `.collect()`** — Use Spark parallelism. No driver-side iteration, avoid Pandas↔Spark conversions
 
@@ -137,8 +135,6 @@ After generating data, use `get_volume_folder_details` to validate the output ma
 
 ## Use Databricks Connect Spark + Faker Pattern
 
-> ⚠️ Breaking change em 17.3: `DatabricksSession.builder.serverless(True)` é a forma canônica para serverless. O wrapper `.withEnvironment(env).serverless(True)` ainda funciona mas a assinatura simplificada `.serverless()` (sem argumento) também é aceita a partir da 17.3. Confirme sempre com a versão instalada.
-
 ```python
 from databricks.connect import DatabricksSession, DatabricksEnv
 from pyspark.sql import functions as F
@@ -147,7 +143,7 @@ import pandas as pd
 
 # Setup serverless with dependencies (MUST list all libs used in UDFs)
 env = DatabricksEnv().withDependencies("faker", "holidays")
-spark = DatabricksSession.builder.withEnvironment(env).serverless().getOrCreate()
+spark = DatabricksSession.builder.withEnvironment(env).serverless(True).getOrCreate()
 
 # Pandas UDF pattern - import lib INSIDE the function
 @F.pandas_udf(StringType())
@@ -168,20 +164,6 @@ spark.sql(f"CREATE SCHEMA IF NOT EXISTS {CATALOG}.{SCHEMA}")
 spark.sql(f"CREATE VOLUME IF NOT EXISTS {CATALOG}.{SCHEMA}.raw_data")
 customers_df.write.mode("overwrite").parquet(f"/Volumes/{CATALOG}/{SCHEMA}/raw_data/customers")
 ```
-
-### Descoberta automática de dependências (novo em ≥17.3)
-
-Alternativa ao `withDependencies()` manual: o método `withAutoDependencies()` detecta automaticamente pacotes PyPI usados nas UDFs, com base no ambiente local.
-
-```python
-from databricks.connect import DatabricksSession, DatabricksEnv
-
-# use_index=True → resolve versões pelo ambiente local; upload_local=True → empacota módulos locais
-env = DatabricksEnv().withAutoDependencies(upload_local=True, use_index=True)
-spark = DatabricksSession.builder.withEnvironment(env).serverless().getOrCreate()
-```
-
-> **Limitações do `withAutoDependencies`:** imports dinâmicos (`importlib.import_module`) e namespace packages (`azure.eventhub`, `google.cloud.*`) não são suportados. Para esses casos, use `withDependencies()` explicitamente.
 
 **Partitions by scale:** `spark.range(N, numPartitions=P)`
 - <100K rows: 8 partitions
@@ -251,19 +233,11 @@ orders_with_fk = orders_df.join(customer_lookup, on="customer_idx")
 
 ## Setup
 
-> ⚠️ Breaking change em 17.4+: o teto `<17.4` da instalação anterior **não é mais correto**. A série `17.x` chegou até `17.3.x` (LTS) e a série `18.x` é a atual (última: `18.1.2`, Mar 2026). Ambas requerem Python 3.12.
-
-Requires Python 3.12 and `databricks-connect>=17.3`. Use `uv`:
+Requires Python 3.12 and databricks-connect>=16.4. Use `uv`:
 
 ```bash
-# Série 17.3 LTS (estável, recomendada para ambientes conservadores)
-uv pip install "databricks-connect~=17.3" faker numpy "pandas>=1.0.5,<3" holidays
-
-# Série 18.x (última disponível)
-uv pip install "databricks-connect~=18.1" faker numpy "pandas>=1.0.5,<3" holidays
+uv pip install "databricks-connect>=16.4,<17.4" faker numpy pandas holidays
 ```
-
-> **pandas:** mantenha `pandas<3` — versões ≥3.0 quebram workloads `pyspark.pandas` (limitação confirmada upstream, jan/2026).
 
 ## Related Skills
 
@@ -274,17 +248,14 @@ uv pip install "databricks-connect~=18.1" faker numpy "pandas>=1.0.5,<3" holiday
 
 | Issue | Solution |
 |-------|----------|
-| `ImportError: cannot import name 'DatabricksEnv'` | Upgrade: `uv pip install "databricks-connect~=17.3"` ou `~=18.1` |
+| `ImportError: cannot import name 'DatabricksEnv'` | Upgrade: `uv pip install "databricks-connect>=16.4"` |
 | Python 3.11 instead of 3.12 | Python 3.12 required. Use `uv` to create env with correct version |
-| `ModuleNotFoundError: faker` | Add to `withDependencies("faker")`, import inside UDF; ou use `withAutoDependencies(use_index=True)` |
+| `ModuleNotFoundError: faker` | Add to `withDependencies()`, import inside UDF |
 | Faker UDF is slow | Use `pandas_udf` for batch processing |
 | Out of memory | Increase `numPartitions` in `spark.range()` |
 | Referential integrity errors | Write master table to Delta first, read back for FK joins |
 | `PERSIST TABLE is not supported on serverless` | **NEVER use `.cache()` or `.persist()` with serverless** - write to Delta table first, then read back |
 | `F.window` vs `Window` confusion | Use `from pyspark.sql.window import Window` for `row_number()`, `rank()`, etc. `F.window` is for streaming only. |
 | Broadcast variables not supported | **NEVER use `spark.sparkContext.broadcast()` with serverless** |
-| `pandas 3.x` breaks `pyspark.pandas` | Pin `pandas<3` — limite confirmado no changelog do databricks-connect (jan/2026) |
-| `withAutoDependencies` não encontra pacote | Imports dinâmicos e namespace packages não são suportados — use `withDependencies()` explicitamente nesses casos |
-| Versão do client abaixo da serverless | A partir de 17.3 o connect emite **warning** em vez de erro — o código continua funcionando |
 
 See [references/2-troubleshooting.md](references/2-troubleshooting.md) for full troubleshooting guide.
