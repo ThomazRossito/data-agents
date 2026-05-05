@@ -14,7 +14,7 @@
 ---
 
 <p align="center">
-  <img src="img/readme/author_futuristic.png" alt="Arquitetura Data Agents" width="80%">
+  <img src="img/readme/author_futuristic.png" alt="Autor" width="80%">
 </p>
 
 ---
@@ -167,33 +167,16 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 
 ---
 
-## Protocolo DOMA
+<p align="center">
+  <img src="img/readme/doma_protocol_futuristic.png" alt="Fluxo Doma " width="100%">
+</p>
 
-O Supervisor segue o **Método DOMA** (Data Orchestration Method for Agents) — um protocolo de 7 passos que garante que qualquer tarefa complexa seja bem planejada antes de ser executada:
 
-```
-Passo 0    KB-First: consulta as bases de conhecimento antes de qualquer plano
-Passo 0.5  Clarity Checkpoint: valida se a solicitação está clara o suficiente
-Passo 0.9  Spec-First: seleciona o template adequado para a tarefa
-Passo 1    Planejamento: cria um documento de requisitos (PRD) em output/prd/
-Passo 2    Aprovação: aguarda confirmação antes de executar
-Passo 3    Delegação: aciona os agentes especialistas na ordem certa
-Passo 4    Validação: verifica se o resultado segue as regras da Constituição
-```
+---
 
-Para perguntas simples e comandos diretos (`/sql`, `/spark`, etc.), o Supervisor usa **DOMA Express** — pula o planejamento e delega diretamente.
-
-### Workflows Colaborativos
-
-Para projetos end-to-end, o Supervisor encadeia agentes automaticamente:
-
-| Workflow | Quando usar | Agentes envolvidos |
-|----------|-------------|-------------------|
-| **WF-01** Pipeline End-to-End | "Crie um pipeline Bronze→Gold completo" | Spark → Quality → Semantic → Governance |
-| **WF-02** Star Schema | "Crie a camada Gold em Star Schema" | SQL → Spark → Quality → Semantic |
-| **WF-03** Migração Cross-Platform | "Migre do Databricks para o Fabric" | Architect → SQL → Spark → Quality + Governance |
-| **WF-04** Auditoria de Governança | "Gere um relatório de compliance" | Governance → Quality → Relatório |
-| **WF-05** Migração Relacional→Nuvem | "Migre o SQL Server para Databricks" | Migration Expert → SQL → Spark → Quality + Governance |
+<p align="center">
+  <img src="img/readme/migration_flow_futuristic.png" alt="Fluxo de Migração" width="100%">
+</p>
 
 ---
 
