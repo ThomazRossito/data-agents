@@ -500,10 +500,11 @@ def load_agent(
         agent_effort = cast(Literal["low", "medium", "high", "max"], tier_effort_map[tier])
         logger.debug(f"Agente '{name}': effort={agent_effort} (tier={tier} map)")
 
-    # Permission mode por agente (Ch. 5 — Agent Loop):
-    # Controla se o agente pode chamar tools de escrita sem confirmação do usuário.
-    # Prioridade: frontmatter > None (herda o modo global do Supervisor).
-    # Valores válidos: 'default', 'acceptEdits', 'plan', 'bypassPermissions', 'dontAsk', 'auto'
+    # Permission mode por agente — lido do frontmatter para futura compatibilidade.
+    # NOTA: AgentDefinition.permissionMode está declarado no SDK Python mas não é
+    # implementado (nenhum consumidor encontrado no código interno do SDK).
+    # O controle real de permissões é feito via AGENT_PERMISSION_MODE no .env,
+    # que aplica --permission-mode ao processo Claude no nível do Supervisor.
     permission_mode_raw = metadata.get("permission_mode")
     agent_permission_mode: (
         Literal["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"] | None
@@ -513,7 +514,9 @@ def load_agent(
             Literal["default", "acceptEdits", "plan", "bypassPermissions", "dontAsk", "auto"],
             str(permission_mode_raw),
         )
-        logger.debug(f"Agente '{name}': permissionMode={agent_permission_mode} (frontmatter)")
+        logger.debug(
+            f"Agente '{name}': permissionMode={agent_permission_mode} (frontmatter, no-op no SDK atual)"
+        )
 
     # Cache prefix injection (Ch. 9 — Fork Agents & Prompt Cache):
     # Prepend um bloco idêntico byte-a-byte ao topo de todos os agentes.
