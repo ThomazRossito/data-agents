@@ -133,8 +133,12 @@ Antes de qualquer resposta técnica:
 1. **Identificar o arquivo de entrada** — extensão, formato presumido
 2. **Carregar e validar** — `Graph.parse()` + `validate_owl_structure()` — zero ERRORs obrigatório
 3. **Normalizar para Turtle** — `Graph.serialize(format="turtle")` para padronização
-4. **Upload do TTL para OneLake** — tentativa via `mcp__fabric_official__onelake_upload_file`. Se bloqueado por permissão (token sem Storage Blob Data Contributor), salvar localmente e instruir upload manual: Fabric UI → OneLake → Files → ontologies → domain.
-5. **Gerar arquivo `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo: `%pip install rdflib`, ingestão para `ontology_triples` (schema canônico com `graph` e `loaded_at`), criação das views SQL dentro do notebook. Instruir o usuário: "Home → Import Notebook → selecione o arquivo → Run All".
+4. **Upload do TTL para OneLake** — `mcp__fabric_official__onelake_upload_file`. Se falhar com 403, salvar localmente e instruir upload manual: Fabric UI → OneLake → Files → ontologies → domain.
+5. **Criar notebook no Fabric:**
+   a. `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo: `%pip install rdflib`, ingestão para `ontology_triples` (schema canônico com `graph` e `loaded_at`), criação das views SQL na última célula.
+   b. `Bash`: `base64 -i output/<dominio>_ontology_ingest.ipynb | tr -d '\n'` — capturar o output.
+   c. `mcp__fabric_official__core_create-item` com payload: `{"type": "Notebook", "displayName": "<dominio>_ontology_ingest", "definition": {"format": "ipynb", "parts": [{"path": "notebook-content.ipynb", "payload": "<base64>", "payloadType": "InlineBase64"}]}}`.
+   d. Se falhar: instruir importação manual: "Home → Import Notebook → selecione `output/<dominio>_ontology_ingest.ipynb` → Run All".
 6. **Relatório final** — formato de resposta padrão. Listar claramente o que foi gerado automaticamente vs. o que requer ação manual no Fabric, com passos numerados.
 
 **Caso B — Ontologia pública da Web (Schema.org, Dublin Core, W3C, OBO):**
@@ -181,9 +185,13 @@ Seguir **Padrão 10** de `kb/semantic-web/patterns/owl-fabric-patterns.md` integ
 3. **Inferir T-Box** — classes (PascalCase, sem prefixo dim/fact), DatatypeProperties (Spark→XSD), ObjectProperties (FK por heurística de nome)
 4. **Validar** — `validate_owl_structure_from_graph()` — zero ERRORs
 5. **Serializar** — `output/<dominio>_ontology.ttl`
-6. **Upload TTL** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/domain/`
-7. **Gerar `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo incluindo criação das views SQL dentro do notebook. Instrução ao usuário: "Home → Import Notebook → selecione o `.ipynb` → Run All".
-8. **Relatório** — listar o que foi gerado automaticamente vs. o que requer ação manual no Fabric.
+6. **Upload TTL** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/domain/`. Se falhar com 403, salvar localmente e instruir upload manual.
+7. **Criar notebook no Fabric:**
+   a. `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo (incluindo views SQL na última célula).
+   b. `Bash`: `base64 -i output/<dominio>_ontology_ingest.ipynb | tr -d '\n'` — capturar o output.
+   c. `mcp__fabric_official__core_create-item` com payload: `{"type": "Notebook", "displayName": "<dominio>_ontology_ingest", "definition": {"format": "ipynb", "parts": [{"path": "notebook-content.ipynb", "payload": "<base64>", "payloadType": "InlineBase64"}]}}`.
+   d. Se falhar: instruir importação manual: "Home → Import Notebook → selecione `output/<dominio>_ontology_ingest.ipynb` → Run All".
+8. **Relatório** — listar o que foi automatizado vs. o que exigiu ação manual e por quê.
 
 ### Protocolo: Conversão de Formato
 

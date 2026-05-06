@@ -628,21 +628,24 @@ g.add((ont_uri, OWL.versionInfo, Literal("1.0.0")))
 
 | Item | Agente gera localmente | Ação manual no Fabric |
 |------|------------------------|----------------------|
-| Arquivo `.ttl` validado | `output/<dominio>_ontology.ttl` | Upload via Fabric UI: OneLake → Files → ontologies → domain |
-| Arquivo `.ipynb` de ingestão | `output/<dominio>_ontology_ingest.ipynb` | Home → Import Notebook → Run All |
-| Views SQL (código) | Dentro do `.ipynb`, seção final | Executadas pelo notebook automaticamente no Run All |
+| Arquivo `.ttl` validado | `output/<dominio>_ontology.ttl` + upload automático para OneLake | — (automático com Contributor no workspace) |
+| Notebook de ingestão | Criado no workspace Fabric via base64 + `core_create-item` | **Run All** para popular `ontology_triples` e criar as views |
+| Views SQL | Geradas pela última célula do notebook | Executadas automaticamente pelo Run All |
 
-**Limitações confirmadas de infraestrutura — não são bugs de código:**
+**Pré-requisitos de infraestrutura para automação completa:**
 
-| Operação | Limitação |
-|----------|-----------|
-| Upload TTL via MCP (`onelake_upload_file`) | Token OAuth do MCP não tem permissão de escrita no OneLake (precisa de Storage Blob Data Contributor) |
-| Criar notebook via MCP (`core_create-item`) | API do Fabric requer definition em base64 IPYNB — MCP não encoda automaticamente |
-| Criar views via MCP (`fabric_sql_execute` DDL) | Token do SQL Analytics Endpoint não tem permissão DDL na maioria dos ambientes |
-| Executar notebook remotamente | Não existe API do Fabric para execução remota de notebooks |
+| Operação | Pré-requisito |
+|----------|---------------|
+| Upload TTL via MCP (`onelake_upload_file`) | Service principal (`AZURE_CLIENT_ID`) como **Contributor** no workspace Fabric (Manage Access) |
+| Criar notebook via MCP (`core_create-item`) | Mesmo Contributor — o agente encoda o `.ipynb` em base64 via Bash e chama a API |
+| Criar views via MCP (`fabric_sql_execute` DDL) | Token SQL Analytics sem DDL na maioria dos ambientes — views ficam no notebook (Run All) |
+| Executar notebook remotamente | Não existe API do Fabric para execução remota — Run All é sempre manual |
 
-> O agente entrega todos os artefatos corretos e validados. As ações manuais são
-> limitações da plataforma Fabric, não do agente.
+**Habilitar service principals no Fabric (tenant-level, uma vez por organização):**
+Fabric Admin Portal → Tenant Settings → Developer Settings → "Allow service principals to use Fabric APIs" → habilitado para o security group do service principal.
+
+**`AGENT_PERMISSION_MODE=bypassPermissions`** no `.env` é obrigatório para que o agente
+não pause aguardando aprovação em cada operação write.
 
 ### Relatório Mínimo Esperado
 
