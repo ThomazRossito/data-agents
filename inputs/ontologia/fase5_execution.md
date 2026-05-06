@@ -40,10 +40,11 @@ Execute os 8 passos do Padrão 10 (kb/semantic-web/patterns/owl-fabric-patterns.
    Verificar também os critérios de aceite da seção 7 do SPEC
 5. Serializar em output/retail_ontology.ttl
 6. Upload para Files/ontologies/domain/retail_ontology.ttl no OntologiaDataLH
-7. Gerar arquivo output/retail_ontology_ingest.ipynb com o código Spark completo
-   de ingestão Delta (limitação: core_create-item requer base64 IPYNB que o MCP não
-   encoda — o .ipynb é gerado local para importação manual no Fabric)
-8. Criar views SQL via fabric_sql:
+7. Criar o notebook no workspace Fabric:
+   - Gerar output/retail_ontology_ingest.ipynb com código Spark completo
+   - Encodar em base64 via Bash e criar no Fabric via core_create-item
+   - Se falhar: instruir importação manual
+8. Criar views SQL dentro do notebook (última célula) — executadas no Run All:
    - vw_retail_classes
    - vw_retail_properties
    - vw_class_hierarchy
@@ -60,15 +61,20 @@ Gerar relatório final em output/ontologia/fase5_execution_report.md com:
 
 ## O que esperar no output
 
-Tudo criado automaticamente no Fabric, exceto a execução do notebook (limitação da API).
+Tudo criado automaticamente no Fabric: TTL no OneLake, notebook criado no workspace, views SQL
+geradas pela última célula do notebook. A única ação manual é o **Run All** do notebook.
+
 O relatório deve confirmar cada critério de aceite do SPEC aprovado — não apenas "funcionou".
+
+**Pré-requisito:** `AGENT_PERMISSION_MODE=bypassPermissions` no `.env` e service principal
+com role `Storage Blob Data Contributor` no storage account do OneLake.
 
 ---
 
 ## Após a execução
 
-1. Importar o notebook no Fabric: **Home → Import Notebook → selecione `output/retail_ontology_ingest.ipynb`**
-2. Executar o notebook com **Run All** para popular `ontology_triples`
-2. Verificar no SQL Analytics: `SELECT COUNT(*) FROM ontology_triples` — deve retornar 180+ linhas
-3. Verificar as views: `SELECT * FROM vw_retail_classes` — deve retornar 5 classes
-4. Registrar a versão no histórico do SPEC (seção Histórico de Revisões)
+1. Abrir o notebook **retail_ontology_ingest** criado no workspace Fabric
+2. Executar com **Run All** para popular `ontology_triples` e criar as views
+3. Verificar no SQL Analytics: `SELECT COUNT(*) FROM ontology_triples` — deve retornar 180+ linhas
+4. Verificar as views: `SELECT * FROM vw_retail_classes` — deve retornar 5 classes
+5. Registrar a versão no histórico do SPEC (seção Histórico de Revisões)
