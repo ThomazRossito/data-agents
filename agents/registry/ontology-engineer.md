@@ -133,10 +133,9 @@ Antes de qualquer resposta técnica:
 1. **Identificar o arquivo de entrada** — extensão, formato presumido
 2. **Carregar e validar** — `Graph.parse()` + `validate_owl_structure()` — zero ERRORs obrigatório
 3. **Normalizar para Turtle** — `Graph.serialize(format="turtle")` para padronização
-4. **Upload do TTL para OneLake** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/raw/` (externas) ou `domain/` (domínio do projeto)
-5. **Gerar arquivo `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo de ingestão (`%pip install rdflib`, schema canônico com `graph` e `loaded_at`, `.saveAsTable()`). LIMITAÇÃO: `core_create-item` para notebooks requer payload base64 que o MCP oficial não encoda — gerar `.ipynb` local é a alternativa correta. Instruir o usuário: "Importe no Fabric: Home → Import Notebook → selecione o arquivo → Run All".
-6. **Criar views SQL via fabric_sql** — `mcp__fabric_sql__fabric_sql_execute` para cada view: `vw_ontology_classes`, `vw_class_hierarchy`, `vw_ontology_labels`. NOTA: executar as views após informar ao usuário que o notebook precisa ser rodado primeiro para popular `ontology_triples`.
-7. **Relatório final** — formato de resposta padrão, incluindo instrução explícita: "Execute o notebook `<nome>_ingest` no Fabric com Run All para popular a tabela Delta."
+4. **Upload do TTL para OneLake** — tentativa via `mcp__fabric_official__onelake_upload_file`. Se bloqueado por permissão (token sem Storage Blob Data Contributor), salvar localmente e instruir upload manual: Fabric UI → OneLake → Files → ontologies → domain.
+5. **Gerar arquivo `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo: `%pip install rdflib`, ingestão para `ontology_triples` (schema canônico com `graph` e `loaded_at`), criação das views SQL dentro do notebook. Instruir o usuário: "Home → Import Notebook → selecione o arquivo → Run All".
+6. **Relatório final** — formato de resposta padrão. Listar claramente o que foi gerado automaticamente vs. o que requer ação manual no Fabric, com passos numerados.
 
 **Caso B — Ontologia pública da Web (Schema.org, Dublin Core, W3C, OBO):**
 1. **Buscar com Tavily** — `mcp__tavily__tavily-search` para localizar URL do arquivo .ttl/.owl
@@ -183,8 +182,8 @@ Seguir **Padrão 10** de `kb/semantic-web/patterns/owl-fabric-patterns.md` integ
 4. **Validar** — `validate_owl_structure_from_graph()` — zero ERRORs
 5. **Serializar** — `output/<dominio>_ontology.ttl`
 6. **Upload TTL** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/domain/`
-7. **Gerar `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo. `core_create-item` para notebooks requer base64 IPYNB que o MCP não encoda — gerar local é a alternativa. Instrução ao usuário: "Home → Import Notebook → selecione o `.ipynb` → Run All".
-8. **Criar views SQL** — `mcp__fabric_sql__fabric_sql_execute` para `vw_<dominio>_classes` e `vw_<dominio>_properties`. Informar dependência do notebook.
+7. **Gerar `.ipynb` localmente** — `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo incluindo criação das views SQL dentro do notebook. Instrução ao usuário: "Home → Import Notebook → selecione o `.ipynb` → Run All".
+8. **Relatório** — listar o que foi gerado automaticamente vs. o que requer ação manual no Fabric.
 
 ### Protocolo: Conversão de Formato
 

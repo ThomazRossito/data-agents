@@ -624,22 +624,25 @@ g.add((ont_uri, OWL.versionInfo, Literal("1.0.0")))
 # pois dependem da tabela ontology_triples estar populada.
 ```
 
-### O que fica pronto automaticamente vs. manual
+### O que o agente entrega vs. o que é manual
 
-| Item | Automático (agente) | Manual (usuário) |
-|------|---------------------|------------------|
-| Arquivo `.ttl` no OneLake Files | Passo 6 | — |
-| Arquivo `.ipynb` gerado localmente | Passo 7 | — |
-| Notebook importado no workspace Fabric | — | Home → Import Notebook → selecionar o `.ipynb` |
-| Tabela Delta `ontology_triples` populada | — | Clicar "Run All" no notebook importado |
-| Views SQL criadas | Passo 8 | — (executa após o notebook) |
+| Item | Agente gera localmente | Ação manual no Fabric |
+|------|------------------------|----------------------|
+| Arquivo `.ttl` validado | `output/<dominio>_ontology.ttl` | Upload via Fabric UI: OneLake → Files → ontologies → domain |
+| Arquivo `.ipynb` de ingestão | `output/<dominio>_ontology_ingest.ipynb` | Home → Import Notebook → Run All |
+| Views SQL (código) | Dentro do `.ipynb`, seção final | Executadas pelo notebook automaticamente no Run All |
 
-> **Limitação de API:** `core_create-item` para notebooks requer payload base64 IPYNB que
-> o MCP oficial não encoda automaticamente. O agente gera o `.ipynb` localmente — o usuário
-> importa no Fabric em 3 cliques (Home → Import Notebook → arquivo).
->
-> As views SQL (Passo 8) dependem de `ontology_triples` existir. O agente DEVE informar
-> ao usuário que precisa importar e executar o notebook antes das views ficarem funcionais.
+**Limitações confirmadas de infraestrutura — não são bugs de código:**
+
+| Operação | Limitação |
+|----------|-----------|
+| Upload TTL via MCP (`onelake_upload_file`) | Token OAuth do MCP não tem permissão de escrita no OneLake (precisa de Storage Blob Data Contributor) |
+| Criar notebook via MCP (`core_create-item`) | API do Fabric requer definition em base64 IPYNB — MCP não encoda automaticamente |
+| Criar views via MCP (`fabric_sql_execute` DDL) | Token do SQL Analytics Endpoint não tem permissão DDL na maioria dos ambientes |
+| Executar notebook remotamente | Não existe API do Fabric para execução remota de notebooks |
+
+> O agente entrega todos os artefatos corretos e validados. As ações manuais são
+> limitações da plataforma Fabric, não do agente.
 
 ### Relatório Mínimo Esperado
 
