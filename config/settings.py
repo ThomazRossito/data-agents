@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     azure_client_secret: str = ""
     fabric_workspace_id: str = ""
     fabric_api_base_url: str = "https://api.fabric.microsoft.com/v1"
+    # GUID do Lakehouse de ontologia — necessário para upload via ADLS Gen2 com URL correta.
+    # Fabric UI → Lakehouse → Settings → ID (ou Fabric REST API /items).
+    fabric_lakehouse_ontologia_id: str = ""
     fabric_mcp_server_path: str = "./mcp_servers/fabric/Fabric.Mcp.Server"
     # Comando do Fabric Community MCP — pode ser sobrescrito no .env com caminho absoluto
     # Exemplo conda: /opt/anaconda3/envs/multi_agents/bin/microsoft-fabric-mcp

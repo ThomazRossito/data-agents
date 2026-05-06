@@ -133,12 +133,8 @@ Antes de qualquer resposta técnica:
 1. **Identificar o arquivo de entrada** — extensão, formato presumido
 2. **Carregar e validar** — `Graph.parse()` + `validate_owl_structure()` — zero ERRORs obrigatório
 3. **Normalizar para Turtle** — `Graph.serialize(format="turtle")` para padronização
-4. **Upload do TTL para OneLake** — `mcp__fabric_official__onelake_upload_file`. Se falhar com 403, salvar localmente e instruir upload manual: Fabric UI → OneLake → Files → ontologies → domain.
-5. **Criar notebook no Fabric:**
-   a. `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo: `%pip install rdflib`, ingestão para `ontology_triples` (schema canônico com `graph` e `loaded_at`), criação das views SQL na última célula.
-   b. `Bash`: `base64 -i output/<dominio>_ontology_ingest.ipynb | tr -d '\n'` — capturar o output.
-   c. `mcp__fabric_official__core_create-item` com payload: `{"type": "Notebook", "displayName": "<dominio>_ontology_ingest", "definition": {"format": "ipynb", "parts": [{"path": "notebook-content.ipynb", "payload": "<base64>", "payloadType": "InlineBase64"}]}}`.
-   d. Se falhar: instruir importação manual: "Home → Import Notebook → selecione `output/<dominio>_ontology_ingest.ipynb` → Run All".
+4. **Upload do TTL para OneLake via ADLS Gen2** — usar `Bash` com curl (mesmo protocolo do Padrão 10, passo 6).
+5. **Criar notebook no Fabric via Fabric REST API** — usar `Bash` com curl (mesmo protocolo do Padrão 10, passo 7).
 6. **Relatório final** — formato de resposta padrão. Listar claramente o que foi gerado automaticamente vs. o que requer ação manual no Fabric, com passos numerados.
 
 **Caso B — Ontologia pública da Web (Schema.org, Dublin Core, W3C, OBO):**
@@ -185,12 +181,49 @@ Seguir **Padrão 10** de `kb/semantic-web/patterns/owl-fabric-patterns.md` integ
 3. **Inferir T-Box** — classes (PascalCase, sem prefixo dim/fact), DatatypeProperties (Spark→XSD), ObjectProperties (FK por heurística de nome)
 4. **Validar** — `validate_owl_structure_from_graph()` — zero ERRORs
 5. **Serializar** — `output/<dominio>_ontology.ttl`
-6. **Upload TTL** — `mcp__fabric_official__onelake_upload_file` em `Files/ontologies/domain/`. Se falhar com 403, salvar localmente e instruir upload manual.
-7. **Criar notebook no Fabric:**
+6. **Upload TTL via ADLS Gen2** — usar `Bash` com curl (NÃO usar `onelake_upload_file` — falha por timeout/sandbox):
+   ```bash
+   # Obter token de storage
+   TOKEN=$(curl -s -X POST \
+     "https://login.microsoftonline.com/$AZURE_TENANT_ID/oauth2/v2.0/token" \
+     -d "grant_type=client_credentials&client_id=$AZURE_CLIENT_ID&client_secret=$AZURE_CLIENT_SECRET&scope=https://storage.azure.com/.default" \
+     | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+   BASE="https://onelake.dfs.fabric.microsoft.com/$FABRIC_WORKSPACE_ID/$FABRIC_LAKEHOUSE_ONTOLOGIA_ID"
+   FILE="output/<dominio>_ontology.ttl"
+   SIZE=$(wc -c < "$FILE" | tr -d ' ')
+   # Criar diretórios (idempotente — 201 ou 409 ambos são OK)
+   curl -s -o /dev/null -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Length: 0" "$BASE/Files/ontologies?resource=directory"
+   curl -s -o /dev/null -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Length: 0" "$BASE/Files/ontologies/domain?resource=directory"
+   # Upload em 3 passos: criar → append → flush
+   curl -s -o /dev/null -w "%{http_code}" -X PUT -H "Authorization: Bearer $TOKEN" -H "Content-Length: 0" "$BASE/Files/ontologies/domain/<dominio>_tbox_v1.ttl?resource=file"
+   curl -s -o /dev/null -w "%{http_code}" -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/octet-stream" -H "Content-Length: $SIZE" --data-binary @"$FILE" "$BASE/Files/ontologies/domain/<dominio>_tbox_v1.ttl?action=append&position=0"
+   curl -s -o /dev/null -w "%{http_code}" -X PATCH -H "Authorization: Bearer $TOKEN" -H "Content-Length: 0" "$BASE/Files/ontologies/domain/<dominio>_tbox_v1.ttl?action=flush&position=$SIZE"
+   ```
+   Resultado esperado: `201`, `202`, `200`. Se 409 na criação de diretório: ignorar (já existe).
+7. **Criar notebook no Fabric via Fabric REST API** — usar `Bash` com curl (NÃO usar `core_create-item` — não suporta `definition` corretamente):
    a. `Write output/<dominio>_ontology_ingest.ipynb` com código Spark completo (incluindo views SQL na última célula).
-   b. `Bash`: `base64 -i output/<dominio>_ontology_ingest.ipynb | tr -d '\n'` — capturar o output.
-   c. `mcp__fabric_official__core_create-item` com payload: `{"type": "Notebook", "displayName": "<dominio>_ontology_ingest", "definition": {"format": "ipynb", "parts": [{"path": "notebook-content.ipynb", "payload": "<base64>", "payloadType": "InlineBase64"}]}}`.
-   d. Se falhar: instruir importação manual: "Home → Import Notebook → selecione `output/<dominio>_ontology_ingest.ipynb` → Run All".
+   b. Gerar payload e criar via curl:
+   ```bash
+   TOKEN=$(curl -s -X POST \
+     "https://login.microsoftonline.com/$AZURE_TENANT_ID/oauth2/v2.0/token" \
+     -d "grant_type=client_credentials&client_id=$AZURE_CLIENT_ID&client_secret=$AZURE_CLIENT_SECRET&scope=https://api.fabric.microsoft.com/.default" \
+     | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+   python3 -c "
+   import json, base64
+   with open('output/<dominio>_ontology_ingest.ipynb','rb') as f: content=f.read()
+   payload={'displayName':'<dominio>_ontology_ingest','type':'Notebook','definition':{'format':'ipynb','parts':[{'path':'notebook-content.ipynb','payload':base64.b64encode(content).decode(),'payloadType':'InlineBase64'}]}}
+   json.dump(payload, open('/tmp/nb_payload.json','w'))
+   print('Payload gerado:', len(content), 'bytes')
+   "
+   curl -s -o /dev/null -w "%{http_code}" -X POST \
+     -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+     --data @/tmp/nb_payload.json \
+     "https://api.fabric.microsoft.com/v1/workspaces/$FABRIC_WORKSPACE_ID/items"
+   ```
+   Resultado esperado: `202` (criação assíncrona — o notebook aparece no workspace em segundos).
+   Se `409 ItemDisplayNameNotAvailableYet`: aguardar 10s e tentar novamente.
+   Se `409 ItemDisplayNameAlreadyInUse`: notebook já existe com conteúdo — OK, pular.
+   c. Se falhar após 2 tentativas: instruir importação manual: "Home → Import Notebook → selecione `output/<dominio>_ontology_ingest.ipynb` → Run All".
 8. **Relatório** — listar o que foi automatizado vs. o que exigiu ação manual e por quê.
 
 ### Protocolo: Conversão de Formato
