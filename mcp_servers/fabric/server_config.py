@@ -59,9 +59,12 @@ def get_fabric_official_mcp_config() -> dict:
     """Retorna a configuração MCP para o servidor oficial Microsoft Fabric (OneLake).
 
     Usa `npx @microsoft/fabric-mcp@latest` em modo `all`, que habilita OneLake
-    file ops + API specs + best practices. Autenticação via cache `az login` —
-    não recebemos env vars para evitar conflito com a DefaultAzureCredential chain.
+    file ops + API specs + best practices. Autenticação via DefaultAzureCredential —
+    passamos as credenciais explicitamente no env para que o processo npx filho
+    as encontre (Pydantic carrega .env no objeto Python, não no ambiente do OS).
     """
+    from config.settings import settings  # importação local para evitar circular import
+
     return {
         "fabric_official": {
             "type": "stdio",
@@ -74,6 +77,12 @@ def get_fabric_official_mcp_config() -> dict:
                 "--mode",
                 "all",
             ],
+            "env": {
+                "AZURE_TENANT_ID": settings.azure_tenant_id,
+                "AZURE_CLIENT_ID": settings.azure_client_id,
+                "AZURE_CLIENT_SECRET": settings.azure_client_secret,
+                "FABRIC_WORKSPACE_ID": settings.fabric_workspace_id,
+            },
         }
     }
 
