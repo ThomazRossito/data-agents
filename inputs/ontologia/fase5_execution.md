@@ -67,7 +67,9 @@ geradas pela última célula do notebook. A única ação manual é o **Run All*
 O relatório deve confirmar cada critério de aceite do SPEC aprovado — não apenas "funcionou".
 
 **Pré-requisito:** `AGENT_PERMISSION_MODE=bypassPermissions` no `.env` e service principal
-com role `Storage Blob Data Contributor` no storage account do OneLake.
+(`AZURE_CLIENT_ID`) adicionado como **Contributor** no workspace Fabric (Manage Access).
+Verificar também: Fabric Admin Portal → Tenant Settings → Developer Settings →
+"Allow service principals to use Fabric APIs" habilitado.
 
 ---
 
