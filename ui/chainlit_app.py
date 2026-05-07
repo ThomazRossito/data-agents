@@ -305,11 +305,15 @@ async def _get_or_create_supervisor() -> dict:
         if (ttl_expired or _supervisor_cache.get("needs_reconnect")) and _supervisor_cache.get(
             "client"
         ):
+            # Preserva compaction_prefix antes de limpar o cache — clear() destrói a chave
+            _saved_compaction_prefix = _supervisor_cache.get("compaction_prefix", "")
             try:
                 await _supervisor_cache["client"].disconnect()
             except Exception:
                 pass
             _supervisor_cache.clear()
+            if _saved_compaction_prefix:
+                _supervisor_cache["compaction_prefix"] = _saved_compaction_prefix
 
         if _supervisor_cache.get("client") is None:
             options = build_supervisor_options(enable_thinking=False)
@@ -755,6 +759,11 @@ async def _handle_supervisor(user_input: str) -> None:
                     cl.user_session.set("_base_system_prompt", base + _compaction_prefix)
                     _supervisor_cache["compaction_prefix"] = _compaction_prefix
                     _supervisor_cache["needs_reconnect"] = True
+                    # Reconecta imediatamente — lazy reconnect nunca ocorre per-message;
+                    # cl.user_session ainda aponta para o cliente antigo (contexto cheio).
+                    _reconnected = await _get_or_create_supervisor()
+                    cl.user_session.set("supervisor_client", _reconnected["client"])
+                    cl.user_session.set("supervisor_options", _reconnected["options"])
                     # Reseta o budget para que o novo cliente comece do zero
                     from hooks.context_budget_hook import reset_context_budget as _reset_budget
 

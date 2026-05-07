@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from unittest.mock import patch
+
 import scripts.bootstrap as bootstrap
 
 
@@ -85,3 +87,50 @@ class TestValidateAnthropicKey:
 
     def test_rejects_empty_string(self):
         assert bootstrap._validate_anthropic_key("") is False
+
+
+class TestCheckSystemDeps:
+    """_check_system_deps imprime aviso quando dependências estão ausentes."""
+
+    def test_all_present_prints_ok(self, capsys):
+        with patch("shutil.which", return_value="/usr/bin/cmd"):
+            bootstrap._check_system_deps()
+        captured = capsys.readouterr()
+        assert "OK" in captured.out
+
+    def test_missing_uvx_prints_warning(self, capsys):
+        def _which(cmd: str) -> str | None:
+            return None if cmd == "uvx" else "/usr/bin/cmd"
+
+        with patch("shutil.which", side_effect=_which):
+            bootstrap._check_system_deps()
+        captured = capsys.readouterr()
+        assert "uvx" in captured.out
+        assert "ausentes" in captured.out.lower() or "⚠️" in captured.out
+
+    def test_missing_npx_prints_warning(self, capsys):
+        def _which(cmd: str) -> str | None:
+            return None if cmd == "npx" else "/usr/bin/cmd"
+
+        with patch("shutil.which", side_effect=_which):
+            bootstrap._check_system_deps()
+        captured = capsys.readouterr()
+        assert "npx" in captured.out
+
+    def test_missing_dotnet_prints_warning(self, capsys):
+        def _which(cmd: str) -> str | None:
+            return None if cmd == "dotnet" else "/usr/bin/cmd"
+
+        with patch("shutil.which", side_effect=_which):
+            bootstrap._check_system_deps()
+        captured = capsys.readouterr()
+        assert "dotnet" in captured.out
+
+    def test_multiple_missing_lists_all(self, capsys):
+        with patch("shutil.which", return_value=None):
+            bootstrap._check_system_deps()
+        captured = capsys.readouterr()
+        # Todos os três MCPs deps devem aparecer
+        assert "uvx" in captured.out
+        assert "npx" in captured.out
+        assert "dotnet" in captured.out
