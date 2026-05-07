@@ -755,6 +755,10 @@ async def _handle_supervisor(user_input: str) -> None:
                     cl.user_session.set("_base_system_prompt", base + _compaction_prefix)
                     _supervisor_cache["compaction_prefix"] = _compaction_prefix
                     _supervisor_cache["needs_reconnect"] = True
+                    # Reseta o budget para que o novo cliente comece do zero
+                    from hooks.context_budget_hook import reset_context_budget as _reset_budget
+
+                    _reset_budget(session_id=cl.user_session.get("session_id"))
                     await cl.Message(
                         content=(
                             "🔄 *Contexto compactado automaticamente — "

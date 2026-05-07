@@ -142,9 +142,9 @@ real, elevação da maturidade declarativa e refatoração arquitetural.
   Messages API direta, produz resumo em 7 campos GAPS G3 (Objetivo /
   Decisões / Artefatos / Pendências / Próximos passos / Contexto técnico /
   Descobertas-chave). Regra "Nunca invente" + `Nenhum(a)` para campos vazios.
-- **Auto-fire do summarizer** em `hooks/context_budget_hook.py`: dispara uma
-  vez por sessão ao cruzar `context_budget_summarize_threshold` (0.65),
-  persiste em `logs/summaries/<sid>.md`.
+- **Compactação autônoma** em `hooks/context_budget_hook.py`: dispara uma
+  vez por sessão ao cruzar `context_budget_summarize_threshold` (0.80),
+  persiste em `logs/summaries/<sid>.md` e reconecta o cliente com nova janela.
 - **Emergency checkpoint em saídas normais**: `main.py` registra `atexit`,
   SIGINT, SIGTERM, SIGHUP; `hooks/checkpoint.py` grava
   `logs/sessions/<sid>.json` + espelho em `logs/checkpoint.json`.
@@ -257,7 +257,7 @@ real, elevação da maturidade declarativa e refatoração arquitetural.
 - `logs/sessions/<sid>.jsonl`: transcript completo append-only.
 - `logs/sessions/<sid>.json`: checkpoint por sessão
   (`logs/checkpoint.json` continua como espelho da mais recente).
-- `logs/summaries/<sid>.md`: resumo Haiku disparado a 65% do budget.
+- `logs/summaries/<sid>.md`: resumo Haiku disparado a 80% do budget.
 
 ### Notes
 
