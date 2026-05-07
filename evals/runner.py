@@ -10,7 +10,7 @@ Uso:
     make evals
 
 Persiste resultado em `logs/evals/<timestamp>.jsonl`.
-Exit code 0 se todas passaram, 1 se alguma falhou.
+Exit code 0 se todas passaram, 1 se alguma falhou ou regrediu vs run anterior.
 
 Rubric (determinística):
   1.0 — must_include 100% + must_not_include 0% + length no intervalo
@@ -213,6 +213,58 @@ async def run_all(queries: list[Query]) -> list[EvalResult]:
     return results
 
 
+# ─── Baseline e detecção de regressão ────────────────────────────────────────
+
+
+def load_latest_run() -> dict[str, float] | None:
+    """Carrega o run mais recente de logs/evals/ como baseline de comparação.
+
+    Returns:
+        Dict {query_id: score} do run mais recente, ou None se não houver histórico.
+    """
+    evals_dir = REPO_ROOT / "logs" / "evals"
+    if not evals_dir.exists():
+        return None
+
+    runs = sorted(evals_dir.glob("*.jsonl"))
+    if not runs:
+        return None
+
+    latest = runs[-1]
+    baseline: dict[str, float] = {}
+    try:
+        with open(latest, encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    record = json.loads(line)
+                    qid = record.get("query_id")
+                    score = record.get("score")
+                    if qid and score is not None:
+                        baseline[qid] = float(score)
+                except json.JSONDecodeError:
+                    continue
+    except OSError:
+        return None
+
+    return baseline if baseline else None
+
+
+def detect_regressions(
+    results: list[EvalResult],
+    baseline: dict[str, float],
+) -> list[tuple[str, float, float]]:
+    """Retorna lista de (query_id, old_score, new_score) onde o score caiu."""
+    regressions: list[tuple[str, float, float]] = []
+    for result in results:
+        old = baseline.get(result.query_id)
+        if old is not None and result.score < old:
+            regressions.append((result.query_id, old, result.score))
+    return regressions
+
+
 # ─── Persistência e relatório ────────────────────────────────────────────────
 
 
@@ -244,7 +296,11 @@ def _persist_results(results: list[EvalResult]) -> Path:
     return path
 
 
-def _print_summary(results: list[EvalResult], log_path: Path) -> int:
+def _print_summary(
+    results: list[EvalResult],
+    log_path: Path,
+    regressions: list[tuple[str, float, float]] | None = None,
+) -> int:
     """Imprime sumário e retorna exit code."""
     total = len(results)
     passed = sum(1 for r in results if r.passed)
@@ -263,9 +319,18 @@ def _print_summary(results: list[EvalResult], log_path: Path) -> int:
     print(f"  💰 Custo:   ${total_cost:.4f}")
     print(f"  ⏱ Duração: {total_duration:.1f}s")
     print(f"  📄 Log:     {log_path.relative_to(REPO_ROOT)}")
+
+    if regressions:
+        print()
+        print(f"  ⚠️  Regressões vs run anterior ({len(regressions)}):")
+        for qid, old, new in regressions:
+            print(f"      • {qid}: {old:.1f} → {new:.1f}")
+
     print()
 
-    return 0 if failed == 0 and partial == 0 else 1
+    has_failures = failed > 0 or partial > 0
+    has_regressions = bool(regressions)
+    return 1 if (has_failures or has_regressions) else 0
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────────────
@@ -315,7 +380,11 @@ def main(argv: list[str] | None = None) -> int:
         print("\n⚠️  Nenhuma query casou com os filtros.")
         return 2
 
-    print(f"\nExecutando {len(queries)} query(ies) via /geral (Haiku 4.5):\n")
+    baseline = load_latest_run()
+    if baseline:
+        print(f"  📊 Baseline: {len(baseline)} queries do run anterior\n")
+
+    print(f"Executando {len(queries)} query(ies) via /geral (Haiku 4.5):\n")
 
     if str(REPO_ROOT) not in sys.path:
         sys.path.insert(0, str(REPO_ROOT))
@@ -327,7 +396,8 @@ def main(argv: list[str] | None = None) -> int:
         return 130
 
     log_path = _persist_results(results)
-    return _print_summary(results, log_path)
+    regressions = detect_regressions(results, baseline) if baseline else None
+    return _print_summary(results, log_path, regressions)
 
 
 if __name__ == "__main__":
