@@ -140,6 +140,9 @@ async def _schedule_compaction(usage_ratio: float) -> None:
         transcript = load_transcript(session_id)
         if not transcript:
             logger.info(f"📋 Compactação: transcript vazio para {session_id}; skip.")
+            # Reseta o flag para permitir retry quando o transcript tiver conteúdo
+            global _compaction_fired_for_session
+            _compaction_fired_for_session = False
             return
 
         result = await summarize_session(transcript)

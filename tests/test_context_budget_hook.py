@@ -378,10 +378,13 @@ class TestScheduleCompaction:
 
         monkeypatch.setattr(summarizer_module, "summarize_session", should_not_be_called)
         reset_context_budget(session_id="cli-empty")
+        budget_module._compaction_fired_for_session = True  # simula estado pós-disparo
         with caplog.at_level(logging.INFO, logger="data_agents.hooks.context_budget"):
             await budget_module._schedule_compaction(0.80)
         assert any("transcript vazio" in r.message for r in caplog.records)
         assert not (tmp_path / "summaries" / "cli-empty.md").exists()
+        # Flag deve ter sido resetado para permitir retry no próximo turno
+        assert budget_module._compaction_fired_for_session is False
 
     @pytest.mark.asyncio
     async def test_schedule_graceful_on_summarize_error(self, monkeypatch, tmp_path, caplog):

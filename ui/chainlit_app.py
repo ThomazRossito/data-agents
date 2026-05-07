@@ -309,7 +309,11 @@ async def _get_or_create_supervisor() -> dict:
                 await _supervisor_cache["client"].disconnect()
             except Exception:
                 pass
+            # Preserva compaction_prefix através do clear (seria perdido de outra forma)
+            _saved_prefix = _supervisor_cache.get("compaction_prefix", "")
             _supervisor_cache.clear()
+            if _saved_prefix:
+                _supervisor_cache["compaction_prefix"] = _saved_prefix
 
         if _supervisor_cache.get("client") is None:
             options = build_supervisor_options(enable_thinking=False)
@@ -751,11 +755,19 @@ async def _handle_supervisor(user_input: str) -> None:
                         f"_Compactado ao atingir 80% da janela._\n\n"
                         f"{_compaction_summary}\n---\n\n"
                     )
-                    base = cl.user_session.get("_base_system_prompt") or ""
-                    cl.user_session.set("_base_system_prompt", base + _compaction_prefix)
+                    # Armazena prefix e seta flag — _get_or_create_supervisor preserva o prefix
                     _supervisor_cache["compaction_prefix"] = _compaction_prefix
                     _supervisor_cache["needs_reconnect"] = True
-                    # Reseta o budget para que o novo cliente comece do zero
+                    # Reconecta imediatamente: cria novo cliente com prefix no system prompt.
+                    # Não pode ser diferido — cl.user_session ainda aponta para o cliente antigo
+                    # e seria usado diretamente na próxima mensagem sem passar por _activate_supervisor.
+                    cached = await _get_or_create_supervisor()
+                    cl.user_session.set("supervisor_client", cached["client"])
+                    cl.user_session.set("supervisor_options", cached["options"])
+                    cl.user_session.set(
+                        "_base_system_prompt", cached["options"].system_prompt or ""
+                    )
+                    # Reseta o budget para o novo cliente começar do zero
                     from hooks.context_budget_hook import reset_context_budget as _reset_budget
 
                     _reset_budget(session_id=cl.user_session.get("session_id"))
