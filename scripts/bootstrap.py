@@ -15,6 +15,7 @@ Se o `.env` já existir, pergunta antes de sobrescrever.
 
 from __future__ import annotations
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -160,11 +161,60 @@ def _next_steps(has_databricks: bool, has_fabric: bool) -> None:
     print()
 
 
+def _check_system_deps() -> None:
+    """Verifica dependências de sistema necessárias para os MCPs e alerta o usuário."""
+
+    # (dep, como instalar, obrigatório para)
+    checks: list[tuple[str, str, str]] = [
+        (
+            "uvx",
+            "pip install uv  ou  brew install uv",
+            "MCPs Python (databricks, tavily, fabric_rti, github, firecrawl)",
+        ),
+        (
+            "npx",
+            "npm install -g npm  ou  brew install node",
+            "MCPs Node.js (context7, memory_mcp, postgres)",
+        ),
+        ("dotnet", "https://dotnet.microsoft.com/download (runtime ≥ 8)", "MCP Fabric REST API"),
+    ]
+
+    missing: list[tuple[str, str, str]] = []
+    for cmd, install_hint, used_for in checks:
+        if shutil.which(cmd) is None:
+            missing.append((cmd, install_hint, used_for))
+
+    # Python version check
+    major, minor = sys.version_info[:2]
+    if (major, minor) < (3, 11):
+        missing.append(
+            (
+                f"python ≥ 3.11 (atual: {major}.{minor})",
+                "https://python.org/downloads ou pyenv install 3.11",
+                "runtime do projeto",
+            )
+        )
+
+    if missing:
+        print("\n⚠️  Dependências de sistema ausentes:")
+        for cmd, hint, used_for in missing:
+            print(f"   • {cmd}")
+            print(f"     Instalar: {hint}")
+            print(f"     Necessário para: {used_for}")
+        print()
+        print("  Sem essas dependências os MCPs correspondentes não iniciarão.")
+        print("  Você pode continuar o bootstrap e instalar depois.\n")
+    else:
+        print("✓ Dependências de sistema OK (uvx, npx, dotnet encontrados)\n")
+
+
 def main() -> int:
     print("━" * 60)
     print(" Data Agents — Bootstrap")
     print("━" * 60)
     print("Este wizard cria um .env mínimo. Pode completar depois via .env.example.\n")
+
+    _check_system_deps()
 
     if ENV_PATH.exists() and not _confirm_overwrite():
         print("Nenhuma mudança feita. Saindo.")

@@ -1,6 +1,6 @@
 ---
 name: python
-description: "Índice de skills Python: FastAPI, pandas/polars, pytest e packaging. Use ao trabalhar com APIs REST, transformações de dados, testes unitários ou publicação de pacotes Python."
+description: "Índice de skills Python: FastAPI, pandas/polars, pytest, packaging, asyncio e CLIs. Use ao trabalhar com APIs REST, transformações de dados, testes, publicação de pacotes, código async ou ferramentas de linha de comando."
 ---
 
 # Python Expert — Índice de Skills
@@ -15,6 +15,8 @@ Skills disponíveis para o python-expert. Leia os arquivos relevantes antes de e
 | `pandas-polars-patterns.md` | Transformações de dados com pandas ou polars; performance, tipos, pipelines |
 | `pytest-patterns.md` | Testes unitários e de integração, fixtures, mocking, cobertura |
 | `python-packaging.md` | pyproject.toml, setup, entry points, publicação PyPI, pip install -e |
+| `async-patterns.md` | asyncio, gather, Queue, cancelamento, httpx async, run_in_executor, Semaphore |
+| `cli-patterns.md` | argparse, Typer, Rich output, stdin/stdout/pipe, entry points, exit codes |
 
 ## Regras Gerais
 

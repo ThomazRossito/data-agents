@@ -9,9 +9,12 @@ import yaml
 
 from evals.runner import (
     DEFAULT_QUERIES_PATH,
+    EvalResult,
     Query,
     Rubric,
     _filter_queries,
+    detect_regressions,
+    load_latest_run,
     load_queries,
     score_response,
 )
@@ -165,3 +168,101 @@ class TestFilterQueries:
     def test_no_filters_returns_all(self, sample_queries):
         result = _filter_queries(sample_queries, None, None, None)
         assert result == sample_queries
+
+
+# ─── load_latest_run ─────────────────────────────────────────────────────────
+
+
+class TestLoadLatestRun:
+    def test_returns_none_when_no_logs_dir(self, tmp_path: Path, monkeypatch):
+        import evals.runner as runner_mod
+
+        monkeypatch.setattr(runner_mod, "REPO_ROOT", tmp_path)
+        assert load_latest_run() is None
+
+    def test_returns_none_when_no_jsonl_files(self, tmp_path: Path, monkeypatch):
+        import evals.runner as runner_mod
+
+        (tmp_path / "logs" / "evals").mkdir(parents=True)
+        monkeypatch.setattr(runner_mod, "REPO_ROOT", tmp_path)
+        assert load_latest_run() is None
+
+    def test_loads_scores_from_latest_file(self, tmp_path: Path, monkeypatch):
+        import json
+        import evals.runner as runner_mod
+
+        evals_dir = tmp_path / "logs" / "evals"
+        evals_dir.mkdir(parents=True)
+        run_file = evals_dir / "20260101T000000Z.jsonl"
+        records = [
+            {"query_id": "medallion-architecture", "score": 1.0},
+            {"query_id": "delta-lake-features", "score": 0.5},
+        ]
+        run_file.write_text("\n".join(json.dumps(r) for r in records), encoding="utf-8")
+        monkeypatch.setattr(runner_mod, "REPO_ROOT", tmp_path)
+        result = load_latest_run()
+        assert result == {"medallion-architecture": 1.0, "delta-lake-features": 0.5}
+
+    def test_picks_most_recent_file(self, tmp_path: Path, monkeypatch):
+        import json
+        import evals.runner as runner_mod
+
+        evals_dir = tmp_path / "logs" / "evals"
+        evals_dir.mkdir(parents=True)
+        old = evals_dir / "20260101T000000Z.jsonl"
+        old.write_text(json.dumps({"query_id": "q1", "score": 0.0}), encoding="utf-8")
+        new = evals_dir / "20260201T000000Z.jsonl"
+        new.write_text(json.dumps({"query_id": "q1", "score": 1.0}), encoding="utf-8")
+        monkeypatch.setattr(runner_mod, "REPO_ROOT", tmp_path)
+        result = load_latest_run()
+        assert result == {"q1": 1.0}
+
+
+# ─── detect_regressions ──────────────────────────────────────────────────────
+
+
+def _make_result(query_id: str, score: float) -> EvalResult:
+    return EvalResult(
+        query_id=query_id,
+        domain="test",
+        score=score,
+        passed=score == 1.0,
+        response_chars=100,
+        cost_usd=0.0,
+        duration_s=0.0,
+        failures=[],
+    )
+
+
+class TestDetectRegressions:
+    def test_no_regression_when_scores_equal(self):
+        baseline = {"q1": 1.0, "q2": 0.5}
+        results = [_make_result("q1", 1.0), _make_result("q2", 0.5)]
+        assert detect_regressions(results, baseline) == []
+
+    def test_detects_drop_from_pass_to_fail(self):
+        baseline = {"q1": 1.0}
+        results = [_make_result("q1", 0.0)]
+        regressions = detect_regressions(results, baseline)
+        assert len(regressions) == 1
+        assert regressions[0] == ("q1", 1.0, 0.0)
+
+    def test_detects_drop_from_pass_to_partial(self):
+        baseline = {"q1": 1.0}
+        results = [_make_result("q1", 0.5)]
+        regressions = detect_regressions(results, baseline)
+        assert regressions[0] == ("q1", 1.0, 0.5)
+
+    def test_improvement_is_not_a_regression(self):
+        baseline = {"q1": 0.5}
+        results = [_make_result("q1", 1.0)]
+        assert detect_regressions(results, baseline) == []
+
+    def test_new_query_not_in_baseline_is_ignored(self):
+        baseline = {"q1": 1.0}
+        results = [_make_result("q1", 1.0), _make_result("q2_new", 0.0)]
+        assert detect_regressions(results, baseline) == []
+
+    def test_empty_baseline_returns_no_regressions(self):
+        results = [_make_result("q1", 0.0)]
+        assert detect_regressions(results, {}) == []
