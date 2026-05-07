@@ -26,11 +26,13 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import socket
 import subprocess
 import sys
 import time
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -67,6 +69,8 @@ from ui.ui_config import (  # noqa: E402
     enrich_tool_label as _enrich_tool_label,
     tool_label as _tool_label,
 )
+
+logger = logging.getLogger("data_agents.ui.chainlit")
 
 # ── Tier lookup para labels de delegação ─────────────────────────────────────
 _AGENT_TIERS: dict[str, str] = {
@@ -411,6 +415,21 @@ async def _activate_supervisor() -> None:
         cl.user_session.set("mode", MODE_SUPERVISOR)
         cl.user_session.set("supervisor_client", client)
         cl.user_session.set("supervisor_options", options)
+        cl.user_session.set("_base_system_prompt", options.system_prompt or "")
+
+        # Inicializa sistema de memória para esta sessão
+        session_id = cl.user_session.get("session_id") or f"chainlit-{uuid.uuid4().hex[:8]}"
+        try:
+            from hooks.session_lifecycle import on_session_start as _on_session_start
+            from memory.manager import MemoryManager
+
+            memory_manager = MemoryManager()
+            memory_manager.start_session(session_id)
+            _on_session_start(session_id)
+            cl.user_session.set("memory_manager", memory_manager)
+        except Exception as _mem_exc:
+            logger.warning(f"[chainlit] Falha ao inicializar MemoryManager: {_mem_exc}")
+            cl.user_session.set("memory_manager", None)
 
         if loading_msg:
             await loading_msg.remove()
@@ -515,6 +534,18 @@ async def _handle_supervisor(user_input: str) -> None:
     # Parse de slash command
     command_result = parse_command(user_input)
     prompt = command_result.doma_prompt if command_result else user_input
+
+    # Injeta memórias relevantes no system prompt do Supervisor
+    memory_manager = cl.user_session.get("memory_manager")
+    base_system_prompt = cl.user_session.get("_base_system_prompt") or options.system_prompt or ""
+    if memory_manager is not None:
+        try:
+            options.system_prompt = memory_manager.inject_context(
+                query=prompt, system_prompt=base_system_prompt
+            )
+        except Exception as _mem_exc:
+            logger.warning(f"[chainlit] inject_context falhou (sem memória): {_mem_exc}")
+            options.system_prompt = base_system_prompt
 
     # Ajusta thinking: ativo apenas para DOMA Full (/plan, /brief)
     enable_thinking = command_result is not None and command_result.doma_mode == "full"
@@ -967,6 +998,8 @@ async def on_chat_start() -> None:
     evitando que o custo acumulado da sessão anterior bloqueie o novo chat.
     """
     _supervisor_cache["needs_reconnect"] = True
+    session_id = f"chainlit-{uuid.uuid4().hex[:8]}"
+    cl.user_session.set("session_id", session_id)
     cl.user_session.set("chat_history", [])
     await _show_mode_selection()
 
@@ -1146,9 +1179,22 @@ async def on_message(message: cl.Message) -> None:
             ).send()
         elif sub == "status":
             stats = store.get_stats()
-            lines = [f"**Memórias:** {stats['active']} ativas / {stats['total']} total"]
+            lines = [f"**MemoryStore:** {stats['active']} ativas / {stats['total']} total"]
             for t, v in stats.get("by_type", {}).items():
                 lines.append(f"- {t}: {v['active']}/{v['total']}")
+
+            # Stats do LongTermMemory (índice FTS5)
+            try:
+                memory_manager = cl.user_session.get("memory_manager")
+                if memory_manager is not None:
+                    lt_stats = memory_manager.long_term.get_stats()
+                    lines.append(
+                        f"\n**LongTermMemory (FTS5):** {lt_stats['active']} ativas / "
+                        f"{lt_stats['total']} total"
+                    )
+            except Exception:
+                pass
+
             await cl.Message(content="\n".join(lines), author="Sistema").send()
         else:
             await cl.Message(
@@ -1203,10 +1249,20 @@ async def on_message(message: cl.Message) -> None:
 @cl.on_chat_end
 async def on_chat_end() -> None:
     """
-    Limpa referências da sessão e coleta avaliação de qualidade.
+    Flush de memória, limpeza de referências e coleta de avaliação de qualidade.
     """
+    session_id = cl.user_session.get("session_id") or "chainlit"
+    memory_manager = cl.user_session.get("memory_manager")
+    try:
+        from hooks.session_lifecycle import on_session_end as _on_session_end
+
+        _on_session_end(session_id, memory_manager=memory_manager)
+    except Exception as _mem_exc:
+        logger.warning(f"[chainlit] on_session_end falhou: {_mem_exc}")
+
     cl.user_session.set("supervisor_client", None)
     cl.user_session.set("supervisor_options", None)
+    cl.user_session.set("memory_manager", None)
 
     # Solicita avaliação via action buttons
     actions = [
