@@ -54,6 +54,33 @@
 
 ### Added
 
+- **Skills `async-patterns` e `cli-patterns`** em `skills/python/` (T6.4):
+  cobertura completa de asyncio (`gather`, `Queue`, cancelamento, `httpx`
+  async, `Semaphore`, `run_in_executor`) e de CLIs (`argparse`, Typer,
+  Rich output, stdin/stdout/pipe, entry points, exit codes semânticos).
+  `SKILL.md` do python-expert atualizado; agente passa a consultar ambos
+  antes de gerar código async ou ferramentas de linha de comando.
+
+- **`make bootstrap` com validação de ambiente** (T6.3):
+  `scripts/bootstrap.py` ganhou `_check_system_deps()` — verifica
+  presença de `uvx`, `npx`/`node`, `dotnet` e Python ≥ 3.11 antes de
+  criar o `.env`, exibindo instrução de instalação por dep ausente.
+  5 novos testes em `tests/test_bootstrap.py`.
+
+- **Regression detection em `make evals`** (T6.2):
+  `evals/runner.py` carrega o run anterior como baseline via
+  `load_latest_run()` e detecta regressões via `detect_regressions()`.
+  O sumário exibe queries que regrediram e o exit code é 1 quando
+  qualquer query regrediu ou falhou. 10 novos testes em `tests/test_evals.py`.
+
+- **Compactação autônoma do contexto** (T6.1): `context_budget_hook.py`
+  monitora tokens acumulados; ao atingir 80% gera summary via Haiku 4.5
+  e seta flag consumível `_compaction_pending`. Entry points (`main.py` e
+  `ui/chainlit_app.py`) detectam o flag após cada resposta, injetam o
+  summary no `base_system_prompt` e reconectam o cliente SDK — nova janela
+  limpa, transparente ao usuário. Limiares: aviso a 70%, compacta a 80%,
+  ERROR a 95%.
+
 - **Página "🔭 Observabilidade"** em `monitoring/app.py` (T6.5): nova
   página do dashboard com 4 tabs — (1) **Custo por agente**: agrega
   `logs/sessions.jsonl` via mapa `session_type → agente`, soma

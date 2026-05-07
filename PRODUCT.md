@@ -69,11 +69,14 @@ A meta não é magia — é **remover o atrito entre intenção e execução** q
 
 ---
 
-## Estado atual (2026-05-04)
+## Estado atual (2026-05-07)
 
-- **13 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1100+ testes** ✅.
+- **13 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1260+ testes** ✅.
 - Modelos: Supervisor e especialistas em Sonnet 4.6; `geral` em Haiku 4.5 (T0).
-- Próximos marcos: evals automáticos (T6.2), `make bootstrap` (T6.3), async-patterns e cli-patterns skills (T6.4).
+- T6.2 ✅: evals automáticos com regression detection vs run anterior (`make evals`).
+- T6.3 ✅: `make bootstrap` com wizard de credenciais + checagem de deps de sistema.
+- T6.4 ✅: skills `async-patterns` e `cli-patterns` adicionadas ao python-expert.
+- T6.1 ✅: compactação autônoma do contexto ao atingir 80% (summary Haiku + reconexão).
 
 ---
 

@@ -924,7 +924,7 @@ async def run_interactive() -> None:
                             )
                         # Flush de memória antes de encerrar
                         try:
-                            n_mem = flush_session_memories(session_id="interactive")
+                            n_mem = flush_session_memories(session_id=_session_id)
                             if n_mem > 0:
                                 console.print(
                                     f"[dim]🧠 {n_mem} memórias capturadas desta sessão.[/dim]"
@@ -937,7 +937,7 @@ async def run_interactive() -> None:
                     if user_input.lower() in ("limpar", "clear", "reset"):
                         # Flush de memória antes de limpar
                         try:
-                            flush_session_memories(session_id="interactive")
+                            flush_session_memories(session_id=_session_id)
                         except Exception:
                             pass
                         # Salvar checkpoint antes de limpar
@@ -1214,7 +1214,7 @@ async def run_interactive() -> None:
                 except BudgetExceededError as e:
                     # Flush de memória antes do checkpoint
                     try:
-                        flush_session_memories(session_id="interactive")
+                        flush_session_memories(session_id=_session_id)
                     except Exception:
                         pass
                     # Salvar checkpoint automaticamente ao exceder budget
