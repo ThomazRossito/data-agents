@@ -2,20 +2,17 @@
 Testes para memory/retrieval.py.
 
 Cobre:
-  - _query_sonnet_for_ids(): mock da chamada HTTP ao Sonnet
-  - retrieve_relevant_memories(): end-to-end com store real + Sonnet mock
+  - retrieve_relevant_memories(): FTS5 local sem Sonnet lateral
   - format_memories_for_injection(): formatação do contexto para o prompt
 """
 
-import json
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock
 
 import pytest
 
 from memory.types import Memory, MemoryType
 from memory.store import MemoryStore
 from memory.retrieval import (
-    _query_sonnet_for_ids,
     retrieve_relevant_memories,
     format_memories_for_injection,
 )
@@ -40,138 +37,54 @@ def _make_memory(mem_type=MemoryType.ARCHITECTURE, summary="Resumo", tags=None) 
     )
 
 
-def _mock_http_response(ids: list[str]):
-    """Cria um mock de urllib.request.urlopen retornando JSON com os IDs."""
-    body = json.dumps(
-        {
-            "content": [{"text": json.dumps(ids)}],
-            "usage": {"input_tokens": 100, "output_tokens": 20},
-        }
-    ).encode("utf-8")
-    mock_resp = MagicMock()
-    mock_resp.read.return_value = body
-    mock_resp.__enter__ = lambda s: s
-    mock_resp.__exit__ = MagicMock(return_value=False)
-    return mock_resp
-
-
-# ─── _query_sonnet_for_ids ────────────────────────────────────────────
-
-
-class TestQuerySonnetForIds:
-    """T0.5: _query_sonnet_for_ids agora retorna (ids, cost_usd) para telemetria."""
-
-    def test_returns_ids_from_sonnet_response(self):
-        mock_resp = _mock_http_response(["abc123", "def456"])
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            ids, cost = _query_sonnet_for_ids(
-                "query de teste", "## Memory Index\n- **abc123**: resumo"
-            )
-        assert "abc123" in ids
-        assert "def456" in ids
-        assert cost >= 0.0
-
-    def test_returns_empty_list_on_empty_response(self):
-        mock_resp = _mock_http_response([])
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            ids, _ = _query_sonnet_for_ids("query", "index")
-        assert ids == []
-
-    def test_returns_empty_list_on_invalid_json(self):
-        body = json.dumps(
-            {
-                "content": [{"text": "não é json válido"}],
-                "usage": {"input_tokens": 10, "output_tokens": 5},
-            }
-        ).encode("utf-8")
-        mock_resp = MagicMock()
-        mock_resp.read.return_value = body
-        mock_resp.__enter__ = lambda s: s
-        mock_resp.__exit__ = MagicMock(return_value=False)
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            ids, _ = _query_sonnet_for_ids("query", "index")
-        assert ids == []
-
-    def test_returns_empty_list_on_http_error(self):
-        with patch("urllib.request.urlopen", side_effect=Exception("network error")):
-            ids, cost = _query_sonnet_for_ids("query", "index")
-        assert ids == []
-        assert cost == 0.0
-
-    def test_ids_converted_to_strings(self):
-        """IDs devem ser retornados como strings mesmo se Sonnet enviar como outros tipos."""
-        mock_resp = _mock_http_response(["id1", "id2"])
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            ids, _ = _query_sonnet_for_ids("q", "index")
-        assert all(isinstance(i, str) for i in ids)
-
-
 # ─── retrieve_relevant_memories ───────────────────────────────────────
+# Fase 4: FTS5 local, sem Sonnet lateral, sem patches HTTP.
 
 
 class TestRetrieveRelevantMemories:
-    def test_returns_empty_when_no_index(self, store, tmp_path):
-        """Se não há index, deve retornar lista vazia sem errar."""
-        result = retrieve_relevant_memories("query", store)
-        # Pode retornar [] se o index estiver vazio
+    def test_returns_list_type(self, store):
+        result = retrieve_relevant_memories("qualquer query", store)
         assert isinstance(result, list)
 
-    def test_returns_memories_selected_by_sonnet(self, store):
-        mem = _make_memory(summary="Pipeline Databricks Bronze")
+    def test_returns_empty_when_store_empty(self, store):
+        result = retrieve_relevant_memories("pipeline databricks bronze", store)
+        assert result == []
+
+    def test_finds_memory_by_summary_keywords(self, store):
+        mem = _make_memory(summary="Pipeline Databricks Bronze layer ingestion")
         store.save(mem)
-        store.build_index()
-
-        mock_resp = _mock_http_response([mem.id])
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = retrieve_relevant_memories("Mostre o pipeline Bronze", store)
-
+        result = retrieve_relevant_memories("Databricks Bronze ingestion", store)
         assert any(m.id == mem.id for m in result)
 
-    def test_returns_empty_when_sonnet_selects_nothing(self, store):
-        mem = _make_memory()
+    def test_no_results_for_unrelated_query(self, store):
+        mem = _make_memory(summary="Pipeline Databricks Bronze layer ingestion")
         store.save(mem)
-        store.build_index()
-
-        mock_resp = _mock_http_response([])
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = retrieve_relevant_memories("query irrelevante", store)
-
-        assert result == []
+        result = retrieve_relevant_memories("quantum physics black holes", store)
+        assert result == [] or all(m.id != mem.id for m in result)
 
     def test_respects_max_memories_limit(self, store):
         for i in range(15):
-            store.save(_make_memory(summary=f"Memória {i}"))
-        store.build_index()
-
-        # Sonnet retorna 15 IDs
-        all_ids = [m.id for m in store.list_all()]
-        mock_resp = _mock_http_response(all_ids)
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = retrieve_relevant_memories("query", store, max_memories=5)
-
+            store.save(_make_memory(summary=f"pipeline data ingestion pattern number {i}"))
+        result = retrieve_relevant_memories(
+            "pipeline data ingestion pattern", store, max_memories=5
+        )
         assert len(result) <= 5
 
-    def test_skips_nonexistent_ids_gracefully(self, store):
-        mem = _make_memory()
+    def test_long_term_param_bypasses_lazy_creation(self, store):
+        from memory.long_term import LongTermMemory
+
+        mock_lt = MagicMock(spec=LongTermMemory)
+        mock_lt.search.return_value = []
+        retrieve_relevant_memories("q", store, long_term=mock_lt)
+        mock_lt.search.assert_called_once()
+
+    def test_returns_memory_objects(self, store):
+        from memory.types import Memory as MemType
+
+        mem = _make_memory(summary="databricks unity catalog configuration setup")
         store.save(mem)
-        store.build_index()
-
-        mock_resp = _mock_http_response(["nonexistent_id_xyz", mem.id])
-        with patch("urllib.request.urlopen", return_value=mock_resp):
-            result = retrieve_relevant_memories("query", store)
-
-        # nonexistent_id não deve causar erro, apenas ser ignorado
-        assert all(m is not None for m in result)
-
-    def test_handles_sonnet_error_gracefully(self, store):
-        mem = _make_memory()
-        store.save(mem)
-        store.build_index()
-
-        with patch("urllib.request.urlopen", side_effect=Exception("Sonnet unavailable")):
-            result = retrieve_relevant_memories("query", store)
-
-        assert result == []
+        result = retrieve_relevant_memories("databricks unity catalog", store)
+        assert all(isinstance(m, MemType) for m in result)
 
 
 # ─── format_memories_for_injection ────────────────────────────────────

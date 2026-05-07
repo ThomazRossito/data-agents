@@ -23,16 +23,40 @@ from __future__ import annotations
 import logging
 import re
 from datetime import datetime, timezone
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from memory.short_term import ShortTermMemory
 
 logger = logging.getLogger("data_agents.memory.hook")
 
-# Buffer de contexto da sessão (acumula entre tool calls)
-_session_buffer: list[str] = []
-_buffer_char_count: int = 0
+# ── Estado da sessão ──────────────────────────────────────────────────────────
+# Atualizado por init_memory_hook() em session_lifecycle.on_session_start().
+# Quando None (antes da init), usa fallback in-memory para compatibilidade.
+_short_term: "ShortTermMemory | None" = None
+_hook_session_id: str = ""
+
+# Fallback in-memory (usado até init_memory_hook() ser chamado)
+_fallback_buffer: list[str] = []
+_fallback_char_count: int = 0
 
 # Threshold para flush automático (50K chars ≈ ~12K tokens)
 _BUFFER_FLUSH_THRESHOLD = 50_000
+
+
+def init_memory_hook(session_id: str, short_term: "ShortTermMemory") -> None:
+    """
+    Inicializa o hook com a sessão ativa e o buffer SQLite.
+
+    Chamado por session_lifecycle.on_session_start() antes do loop de agente.
+    Após a init, capture_session_context() escreve no SQLite (não no fallback).
+    """
+    global _short_term, _hook_session_id, _fallback_buffer, _fallback_char_count
+    _short_term = short_term
+    _hook_session_id = session_id
+    _fallback_buffer = []
+    _fallback_char_count = 0
+    logger.debug(f"memory_hook inicializado: sessão={session_id!r}, backend=SQLite")
 
 
 async def capture_session_context(
@@ -71,18 +95,28 @@ async def capture_session_context(
     # Captura contexto relevante
     context_entry = _format_context_entry(tool_name, tool_input, tool_output)
     if context_entry:
-        _session_buffer.append(context_entry)
-        _buffer_char_count += len(context_entry)
+        if _short_term is not None:
+            # Backend SQLite — persistente, sobrevive a crashes
+            _short_term.append(context_entry, session_id=_hook_session_id, tool_name=tool_name)
+        else:
+            # Fallback in-memory (antes de init_memory_hook() ser chamado)
+            global _fallback_char_count
+            _fallback_buffer.append(context_entry)
+            _fallback_char_count += len(context_entry)
 
     # Captura instantânea de padrões explícitos (sem LLM)
     if tool_output:
         _check_instant_patterns(str(tool_output))
 
-    # Flush automático se buffer muito grande
-    if _buffer_char_count >= _BUFFER_FLUSH_THRESHOLD:
+    # Aviso de flush automático (threshold baseado no backend ativo)
+    char_count = (
+        _short_term.get_stats(_hook_session_id).get("active", 0) * 200  # estimativa
+        if _short_term is not None
+        else _fallback_char_count
+    )
+    if char_count >= _BUFFER_FLUSH_THRESHOLD:
         logger.info(
-            f"Buffer de memória atingiu {_buffer_char_count} chars — "
-            f"flush será acionado no próximo checkpoint."
+            "Buffer de memória atingiu threshold — flush será acionado no próximo checkpoint."
         )
 
     return {}
@@ -181,31 +215,45 @@ def _check_instant_patterns(text: str) -> None:
                 f"  pattern_matched: {pattern}\n"
                 f"  content: {match.strip()}"
             )
-            _session_buffer.append(entry)
+            if _short_term is not None:
+                _short_term.append(entry, session_id=_hook_session_id, tool_name="instant_capture")
+            else:
+                _fallback_buffer.append(entry)
+                global _fallback_char_count
+                _fallback_char_count += len(entry)
             capture_count += 1
             logger.debug(f"Captura instantânea ({mem_type}): {match.strip()[:80]}")
 
 
 def get_session_buffer() -> str:
     """Retorna o conteúdo acumulado do buffer da sessão."""
-    return "\n\n---\n\n".join(_session_buffer)
+    if _short_term is not None:
+        return _short_term.get_session_buffer(_hook_session_id)
+    return "\n\n---\n\n".join(_fallback_buffer)
 
 
 def get_buffer_stats() -> dict[str, int]:
     """Retorna estatísticas do buffer."""
+    if _short_term is not None:
+        stats = _short_term.get_stats(_hook_session_id)
+        return {
+            "entries": stats.get("active", 0),
+            "total_chars": stats.get("active", 0) * 200,  # estimativa
+            "instant_captures": 0,
+        }
     return {
-        "entries": len(_session_buffer),
-        "total_chars": _buffer_char_count,
-        "instant_captures": sum(1 for e in _session_buffer if "[INSTANT_CAPTURE]" in e),
+        "entries": len(_fallback_buffer),
+        "total_chars": _fallback_char_count,
+        "instant_captures": sum(1 for e in _fallback_buffer if "[INSTANT_CAPTURE]" in e),
     }
 
 
 def clear_session_buffer() -> None:
-    """Limpa o buffer da sessão (chamado após flush)."""
-    global _buffer_char_count
-    _session_buffer.clear()
-    _buffer_char_count = 0
-    logger.debug("Buffer de memória limpo.")
+    """Limpa o buffer da sessão (chamado após flush). Preserva o SQLite — TTL gerencia expiração."""
+    global _fallback_char_count
+    _fallback_buffer.clear()
+    _fallback_char_count = 0
+    logger.debug("Buffer de memória limpo (fallback). SQLite preservado — TTL gerencia expiração.")
 
 
 def flush_session_memories(session_id: str = "") -> int:

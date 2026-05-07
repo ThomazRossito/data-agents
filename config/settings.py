@@ -245,15 +245,53 @@ class Settings(BaseSettings):
     # Override via .env: MEMORY_KEEP_COMPILED_DAYS=30
     memory_keep_compiled_days: int = 30
 
+    # --- Short-term Memory (SQLite buffer com TTL) ---
+    # Path do banco SQLite do buffer short-term. Relativo à raiz do projeto.
+    # Override via .env: SHORT_TERM_DB_PATH=memory/data/short_term.db
+    short_term_db_path: str = "memory/data/short_term.db"
+
+    # --- Long-term Memory (SQLite FTS5 + embeddings opcionais) ---
+    # Path do banco SQLite do índice long-term. Relativo à raiz do projeto.
+    # Override via .env: LONG_TERM_DB_PATH=memory/data/long_term.db
+    long_term_db_path: str = "memory/data/long_term.db"
+    # Número máximo de memórias retornadas por busca no long-term.
+    # Override via .env: LONG_TERM_SEARCH_LIMIT=8
+    long_term_search_limit: int = 8
+    # Se True, gera embeddings para as memórias long-term (requer fastembed).
+    # Usa o mesmo modelo configurado em short_term_embedder_model.
+    # Override via .env: LONG_TERM_EMBEDDER_ENABLED=true
+    long_term_embedder_enabled: bool = False
+    # Dias até uma entrada do buffer expirar. Padrão: 3 dias.
+    # Override via .env: SHORT_TERM_TTL_DAYS=3
+    short_term_ttl_days: float = 3.0
+    # Se True, tenta usar LocalEmbedder (fastembed) para busca semântica.
+    # Requer: pip install ".[memory]". Se False ou fastembed ausente, usa FTS5.
+    # Override via .env: SHORT_TERM_EMBEDDER_ENABLED=true
+    short_term_embedder_enabled: bool = False
+    # Modelo fastembed a usar. Padrão: BAAI/bge-small-en-v1.5 (384 dims, ~25MB).
+    # Override via .env: SHORT_TERM_EMBEDDER_MODEL=BAAI/bge-small-en-v1.5
+    short_term_embedder_model: str = "BAAI/bge-small-en-v1.5"
+    # Path do cache SQLite para embeddings (evita re-computação).
+    # Override via .env: EMBEDDER_CACHE_DB_PATH=memory/data/embedder_cache.db
+    embedder_cache_db_path: str = "memory/data/embedder_cache.db"
+
+    # --- Ledger (integridade do audit log) ---
+    # Habilita assinatura HMAC-SHA256 de cada entrada do audit log.
+    # Desabilitar só para debugging ou ambientes sem necessidade de auditoria.
+    # Override via .env: LEDGER_ENABLED=false
+    ledger_enabled: bool = True
+    # Se True, verifica o hash de cada entrada ao carregar via Ledger.load_range().
+    # Aumenta latência de leitura — manter False em produção, True para auditorias.
+    # Override via .env: LEDGER_VERIFY_ON_LOAD=true
+    ledger_verify_on_load: bool = False
+
     # --- Memory Extraction Model ---
-    # Modelo usado pelo extractor e retrieval para chamadas laterais (sem SDK).
-    # Haiku é suficiente para extração/retrieval e ~4x mais barato que Sonnet.
+    # Modelo usado pelo extractor (flush de sessão) para chamadas laterais (sem SDK).
+    # Haiku é suficiente para extração e ~4x mais barato que Sonnet.
     # Override via .env: MEMORY_EXTRACTOR_MODEL=claude-sonnet-4-6
     memory_extractor_model: str = "claude-haiku-4-5"
     memory_extractor_max_tokens: int = 2048
-    memory_retrieval_model: str = "claude-haiku-4-5"
-    memory_retrieval_max_tokens: int = 1024
-    # Número máximo de memórias recuperadas por query (retrieval semântico).
+    # Número máximo de memórias recuperadas por query (FTS5 long-term search).
     # Override via .env: MEMORY_RETRIEVAL_MAX=10
     memory_retrieval_max: int = 10
 

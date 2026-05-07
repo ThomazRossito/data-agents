@@ -67,9 +67,6 @@ from mcp_servers.migration_source.server_config import MIGRATION_SOURCE_MCP_TOOL
 from mcp_servers.postgres.server_config import POSTGRES_MCP_TOOLS
 from mcp_servers.tavily.server_config import TAVILY_MCP_TOOLS
 
-from memory.store import MemoryStore
-from memory.retrieval import retrieve_relevant_memories, format_memories_for_injection
-
 logger = logging.getLogger("data_agents.loader")
 
 # Diretório padrão de definições de agentes
@@ -697,64 +694,3 @@ def load_all_agents(
 
     logger.info(f"Registry carregado: {len(agents)} agentes — {list(agents.keys())}")
     return agents
-
-
-def inject_memory_context(
-    query: str,
-    system_prompt: str,
-    apply_decay: bool = True,
-) -> str:
-    """
-    Injeta memórias relevantes no system prompt do supervisor.
-
-    Usa o Sonnet lateral para selecionar memórias do store que são
-    relevantes para a query atual.
-
-    Retorna o system_prompt original sem modificação se:
-      - memory_enabled=False no .env
-      - memory_retrieval_enabled=False no .env
-
-    Args:
-        query: A query/tarefa atual do usuário.
-        system_prompt: System prompt original do supervisor.
-        apply_decay: Se True, aplica decay antes do retrieval. Padrão True.
-                     Passe False quando decay já foi aplicado nesta sessão.
-
-    Returns:
-        System prompt enriquecido com memórias relevantes.
-    """
-    from config.settings import settings  # importação local — evita circular import
-
-    if not settings.memory_enabled or not settings.memory_retrieval_enabled:
-        return system_prompt
-
-    try:
-        store = MemoryStore()
-
-        # Aplica decay apenas quando solicitado (1x por sessão no main.py)
-        if apply_decay:
-            all_memories = store.list_all(active_only=False)
-            if all_memories:
-                from memory.decay import apply_decay as _apply_decay
-
-                _apply_decay(all_memories, save_fn=store.save)
-
-        # Busca memórias relevantes via Sonnet lateral
-        relevant = retrieve_relevant_memories(query, store, max_memories=8)
-
-        if not relevant:
-            return system_prompt
-
-        # Formata e injeta
-        memory_context = format_memories_for_injection(relevant)
-        enriched = system_prompt + memory_context
-
-        logger.info(
-            f"Memory injection: {len(relevant)} memórias injetadas "
-            f"(+{len(memory_context)} chars no prompt)"
-        )
-        return enriched
-
-    except Exception as e:
-        logger.warning(f"Erro na injeção de memória (continuando sem memória): {e}")
-        return system_prompt

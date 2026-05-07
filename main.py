@@ -26,7 +26,6 @@ except ImportError:
 
 import asyncio
 import atexit
-import hashlib
 import logging
 import signal
 import sys
@@ -71,20 +70,13 @@ from hooks.memory_hook import flush_session_memories
 from hooks.transcript_hook import append_turn as _append_transcript_turn
 from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
-from agents.loader import inject_memory_context, preload_registry
+from memory.manager import MemoryManager
+from agents.loader import preload_registry
 from commands.geral import run_geral_query
 from commands.party import run_party_query, parse_party_args
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
-
-# Cache de memory retrieval: {query_hash: (system_prompt_enriched, timestamp)}
-# Evita chamar Sonnet lateral para queries idênticas dentro de 60 segundos
-_retrieval_cache: dict[str, tuple[str, float]] = {}
-_RETRIEVAL_CACHE_TTL = 60.0  # segundos
-
-# Flag para garantir que apply_decay() só é executado 1x por sessão
-_decay_applied: bool = False
 
 # Estado exposto para atexit/signal handlers (T1.1).
 # Atualizado a cada turn bem-sucedido em run_interactive; consumido pelo
@@ -828,10 +820,12 @@ async def run_interactive() -> None:
 
     _session_id = f"cli-{uuid.uuid4().hex[:8]}"
     _active_session_id = _session_id  # T1.2: expõe para _emergency_checkpoint
+    memory_manager = MemoryManager()
     try:
         async with ClaudeSDKClient(options=options) as client:
             # Ch.12 — Session Lifecycle: reseta contadores e prepara buffer de memória
             on_session_start(_session_id)
+            memory_manager.start_session(_session_id)
 
             # ── 4.1 Verificar checkpoint de sessão anterior ────────────────
             checkpoint = load_checkpoint()
@@ -1152,35 +1146,10 @@ async def run_interactive() -> None:
                         options.thinking = {"type": "disabled"}
 
                     # --- Memory Retrieval: injeta memórias relevantes no system prompt ---
-                    if settings.memory_enabled and settings.memory_retrieval_enabled:
-                        global _decay_applied
-                        try:
-                            # Cache por query hash (TTL 60s) — evita Sonnet lateral redundante
-                            query_hash = hashlib.md5(
-                                doma_prompt[:200].encode(), usedforsecurity=False
-                            ).hexdigest()
-                            cached = _retrieval_cache.get(query_hash)
-                            if cached and (time.monotonic() - cached[1]) < _RETRIEVAL_CACHE_TTL:
-                                options.system_prompt = cached[0]
-                                logger.debug("Memory retrieval: usando contexto cacheado.")
-                            else:
-                                enriched_prompt = inject_memory_context(
-                                    query=doma_prompt,
-                                    system_prompt=options.system_prompt or "",
-                                    apply_decay=not _decay_applied,
-                                )
-                                _decay_applied = True
-                                if enriched_prompt != (options.system_prompt or ""):
-                                    options.system_prompt = enriched_prompt
-                                    _retrieval_cache[query_hash] = (
-                                        enriched_prompt,
-                                        time.monotonic(),
-                                    )
-                                    logger.debug(
-                                        "System prompt enriquecido com memórias relevantes."
-                                    )
-                        except Exception as e:
-                            logger.warning(f"Memory retrieval falhou: {e}")
+                    options.system_prompt = memory_manager.inject_context(
+                        query=doma_prompt,
+                        system_prompt=options.system_prompt or "",
+                    )
 
                     # T4.1: registrar o turno do usuário no transcript ANTES de enviar
                     # para o Supervisor. Assim, mesmo se o turno quebrar (erro/budget),
@@ -1308,7 +1277,7 @@ async def run_interactive() -> None:
             turns=int(_session_state.get("total_turns", 0)),
         )
         # Ch.12 — Session Lifecycle: flush de memória e log de estatísticas de uso
-        on_session_end(_session_id)
+        on_session_end(_session_id, memory_manager=memory_manager)
 
 
 async def run_single_query(prompt: str) -> None:
