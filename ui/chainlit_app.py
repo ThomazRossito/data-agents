@@ -424,8 +424,8 @@ async def _activate_supervisor() -> None:
             from memory.manager import MemoryManager
 
             memory_manager = MemoryManager()
-            memory_manager.start_session(session_id)
-            _on_session_start(session_id)
+            _on_session_start(session_id)  # inicializa ShortTermMemory + Ledger primeiro
+            memory_manager.start_session(session_id)  # depois registra sessão no manager
             cl.user_session.set("memory_manager", memory_manager)
         except Exception as _mem_exc:
             logger.warning(f"[chainlit] Falha ao inicializar MemoryManager: {_mem_exc}")
