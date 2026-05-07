@@ -93,7 +93,21 @@ class MemoryManager:
         self._decay_applied = False
         self._long_term_synced = False
         self._retrieval_cache.clear()
+        self._expire_short_term()
         logger.info(f"MemoryManager: sessão iniciada — {session_id!r}")
+
+    def _expire_short_term(self) -> None:
+        """Remove entradas expiradas do ShortTermMemory. Silencioso se não inicializado."""
+        try:
+            from hooks.memory_hook import get_short_term
+
+            st = get_short_term()
+            if st is not None:
+                removed = st.expire_old_entries()
+                if removed:
+                    logger.debug(f"ShortTermMemory: {removed} entradas expiradas removidas")
+        except Exception as e:
+            logger.debug(f"_expire_short_term ignorado: {e}")
 
     def end_session(self) -> None:
         """Encerra a sessão: persiste memórias capturadas e reseta estado."""

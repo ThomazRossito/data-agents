@@ -44,6 +44,11 @@ _fallback_char_count: int = 0
 _BUFFER_FLUSH_THRESHOLD = 50_000
 
 
+def get_short_term() -> "ShortTermMemory | None":
+    """Retorna a instância ativa de ShortTermMemory (ou None se não inicializado)."""
+    return _short_term
+
+
 def init_memory_hook(session_id: str, short_term: "ShortTermMemory") -> None:
     """
     Inicializa o hook com a sessão ativa e o buffer SQLite.
