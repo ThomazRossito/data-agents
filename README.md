@@ -13,29 +13,42 @@
 
 ---
 
-## Sobre o Autor
+> ⭐ Se o Data Agents foi útil para você, deixe uma estrela — ajuda o projeto a crescer!
 
-<p align="center">
-  <img src="img/readme/author_futuristic.png" alt="Thomaz Rossito" width="70%">
-</p>
+<details>
+<summary>📋 Índice</summary>
 
-**Thomaz Antonio Rossito Neto** — Data & AI Solutions Architect | Specialist @ CI&T · Databricks & Microsoft Fabric Partner CoE
+- [O que é o Data Agents?](#o-que-é-o-data-agents)
+- [Arquitetura](#arquitetura)
+- [Início Rápido](#início-rápido)
+- [Agentes Especialistas](#agentes-especialistas)
+- [Comandos Disponíveis](#comandos-disponíveis)
+- [Protocolo DOMA & Workflows Colaborativos](#protocolo-doma--workflows-colaborativos)
+- [Migração de DW On-Premise para Databricks](#migração-de-dw-on-premise-para-databricks)
+- [Catalog Intelligence](#catalog-intelligence)
+- [Ontology Engineer](#ontology-engineer--web-semântica-no-fabric)
+- [Knowledge Base de Indústria](#knowledge-base-de-indústria)
+- [Confiabilidade e Proteção de Qualidade](#confiabilidade-e-proteção-de-qualidade)
+- [Plataformas e MCPs](#plataformas-e-mcps)
+- [Camada de Proteção](#camada-de-proteção)
+- [Sistema de Memória](#sistema-de-memória)
+- [Interfaces](#interfaces)
+- [Qualidade e CI/CD](#qualidade-e-cicd)
+- [Configurações Avançadas](#configurações-avançadas)
+- [Sobre o Autor](#sobre-o-autor)
+- [Licença](#licença)
 
-Com 8+ anos em Engenharia e Arquitetura de Dados, atua na intersecção entre Big Data, Arquitetura Lakehouse e Agentic AI — aplicando agentes autônomos e GenAI no ciclo completo de dados: pipelines, discovery, migrações, governança e orquestração autônoma. Certificado 10x (Databricks 5x · Azure 4x · AWS 1x).
-
-**Projetos open-source:**
-- 🤖 **Data Agents** — framework de orquestração multi-agente para dados corporativos com 14 agentes especialistas, integrações nativas Databricks + Fabric via MCP e protocolo DOMA
-- 🧭 **SifTools** — engenharia de contexto via pruning semântico de tools por embeddings: entrega exatamente os MCPs que cada agente precisa, sem custo extra de inferência → [github.com/ThomazRossito/siftools](https://github.com/ThomazRossito/siftools)
-
-> *"Dados sem estratégia são apenas ruído. Agentes sem governança são apenas caos."*
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-Thomaz%20Rossito-0077B5?logo=linkedin)](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/) [![GitHub](https://img.shields.io/badge/GitHub-ThomazRossito-181717?logo=github)](https://github.com/ThomazRossito) [![Credly](https://img.shields.io/badge/Credly-10x%20Certified-FF6B00?logo=credly)](https://www.credly.com/users/thomaz-antonio-rossito-neto) [![Medium](https://img.shields.io/badge/Medium-Blog-000000?logo=medium)](https://medium.com/@thomazrossito) [![YouTube](https://img.shields.io/badge/YouTube-Canal-FF0000?logo=youtube)](https://www.youtube.com/@thomazantoniorossitoneto4541)
+</details>
 
 ---
+
+## O que é o Data Agents?
 
 **Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **14 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
+
+## Arquitetura
 
 <p align="center">
   <img src="img/readme/architecture_futuristic_new.png" alt="Arquitetura Data Agents" width="100%">
@@ -465,6 +478,26 @@ make health-fabric
 ## Manual Técnico Completo
 
 [Manual_Relatorio_Tecnico_Projeto_Data_Agents.md](Manual_Relatorio_Tecnico_Projeto_Data_Agents.md)
+
+---
+
+## Sobre o Autor
+
+<p align="center">
+  <img src="img/readme/author_futuristic.png" alt="Thomaz Rossito" width="70%">
+</p>
+
+**Thomaz Antonio Rossito Neto** — Data & AI Solutions Architect | Specialist @ CI&T · Databricks & Microsoft Fabric Partner CoE
+
+Com 8+ anos em Engenharia e Arquitetura de Dados, atua na intersecção entre Big Data, Arquitetura Lakehouse e Agentic AI — aplicando agentes autônomos e GenAI no ciclo completo de dados: pipelines, discovery, migrações, governança e orquestração autônoma. Certificado 10x (Databricks 5x · Azure 4x · AWS 1x).
+
+**Projetos open-source:**
+- 🤖 **Data Agents** — framework de orquestração multi-agente para dados corporativos com 14 agentes especialistas, integrações nativas Databricks + Fabric via MCP e protocolo DOMA
+- 🧭 **SifTools** — engenharia de contexto via pruning semântico de tools por embeddings: entrega exatamente os MCPs que cada agente precisa, sem custo extra de inferência → [github.com/ThomazRossito/siftools](https://github.com/ThomazRossito/siftools)
+
+> *"Dados sem estratégia são apenas ruído. Agentes sem governança são apenas caos."*
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Thomaz%20Rossito-0077B5?logo=linkedin)](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/) [![GitHub](https://img.shields.io/badge/GitHub-ThomazRossito-181717?logo=github)](https://github.com/ThomazRossito) [![Credly](https://img.shields.io/badge/Credly-10x%20Certified-FF6B00?logo=credly)](https://www.credly.com/users/thomaz-antonio-rossito-neto) [![Medium](https://img.shields.io/badge/Medium-Blog-000000?logo=medium)](https://medium.com/@thomazrossito) [![YouTube](https://img.shields.io/badge/YouTube-Canal-FF0000?logo=youtube)](https://www.youtube.com/@thomazantoniorossitoneto4541)
 
 ---
 
