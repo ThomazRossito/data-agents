@@ -205,7 +205,7 @@ class TestMcpRegistryCompleteness:
         assert server["type"] == "stdio"
         assert server["command"] == "npx"
         args = server["args"]
-        assert "@microsoft/fabric-mcp@latest" in args
+        assert any(a.startswith("@microsoft/fabric-mcp") for a in args)
         assert "--mode" in args and "all" in args
 
     def test_fabric_official_readonly_excludes_destructive_tools(self):

@@ -665,18 +665,19 @@ O agente deve produzir ao final um `output/<dominio>_ontology.md` com:
 ## Padrão 11: Fabric IQ Ontology — `updateDefinition` via REST API
 
 > Aplicável quando o item nativo `Ontology` do Fabric IQ já existe no workspace.
-> Usar curl diretamente — MCP tools do Fabric NÃO suportam a Ontology API (`/v1/workspaces/{id}/ontologies`).
+> Usar Python com `requests` — MCP tools do Fabric NÃO suportam a Ontology API (`/v1/workspaces/{id}/ontologies`).
+> **Status:** API documentada e funcional (Preview). Validado em 2026-05-06.
 
 ### Conceitos Fabric IQ → OWL
 
-| Fabric IQ       | OWL                  | Descrição                                              |
-|-----------------|----------------------|--------------------------------------------------------|
-| Entity Type     | owl:Class            | Conceito de negócio com propriedades e chave           |
-| Property        | owl:DatatypeProperty | Atributo de um entity type                             |
-| Relationship    | owl:ObjectProperty   | Conexão tipada entre entity types                      |
-| Data Binding    | —                    | Mapeamento coluna Lakehouse → Property                 |
-| Contextualization | owl:Restriction    | Tabela que vincula instâncias de relacionamentos       |
-| Entity ID Part  | owl:hasKey           | Coluna(s) que identificam unicamente uma instância     |
+| Fabric IQ         | OWL                  | Descrição                                              |
+|-------------------|----------------------|--------------------------------------------------------|
+| Entity Type       | owl:Class            | Conceito de negócio com propriedades e chave           |
+| Property          | owl:DatatypeProperty | Atributo de um entity type                             |
+| Relationship      | owl:ObjectProperty   | Conexão tipada entre entity types                      |
+| Data Binding      | —                    | Mapeamento coluna Lakehouse → Property                 |
+| Contextualization | owl:Restriction      | Tabela que vincula instâncias de relacionamentos       |
+| Entity ID Part    | owl:hasKey           | Coluna que identifica unicamente uma instância (1 campo — ver Limitações) |
 
 **Tipos válidos em `valueType`:** `String`, `Boolean`, `DateTime`, `Double`, `BigInt`, `Object`
 **NUNCA usar:** `Decimal` → substituir por `Double` (Fabric Graph não suporta Decimal)
@@ -690,31 +691,29 @@ def stable_id(name: str) -> str:
     """ID de 64 bits como string — determinístico: mesmo name → mesmo ID."""
     return str(int(hashlib.sha256(name.encode()).hexdigest()[:15], 16))
 
-def binding_uuid(name: str) -> str:
-    """UUID v4 determinístico para DataBinding e Contextualization."""
-    return str(uuid.UUID(bytes=hashlib.sha256(name.encode()).digest()[:16], version=4))
+def stable_uuid(name: str) -> str:
+    """UUID v5 determinístico para DataBinding e Contextualization."""
+    return str(uuid.uuid5(uuid.NAMESPACE_OID, name))
 ```
 
 ### Estrutura do Payload `updateDefinition`
 
 ```python
-import json, base64
+import json, base64, requests
 
 def b64(obj: dict) -> str:
     return base64.b64encode(json.dumps(obj).encode()).decode()
 
 parts = []
 
-# 1. definition.json — sempre vazio
-parts.append({"path": "definition.json", "payload": b64({}), "payloadType": "InlineBase64"})
-
-# 2. .platform — metadados padrão do item Fabric
+# 1. .platform — OBRIGATÓRIO — apenas metadata, sem $schema nem config
 platform = {
-    "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
-    "metadata": {"type": "Ontology", "displayName": "<displayName do item>"},
-    "config":   {"version": "2.0", "logicalId": "<ONTOLOGY_ITEM_ID>"}
+    "metadata": {"type": "Ontology", "displayName": "<displayName do item>"}
 }
 parts.append({"path": ".platform", "payload": b64(platform), "payloadType": "InlineBase64"})
+
+# 2. definition.json — OBRIGATÓRIO — sempre objeto vazio
+parts.append({"path": "definition.json", "payload": b64({}), "payloadType": "InlineBase64"})
 
 # 3. Entity Type — um por classe OWL principal
 et_id = stable_id("Products")
@@ -723,23 +722,24 @@ et = {
     "id": et_id,
     "namespace": "usertypes",
     "name": "Products",
-    "entityIdParts": [prop_id],           # lista de property IDs que formam a chave
-    "displayNamePropertyId": prop_id,     # property usada como label na UI
+    "entityIdParts": [prop_id],        # SOMENTE 1 campo — chave composta NÃO suportada em Preview
+    "displayNamePropertyId": prop_id,  # property usada como label na UI
     "namespaceType": "Custom",
     "visibility": "Visible",
     "properties": [
         {"id": prop_id, "name": "ProductId", "valueType": "String"},
         {"id": stable_id("Products.ProductName"), "name": "ProductName", "valueType": "String"},
     ]
+    # "timeseriesProperties": [...]  # opcional — para entidades IoT com medições ao longo do tempo
 }
 parts.append({"path": f"EntityTypes/{et_id}/definition.json", "payload": b64(et), "payloadType": "InlineBase64"})
 
-# 4. Data Binding — Snapshot (dimensões sem série temporal)
-binding_id = binding_uuid("Products.binding")
-binding_snapshot = {
+# 4. Data Binding — NonTimeSeries (dimensões e fatos sem série temporal contínua)
+binding_id = stable_uuid("Products.binding")
+binding_nts = {
     "id": binding_id,
     "dataBindingConfiguration": {
-        "dataBindingType": "Snapshot",
+        "dataBindingType": "NonTimeSeries",   # ← CORRETO (não "Snapshot")
         "propertyBindings": [
             {"sourceColumnName": "ProductId",   "targetPropertyId": prop_id},
             {"sourceColumnName": "ProductName", "targetPropertyId": stable_id("Products.ProductName")},
@@ -753,44 +753,55 @@ binding_snapshot = {
         }
     }
 }
-parts.append({"path": f"EntityTypes/{et_id}/DataBindings/{binding_id}.json", "payload": b64(binding_snapshot), "payloadType": "InlineBase64"})
+parts.append({"path": f"EntityTypes/{et_id}/DataBindings/{binding_id}.json", "payload": b64(binding_nts), "payloadType": "InlineBase64"})
 
-# 5. Data Binding — TimeSeries (fatos com coluna de data/hora)
+# 5. Data Binding — TimeSeries (telemetria IoT, eventos com timestamp)
 #    Requer campo adicional timestampColumnName
+binding_ts_id = stable_uuid("SaleEvent.binding")
 binding_ts = {
-    "id": binding_uuid("SaleEvent.binding"),
+    "id": binding_ts_id,
     "dataBindingConfiguration": {
         "dataBindingType": "TimeSeries",
         "timestampColumnName": "SaleDate",   # coluna DATE ou DATETIME da tabela
-        "propertyBindings": [...],            # igual ao Snapshot
-        "sourceTableProperties": {...}
+        "propertyBindings": [
+            {"sourceColumnName": "SaleDate", "targetPropertyId": stable_id("SaleEvent.SaleDate")},
+            # ... demais colunas
+        ],
+        "sourceTableProperties": {
+            "sourceType": "LakehouseTable",
+            "workspaceId": "<FABRIC_WORKSPACE_ID>",
+            "itemId": "<LAKEHOUSE_ID>",
+            "sourceTableName": "factsales",
+            "sourceSchema": "dbo"
+        }
     }
 }
 
-# 6. Relationship Type
+# 6. Relationship Type — source e target são objetos aninhados (NÃO campos flat)
 rel_id = stable_id("involves_product")
 rel = {
     "id": rel_id,
     "namespace": "usertypes",
     "name": "involves_product",
-    "sourceEntityTypeId": stable_id("SaleEvent"),
-    "targetEntityTypeId": stable_id("Products"),
     "namespaceType": "Custom",
-    "visibility": "Visible"
+    "source": {"entityTypeId": stable_id("SaleEvent")},   # ← objeto aninhado
+    "target": {"entityTypeId": stable_id("Products")}    # ← objeto aninhado
 }
 parts.append({"path": f"RelationshipTypes/{rel_id}/definition.json", "payload": b64(rel), "payloadType": "InlineBase64"})
 
 # 7. Contextualization — tabela que vincula instâncias do relacionamento
-ctx_id = binding_uuid("involves_product.ctx")
+ctx_id = stable_uuid("involves_product.ctx")
 ctx = {
     "id": ctx_id,
-    "sourceEntityIdPropertyBindings": [
-        {"sourceColumnName": "ProductId", "targetPropertyId": stable_id("SaleEvent.ProductId")}
+    "sourceKeyRefBindings": [                              # ← sourceKeyRefBindings (não sourceEntityIdPropertyBindings)
+        {"sourceColumnName": "SaleId", "targetPropertyId": stable_id("SaleEvent.SaleId")}
+        # deve mapear exatamente os campos do entityIdParts da source entity
     ],
-    "targetEntityIdPropertyBindings": [
+    "targetKeyRefBindings": [                              # ← targetKeyRefBindings (não targetEntityIdPropertyBindings)
         {"sourceColumnName": "ProductId", "targetPropertyId": stable_id("Products.ProductId")}
+        # deve mapear exatamente os campos do entityIdParts da target entity
     ],
-    "sourceTableProperties": {
+    "dataBindingTable": {                                  # ← dataBindingTable (não sourceTableProperties)
         "sourceType":      "LakehouseTable",
         "workspaceId":     "<FABRIC_WORKSPACE_ID>",
         "itemId":          "<LAKEHOUSE_ID>",
@@ -808,63 +819,73 @@ with open("/tmp/ontology_definition.json", "w") as f:
 
 ### Executar `updateDefinition` e Fazer Polling do LRO
 
-```bash
-# 1. Obter token Fabric API
-TOKEN=$(curl -s -X POST \
-  "https://login.microsoftonline.com/$AZURE_TENANT_ID/oauth2/v2.0/token" \
-  -d "grant_type=client_credentials&client_id=$AZURE_CLIENT_ID&client_secret=$AZURE_CLIENT_SECRET&scope=https://api.fabric.microsoft.com/.default" \
-  | python3 -c "import sys,json; print(json.load(sys.stdin)['access_token'])")
+```python
+import json, time, requests
+
+# Ler credenciais do .env
+env = {}
+with open(".env") as f:
+    for line in f:
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip().strip('"').strip("'")
+
+# 1. Obter token
+r = requests.post(
+    f"https://login.microsoftonline.com/{env['AZURE_TENANT_ID']}/oauth2/v2.0/token",
+    data={"grant_type": "client_credentials", "client_id": env["AZURE_CLIENT_ID"],
+          "client_secret": env["AZURE_CLIENT_SECRET"],
+          "scope": "https://api.fabric.microsoft.com/.default"}
+)
+token = r.json()["access_token"]
+headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
 
 # 2. Enviar updateDefinition
-RESPONSE=$(curl -si -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  --data @/tmp/ontology_definition.json \
-  "https://api.fabric.microsoft.com/v1/workspaces/$FABRIC_WORKSPACE_ID/ontologies/$ONTOLOGY_ID/updateDefinition")
+with open("/tmp/ontology_definition.json") as f:
+    payload = json.load(f)
 
-# 3. Extrair URL do LRO (header Location ou x-ms-operation-id)
-LOCATION=$(echo "$RESPONSE" | grep -i "^location:" | tr -d '\r' | awk '{print $2}')
+url = f"https://api.fabric.microsoft.com/v1/workspaces/{WORKSPACE_ID}/ontologies/{ONTOLOGY_ID}/updateDefinition"
+resp = requests.post(url, json=payload, headers=headers, allow_redirects=False)
+location = resp.headers.get("Location", "")
 
-# 4. Polling até Succeeded (máx ~60s)
-for i in $(seq 1 6); do
-  sleep 10
-  STATUS=$(curl -s -H "Authorization: Bearer $TOKEN" "$LOCATION" \
-    | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('status','?'), d.get('error',''))")
-  echo "[$i] $STATUS"
-  [[ "$STATUS" == Succeeded* ]] && break
-done
+# 3. Polling do LRO (202 Accepted → poll Location até Succeeded)
+for i in range(12):
+    time.sleep(10)
+    poll = requests.get(location, headers={"Authorization": f"Bearer {token}"})
+    body = poll.json() or {}
+    status = body.get("status", "?")
+    print(f"[{i+1}] {status} | {body.get('error')}")
+    if status in ("Succeeded", "Failed", "Cancelled"):
+        break
 ```
+
+> **Nota:** usar `requests` (não `urllib`) no macOS — o Python 3.12 do sistema não tem os certificados CA necessários para TLS com `urllib`.
 
 ### Validação Pós-Execução
 
-```bash
-# Listar entity types e relationships via getDefinition
-curl -s -X POST \
-  -H "Authorization: Bearer $TOKEN" \
-  "https://api.fabric.microsoft.com/v1/workspaces/$FABRIC_WORKSPACE_ID/ontologies/$ONTOLOGY_ID/getDefinition" \
-  | python3 -c "
-import sys, json, base64
-d = json.load(sys.stdin)
-parts = d.get('definition', {}).get('parts', [])
-print(f'Total parts: {len(parts)}')
-for p in parts:
-    print(' ', p['path'])
-"
-
-# Se getDefinition retornar vazio (comum para itens criados via UI + updateDefinition),
-# validar via GET simples:
-curl -s -H "Authorization: Bearer $TOKEN" \
-  "https://api.fabric.microsoft.com/v1/workspaces/$FABRIC_WORKSPACE_ID/ontologies/$ONTOLOGY_ID"
+```python
+# Chamar getDefinition para confirmar os parts importados
+resp = requests.post(
+    f"https://api.fabric.microsoft.com/v1/workspaces/{WORKSPACE_ID}/ontologies/{ONTOLOGY_ID}/getDefinition",
+    headers={"Authorization": f"Bearer {token}", "Content-Length": "0"},
+    allow_redirects=False
+)
+location = resp.headers.get("Location", "")
+# ... poll até Succeeded, então inspecionar parts retornados
 ```
 
-### Limitações Conhecidas
+> `getDefinition` pode retornar 0 parts para itens criados via UI (sensitivity label ou permissão). Validar visualmente na UI do Fabric IQ após `updateDefinition` bem-sucedido.
+
+### Limitações Conhecidas (Preview — validado 2026-05-06)
 
 | Limitação | Impacto | Mitigação |
 |-----------|---------|-----------|
-| `Decimal` não suportado | Propriedades numéricas ficam `null` | Mapear para `Double` sempre |
-| `getDefinition` retorna vazio para itens criados via UI | Não dá para ler o estado atual | Usar GET simples + inspeção visual na UI |
-| `updateDefinition` é full-replace | Update incremental não existe | Sempre ler → modificar → escrever |
-| Overviews (`Overviews/definition.json`) | Formato não público | Omitir na v1; adicionar via UI manualmente |
+| `entityIdParts` aceita **somente 1 campo** | Chave composta (ex: FreezerId + Timestamp) gera `ALMOperationImportFailed` | Escolher 1 campo como chave da entidade; timestamp vai em `timeseriesProperties` |
+| `Decimal` não suportado em `valueType` | Propriedades numéricas ficam `null` | Sempre mapear para `Double` |
+| `getDefinition` pode retornar 0 parts | Não permite ler o estado atual via API | Usar inspeção visual na UI do Fabric IQ |
+| `updateDefinition` é full-replace | Update incremental não existe | Manter o payload completo em `scripts/generate_ontology_definition.py` e sempre reenviar tudo |
+| Overviews (`Overviews/definition.json`) | Formato não documentado publicamente | Omitir; configurar via UI manualmente |
 | `ItemDisplayNameNotAvailableYet` ao criar | Item recém-criado ainda não indexado | Aguardar 10s e fazer retry |
-| `ALMOperationImportFailed` com `{0}`,`{1}`,`{2}` | Bug Fabric: error message template não formatado — causa real oculta. Mascarava o erro real abaixo | Remover `.platform` do payload para obter mensagem legível |
-| `ALMOperationBadRequest: no definition.json ContentId found` | O `definition.json` raiz exige um campo `ContentId` proprietário gerado internamente pelo Fabric — **não documentado e não recuperável via `getDefinition`** (que retorna 0 parts para itens criados via UI). API `updateDefinition` do tipo Ontology está efetivamente bloqueada para uso externo enquanto permanecer em preview. | **Workaround:** configurar entity types, relationships e data bindings manualmente pela UI do Fabric IQ. Usar `scripts/generate_ontology_definition.py` como mapa de referência (property names, types, FKs, binding types). Usar `POST /ontologies` (não `/items`) para criar itens via API — o endpoint `/items` não provisiona Lakehouse + GraphModel automaticamente. |
+| `ALMOperationImportFailed` com `{0}`,`{1}`,`{2}` | Bug Fabric: template de erro não formatado — mensagem real oculta | Testar cada entity type individualmente até isolar o culpado; após isolamento, o erro seguinte virá com mensagem legível |
+| `ALMOperationBadRequest: no definition.json ContentId found` | Ocorre quando `.platform` está **ausente** do payload — não existe campo `ContentId` na spec pública | Garantir que `.platform` (apenas `metadata`) está sempre presente no payload |

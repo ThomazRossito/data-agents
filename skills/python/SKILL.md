@@ -1,3 +1,8 @@
+---
+name: python
+description: "Índice de skills Python: FastAPI, pandas/polars, pytest e packaging. Use ao trabalhar com APIs REST, transformações de dados, testes unitários ou publicação de pacotes Python."
+---
+
 # Python Expert — Índice de Skills
 
 Skills disponíveis para o python-expert. Leia os arquivos relevantes antes de executar.

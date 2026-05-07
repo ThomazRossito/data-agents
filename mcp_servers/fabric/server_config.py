@@ -71,7 +71,7 @@ def get_fabric_official_mcp_config() -> dict:
             "command": "npx",
             "args": [
                 "-y",
-                "@microsoft/fabric-mcp@latest",
+                "@microsoft/fabric-mcp@1.0.0",
                 "server",
                 "start",
                 "--mode",
