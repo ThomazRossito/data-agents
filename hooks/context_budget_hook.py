@@ -1,20 +1,17 @@
 """
-Context Budget Hook — Monitoramento de uso do context window (Ch. 5 — Agent Loop).
+Context Budget Hook — Monitoramento e compactação autônoma do context window.
 
-Inspirado na 4ª camada de compressão descrita em Ch. 5 do livro
-"Claude Code from Source": monitoramento do context window com avisos proativos
-antes de atingir limites que causariam truncagem silenciosa ou falha da sessão.
-
-Estratégia:
-  - Rastreia tokens de input (prompt) e output (completion) acumulados na sessão.
-  - Emite WARNING quando o uso atinge o limiar de alerta (padrão: 80% do budget).
-  - Emite ERROR quando atinge o limiar crítico (padrão: 95% do budget).
-  - Não bloqueia a execução — apenas registra. O cost_guard_hook bloqueia por custo.
+Estratégia em 3 limiares:
+  70%  → WARNING: avisa o usuário preventivamente.
+  80%  → COMPACTAR: gera summary via Haiku, seta flag de compactação.
+         O entry point (main.py / chainlit_app.py) detecta o flag após a resposta,
+         injeta o summary no base system_prompt e reconecta o cliente — transparente.
+  95%  → ERROR: se a compactação falhou por algum motivo, loga critical.
 
 Relação com outros hooks:
   - cost_guard_hook.py: bloqueia por custo em USD. Este hook monitora tokens brutos.
   - output_compressor_hook.py: comprime output de tools (camada 1 de compressão).
-  - Este hook: monitora o contexto acumulado (camada 4 de compressão — watchdog).
+  - Este hook: monitora o contexto acumulado e dispara compactação autônoma.
 """
 
 from __future__ import annotations
@@ -30,14 +27,16 @@ from utils.tokenizer import estimate_tokens_adjusted as _estimate_tokens
 logger = logging.getLogger("data_agents.hooks.context_budget")
 
 
-# Rastreia se o checkpoint crítico já foi salvo na sessão atual (evita saves repetidos)
-_critical_checkpoint_saved: bool = False
+# Rastreia se a compactação já foi disparada na sessão atual (evita duplo disparo).
+_compaction_fired_for_session: bool = False
 
-# T4.4 wiring: rastreia se o summarizer já foi disparado na sessão atual.
-_summary_fired_for_session: bool = False
+# Flag consumível: True quando uma compactação foi concluída e aguarda ser aplicada.
+_compaction_pending: bool = False
+
+# Summary gerado pela compactação — consumido pelo entry point.
+_compaction_summary: str = ""
 
 # Session ID da sessão corrente — configurado por reset_context_budget(session_id=...).
-# Necessário para o summarizer localizar o transcript em logs/sessions/<sid>.jsonl.
 _active_session_id: str | None = None
 
 # Contadores por sessão — isolados por reset explícito (reset_context_budget)
@@ -58,17 +57,16 @@ async def track_context_budget(
     """
     Hook PostToolUse que monitora o consumo de tokens da sessão.
 
-    Rastreia tokens acumulados e emite alertas quando o uso se aproxima
-    dos limites do context window. Não bloqueia a execução.
-
-    Assinatura alinhada com o SDK: (input_data, tool_use_id, context).
-    input_data contém: tool_name, tool_input, tool_output.
+    Rastreia tokens acumulados e:
+      - 70%: emite WARNING proativo.
+      - 80%: dispara _schedule_compaction() uma única vez por sessão.
+      - 95%: emite ERROR (safety net caso a compactação não tenha ocorrido).
 
     Returns:
         {} (hook não modifica o output).
     """
-    global _session_input_tokens, _session_output_tokens, _critical_checkpoint_saved
-    global _summary_fired_for_session
+    global _session_input_tokens, _session_output_tokens
+    global _compaction_fired_for_session
 
     if not input_data or not isinstance(input_data, dict):
         return {}
@@ -83,7 +81,6 @@ async def track_context_budget(
     if isinstance(tool_output, dict):
         tool_output = str(tool_output)
 
-    # Extrai contagem de tokens do context (se o SDK fornecer) ou de tool_input/output
     input_tokens, output_tokens = _extract_token_counts(tool_input, tool_output, context)
 
     _session_input_tokens += input_tokens
@@ -91,23 +88,18 @@ async def track_context_budget(
 
     usage_ratio = _session_input_tokens / input_token_limit
 
-    # T4.4 wiring: dispara o summarizer lateral (Haiku) uma única vez por sessão
-    # ao cruzar o limiar. Definimos a flag ANTES do await para evitar disparos
-    # duplicados caso duas tool calls cheguem ao limiar no mesmo tick.
-    if usage_ratio >= summarize_threshold and not _summary_fired_for_session:
-        _summary_fired_for_session = True
-        await _fire_summarizer(usage_ratio)
+    # Compactação autônoma: dispara uma única vez por sessão ao cruzar o limiar.
+    # A flag é definida ANTES do await para evitar duplo disparo em chamadas concorrentes.
+    if usage_ratio >= summarize_threshold and not _compaction_fired_for_session:
+        _compaction_fired_for_session = True
+        await _schedule_compaction(usage_ratio)
 
     if usage_ratio >= critical_threshold:
         logger.error(
             f"🚨 CONTEXT CRÍTICO: {_session_input_tokens:,}/{input_token_limit:,} tokens "
             f"({usage_ratio:.0%}) — sessão próxima ao limite. "
-            f"Considere iniciar nova sessão ou usar /memory flush para compactar contexto."
+            f"Compactação autônoma pode ter falhado; considere reiniciar a sessão."
         )
-        # Salva checkpoint uma única vez ao atingir o limiar crítico
-        if not _critical_checkpoint_saved:
-            _critical_checkpoint_saved = True
-            _save_emergency_checkpoint()
     elif usage_ratio >= warn_threshold:
         logger.warning(
             f"⚠️  CONTEXT ALTO: {_session_input_tokens:,}/{input_token_limit:,} tokens "
@@ -123,31 +115,21 @@ async def track_context_budget(
     return {}
 
 
-def _save_emergency_checkpoint() -> None:
-    """Tenta salvar um checkpoint de emergência ao atingir 95% do context budget."""
-    try:
-        from hooks.checkpoint import save_checkpoint
+async def _schedule_compaction(usage_ratio: float) -> None:
+    """Gera summary via Haiku, persiste em disco e seta o flag de compactação.
 
-        save_checkpoint(last_prompt="", reason="context_budget_critical")
-        logger.warning("💾 Checkpoint de emergência salvo (context budget crítico).")
-    except Exception as e:
-        logger.warning(f"Checkpoint de emergência não disponível: {e}")
+    O entry point (main.py / chainlit_app.py) chama check_and_consume_compaction()
+    após cada resposta do Supervisor e, se o flag estiver ativo, injeta o summary
+    no base system_prompt e reconecta o cliente — nova janela de contexto limpa.
 
-
-async def _fire_summarizer(usage_ratio: float) -> None:
-    """Dispara sumarização lateral via Haiku e persiste em logs/summaries/<sid>.md.
-
-    O disparo é best-effort: falhas no carregamento do transcript, na chamada
-    ao modelo ou na escrita em disco são logadas mas não propagam — o hook
-    não deve quebrar o fluxo do usuário.
-
-    Bloqueia a tool call corrente (~3-5s), mas roda apenas uma vez por sessão
-    graças ao flag `_summary_fired_for_session` verificado em `track_context_budget`.
+    Falhas são best-effort: logadas mas não propagadas.
     """
+    global _compaction_pending, _compaction_summary
+
     session_id = _active_session_id
     if not session_id:
         logger.info(
-            f"📋 Summarizer não disparado: session_id desconhecido "
+            f"📋 Compactação não disparada: session_id desconhecido "
             f"(usage={usage_ratio:.0%}). Chame reset_context_budget(session_id=...)."
         )
         return
@@ -157,25 +139,47 @@ async def _fire_summarizer(usage_ratio: float) -> None:
 
         transcript = load_transcript(session_id)
         if not transcript:
-            logger.info(f"📋 Summarizer: transcript vazio para {session_id}; skip.")
+            logger.info(f"📋 Compactação: transcript vazio para {session_id}; skip.")
             return
 
         result = await summarize_session(transcript)
         _persist_summary(session_id, result, usage_ratio)
+
+        _compaction_summary = result.get("summary", "")
+        _compaction_pending = True
+
         logger.info(
-            f"📋 Summarizer disparado a {usage_ratio:.0%}: {session_id} "
+            f"📋 Compactação agendada a {usage_ratio:.0%}: {session_id} "
             f"({result['turns_summarized']} turns, ${result['cost_usd']:.5f})"
         )
     except Exception as e:
-        logger.warning(f"Summarizer auto-fire falhou (session={session_id}): {e}")
+        logger.warning(f"Compactação auto falhou (session={session_id}): {e}")
+
+
+def check_and_consume_compaction() -> str | None:
+    """Retorna o summary de compactação se pendente e limpa o flag.
+
+    Deve ser chamado pelo entry point (main.py / chainlit_app.py) após cada
+    resposta do Supervisor. Se retornar uma string não-vazia, o caller deve:
+      1. Injetar o summary no base system_prompt.
+      2. Reconectar o cliente SDK para iniciar nova janela de contexto.
+
+    Returns:
+        Summary Markdown se compactação está pendente; None caso contrário.
+    """
+    global _compaction_pending, _compaction_summary
+
+    if not _compaction_pending:
+        return None
+
+    summary = _compaction_summary
+    _compaction_pending = False
+    _compaction_summary = ""
+    return summary or None
 
 
 def _persist_summary(session_id: str, result: dict[str, Any], usage_ratio: float) -> None:
-    """Grava o resumo estruturado em `logs/summaries/<session_id>.md`.
-
-    Arquivo contém header com timestamp, modelo, turns sumarizados, custo e
-    razão de uso; corpo é o Markdown dos 7 campos GAPS G3 produzido pelo Haiku.
-    """
+    """Grava o resumo estruturado em `logs/summaries/<session_id>.md`."""
     summaries_dir = Path(settings.audit_log_path).parent / "summaries"
     path = summaries_dir / f"{session_id}.md"
     ts = datetime.now(timezone.utc).isoformat()
@@ -262,17 +266,19 @@ def get_context_usage() -> dict[str, Any]:
 
 def reset_context_budget(session_id: str | None = None) -> None:
     """
-    Reseta os contadores de tokens da sessão.
+    Reseta os contadores de tokens e o estado de compactação da sessão.
 
-    Chamado no início de cada nova sessão ou após /memory flush. Quando
-    `session_id` é fornecido, registra-o como sessão ativa — necessário
-    para o auto-fire do summarizer (T4.4 wiring) localizar o transcript.
+    Chamado no início de cada nova sessão ou após reconexão do cliente.
+    Quando `session_id` é fornecido, registra-o como sessão ativa para que
+    _schedule_compaction() possa localizar o transcript correto.
     """
-    global _session_input_tokens, _session_output_tokens, _critical_checkpoint_saved
-    global _summary_fired_for_session, _active_session_id
+    global _session_input_tokens, _session_output_tokens
+    global _compaction_fired_for_session, _compaction_pending, _compaction_summary
+    global _active_session_id
     _session_input_tokens = 0
     _session_output_tokens = 0
-    _critical_checkpoint_saved = False
-    _summary_fired_for_session = False
+    _compaction_fired_for_session = False
+    _compaction_pending = False
+    _compaction_summary = ""
     _active_session_id = session_id
     logger.debug(f"Context budget resetado (session_id={session_id}).")
