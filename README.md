@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="img/readme/banner_futuristic_new.png" alt="Data Agents" width="100%">
+  <img src="img/readme/banner_futuristic_new.png" alt="Data Agents" width="75%">
 </p>
 
 <p align="center">
@@ -13,9 +13,23 @@
 
 ---
 
+## Sobre o Autor
+
 <p align="center">
-  <img src="img/readme/author_futuristic.png" alt="Autor" width="80%">
+  <img src="img/readme/author_futuristic.png" alt="Thomaz Rossito" width="70%">
 </p>
+
+**Thomaz Antonio Rossito Neto** — Data & AI Solutions Architect | Specialist @ CI&T · Databricks & Microsoft Fabric Partner CoE
+
+Com 8+ anos em Engenharia e Arquitetura de Dados, atua na intersecção entre Big Data, Arquitetura Lakehouse e Agentic AI — aplicando agentes autônomos e GenAI no ciclo completo de dados: pipelines, discovery, migrações, governança e orquestração autônoma. Certificado 10x (Databricks 5x · Azure 4x · AWS 1x).
+
+**Projetos open-source:**
+- 🤖 **Data Agents** — framework de orquestração multi-agente para dados corporativos com 14 agentes especialistas, integrações nativas Databricks + Fabric via MCP e protocolo DOMA
+- 🧭 **SifTools** — engenharia de contexto via pruning semântico de tools por embeddings: entrega exatamente os MCPs que cada agente precisa, sem custo extra de inferência → [github.com/ThomazRossito/siftools](https://github.com/ThomazRossito/siftools)
+
+> *"Dados sem estratégia são apenas ruído. Agentes sem governança são apenas caos."*
+
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-Thomaz%20Rossito-0077B5?logo=linkedin)](https://www.linkedin.com/in/thomaz-antonio-rossito-neto/) [![GitHub](https://img.shields.io/badge/GitHub-ThomazRossito-181717?logo=github)](https://github.com/ThomazRossito) [![Credly](https://img.shields.io/badge/Credly-10x%20Certified-FF6B00?logo=credly)](https://www.credly.com/users/thomaz-antonio-rossito-neto) [![Medium](https://img.shields.io/badge/Medium-Blog-000000?logo=medium)](https://medium.com/@thomazrossito) [![YouTube](https://img.shields.io/badge/YouTube-Canal-FF0000?logo=youtube)](https://www.youtube.com/@thomazantoniorossitoneto4541)
 
 ---
 
@@ -172,15 +186,22 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 
 ---
 
-<p align="center">
-  <img src="img/readme/doma_protocol_futuristic.png" alt="Fluxo Doma " width="100%">
-</p>
+## Protocolo DOMA & Workflows Colaborativos
 
+O **Protocolo DOMA** (Data Orchestration Method for Agents) é o método de 7 passos que o Supervisor segue para toda tarefa complexa — de KB-First até Validação final. Os **Workflows Colaborativos** (WF-01 a WF-05) encadeiam agentes automaticamente para projetos end-to-end, desde pipelines Bronze→Gold até migrações relacionais para a nuvem.
+
+<p align="center">
+  <img src="img/readme/doma_protocol_futuristic.png" alt="Protocolo DOMA e Workflows Colaborativos" width="100%">
+</p>
 
 ---
 
+## Migração de DW On-Premise para Databricks
+
+O fluxo de **migração** orquestra 7 fases em sequência — do briefing inicial ao relatório de divergências — usando os agentes certos em cada etapa. As fases 4/5 rodam em paralelo (governança + pipeline, semântica) e a fase 6 é iterativa por domínio (Low → Medium → High). O atalho `/workflow WF-05` encadeia tudo automaticamente.
+
 <p align="center">
-  <img src="img/readme/migration_flow_futuristic.png" alt="Fluxo de Migração" width="100%">
+  <img src="img/readme/migration_flow_futuristic.png" alt="Fluxo de Migração de DW On-Premise para Databricks" width="100%">
 </p>
 
 ---
@@ -213,6 +234,10 @@ O agente **catalog-intelligence** transforma catálogos de dados brutos em ativo
 ---
 
 ## Ontology Engineer — Web Semântica no Fabric
+
+<p align="center">
+  <img src="img/readme/ontology_engineer_futuristic.png" alt="Fluxo Ontology Engineer" width="100%">
+</p>
 
 O agente **ontology-engineer** traz suporte a **OWL 2** (Web Ontology Language) ao ecossistema de dados — design de ontologias de domínio, import/export de arquivos para o Microsoft Fabric OneLake e integração com Delta Lake para consultas SQL sobre grafos semânticos.
 
