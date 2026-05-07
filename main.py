@@ -1202,6 +1202,7 @@ async def run_interactive() -> None:
                         reset_session_counters()
                         _session_state["total_cost"] = 0.0
                         _session_state["total_turns"] = 0
+                        _session_state["last_prompt"] = ""
                         console.print(
                             "[dim]🔄 Contexto compactado automaticamente — nova janela iniciada.[/dim]"
                         )
