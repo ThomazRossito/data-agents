@@ -6,6 +6,7 @@ Cobre:
   - _extract_token_counts: fontes de metadados (hook_context, estimativa)
   - get_context_usage: status e campos retornados
   - reset_context_budget: reset de contadores
+  - _schedule_compaction / check_and_consume_compaction: compactação autônoma
 """
 
 import logging
@@ -15,6 +16,7 @@ import pytest
 import hooks.context_budget_hook as budget_module
 from hooks.context_budget_hook import (
     _extract_token_counts,
+    check_and_consume_compaction,
     get_context_usage,
     reset_context_budget,
     track_context_budget,
@@ -66,8 +68,8 @@ class TestTrackContextBudget:
         assert result == {}
 
     @pytest.mark.asyncio
-    async def test_warn_logged_at_80_percent(self, caplog):
-        """WARNING deve ser emitido quando uso atinge 80% do limite."""
+    async def test_warn_logged_at_warn_threshold(self, caplog):
+        """WARNING deve ser emitido quando uso atinge o limiar de aviso."""
         with caplog.at_level(logging.WARNING, logger="data_agents.hooks.context_budget"):
             budget_module._session_input_tokens = int(
                 budget_module._INPUT_TOKEN_LIMIT * budget_module._WARN_THRESHOLD
@@ -82,6 +84,8 @@ class TestTrackContextBudget:
             budget_module._session_input_tokens = int(
                 budget_module._INPUT_TOKEN_LIMIT * budget_module._CRITICAL_THRESHOLD
             )
+            # Marca como já disparado para não tentar _schedule_compaction
+            budget_module._compaction_fired_for_session = True
             await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
         assert any("CONTEXT CRÍTICO" in r.message for r in caplog.records)
 
@@ -160,8 +164,9 @@ class TestGetContextUsage:
         assert usage["status"] == "ok"
 
     def test_status_warning_at_threshold(self):
-        budget_module._session_input_tokens = int(
-            budget_module._INPUT_TOKEN_LIMIT * budget_module._WARN_THRESHOLD
+        # +1 para garantir que o ratio >= threshold mesmo com arredondamento float
+        budget_module._session_input_tokens = (
+            int(budget_module._INPUT_TOKEN_LIMIT * budget_module._WARN_THRESHOLD) + 1
         )
         usage = get_context_usage()
         assert usage["status"] == "warning"
@@ -219,56 +224,64 @@ class TestResetContextBudget:
         reset_context_budget()
         assert budget_module._active_session_id is None
 
+    def test_reset_clears_compaction_state(self):
+        """reset_context_budget deve limpar flags de compactação."""
+        budget_module._compaction_fired_for_session = True
+        budget_module._compaction_pending = True
+        budget_module._compaction_summary = "some summary"
+        reset_context_budget()
+        assert budget_module._compaction_fired_for_session is False
+        assert budget_module._compaction_pending is False
+        assert budget_module._compaction_summary == ""
 
-# ─── Summarizer auto-fire (T4.4 wiring) ──────────────────────────────────────
+
+# ─── Compactação autônoma (_schedule_compaction) ──────────────────────────────
 
 
-class TestSummarizerAutoFire:
-    """Testes para o disparo automático do summarizer em ≥65%."""
+class TestScheduleCompaction:
+    """Testes para o disparo automático de compactação em ≥80%."""
 
     @pytest.mark.asyncio
     async def test_does_not_fire_below_threshold(self, monkeypatch):
-        """Abaixo de 65% não deve disparar summarize."""
+        """Abaixo de 80% não deve disparar compactação."""
         called = {"count": 0}
 
-        async def fake_fire(ratio):
+        async def fake_schedule(ratio):
             called["count"] += 1
 
-        monkeypatch.setattr(budget_module, "_fire_summarizer", fake_fire)
+        monkeypatch.setattr(budget_module, "_schedule_compaction", fake_schedule)
         reset_context_budget(session_id="cli-test")
-        # 60% → abaixo do threshold default (65%)
+        # 60% → abaixo do threshold (80%)
         budget_module._session_input_tokens = int(budget_module._INPUT_TOKEN_LIMIT * 0.60)
         await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
         assert called["count"] == 0
-        assert budget_module._summary_fired_for_session is False
+        assert budget_module._compaction_fired_for_session is False
 
     @pytest.mark.asyncio
     async def test_fires_once_at_threshold(self, monkeypatch):
-        """Ao cruzar 65% deve disparar uma vez; chamadas subsequentes não re-disparam."""
+        """Ao cruzar 80% deve disparar uma vez; chamadas subsequentes não re-disparam."""
         calls: list[float] = []
 
-        async def fake_fire(ratio):
+        async def fake_schedule(ratio):
             calls.append(ratio)
 
-        monkeypatch.setattr(budget_module, "_fire_summarizer", fake_fire)
+        monkeypatch.setattr(budget_module, "_schedule_compaction", fake_schedule)
         reset_context_budget(session_id="cli-test")
-        budget_module._session_input_tokens = int(budget_module._INPUT_TOKEN_LIMIT * 0.65)
+        budget_module._session_input_tokens = int(budget_module._INPUT_TOKEN_LIMIT * 0.80)
         await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
         assert len(calls) == 1
         # Segunda tool call no mesmo patamar não deve redisparar
         await track_context_budget(_input("Write", {"x": "y"}, "z"), None, None)
         assert len(calls) == 1
-        assert budget_module._summary_fired_for_session is True
+        assert budget_module._compaction_fired_for_session is True
 
     @pytest.mark.asyncio
-    async def test_fire_persists_summary_file(self, monkeypatch, tmp_path):
-        """_fire_summarizer deve gravar logs/summaries/<sid>.md com o resumo."""
+    async def test_schedule_sets_compaction_pending(self, monkeypatch, tmp_path):
+        """_schedule_compaction deve setar _compaction_pending e _compaction_summary."""
         from utils import summarizer as summarizer_module
 
-        # Aponta o diretório base dos logs para tmp_path
         monkeypatch.setattr(budget_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
 
-        # Transcript fake via load_transcript
         def fake_load(_sid):
             return [
                 {"role": "user", "content": "fazer X"},
@@ -285,26 +298,59 @@ class TestSummarizerAutoFire:
                 "turns_summarized": len(transcript),
             }
 
-        # Patch no módulo real onde _fire_summarizer faz o import tardio
+        import hooks.transcript_hook as transcript_hook
+
+        monkeypatch.setattr(transcript_hook, "load_transcript", fake_load)
+        monkeypatch.setattr(summarizer_module, "summarize_session", fake_summarize)
+
+        reset_context_budget(session_id="cli-pending")
+        await budget_module._schedule_compaction(0.80)
+
+        assert budget_module._compaction_pending is True
+        assert "## Objetivo" in budget_module._compaction_summary
+
+    @pytest.mark.asyncio
+    async def test_schedule_persists_summary_file(self, monkeypatch, tmp_path):
+        """_schedule_compaction deve gravar logs/summaries/<sid>.md com o resumo."""
+        from utils import summarizer as summarizer_module
+
+        monkeypatch.setattr(budget_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
+
+        def fake_load(_sid):
+            return [
+                {"role": "user", "content": "fazer X"},
+                {"role": "assistant", "content": "ok"},
+            ]
+
+        async def fake_summarize(transcript, **kwargs):
+            return {
+                "summary": "## Objetivo\nTeste\n",
+                "input_tokens": 100,
+                "output_tokens": 40,
+                "cost_usd": 0.00012,
+                "model": "claude-haiku-4-5-20251001",
+                "turns_summarized": len(transcript),
+            }
+
         import hooks.transcript_hook as transcript_hook
 
         monkeypatch.setattr(transcript_hook, "load_transcript", fake_load)
         monkeypatch.setattr(summarizer_module, "summarize_session", fake_summarize)
 
         reset_context_budget(session_id="cli-persist")
-        await budget_module._fire_summarizer(0.70)
+        await budget_module._schedule_compaction(0.80)
 
         summary_file = tmp_path / "summaries" / "cli-persist.md"
         assert summary_file.exists()
         content = summary_file.read_text(encoding="utf-8")
         assert "Session Summary — cli-persist" in content
-        assert "70%" in content
+        assert "80%" in content
         assert "## Objetivo" in content
         assert "claude-haiku-4-5-20251001" in content
 
     @pytest.mark.asyncio
-    async def test_fire_skipped_without_session_id(self, monkeypatch, caplog):
-        """Sem session_id, _fire_summarizer loga INFO e retorna sem chamar o modelo."""
+    async def test_schedule_skipped_without_session_id(self, monkeypatch, caplog):
+        """Sem session_id, _schedule_compaction loga INFO e retorna sem chamar o modelo."""
         from utils import summarizer as summarizer_module
 
         async def should_not_be_called(*args, **kwargs):
@@ -313,12 +359,12 @@ class TestSummarizerAutoFire:
         monkeypatch.setattr(summarizer_module, "summarize_session", should_not_be_called)
         reset_context_budget(session_id=None)
         with caplog.at_level(logging.INFO, logger="data_agents.hooks.context_budget"):
-            await budget_module._fire_summarizer(0.70)
+            await budget_module._schedule_compaction(0.80)
         assert any("session_id desconhecido" in r.message for r in caplog.records)
 
     @pytest.mark.asyncio
-    async def test_fire_skipped_when_transcript_empty(self, monkeypatch, tmp_path, caplog):
-        """Transcript vazio → _fire_summarizer pula sem persistir nem chamar modelo."""
+    async def test_schedule_skipped_when_transcript_empty(self, monkeypatch, tmp_path, caplog):
+        """Transcript vazio → _schedule_compaction pula sem persistir nem chamar modelo."""
         from utils import summarizer as summarizer_module
 
         monkeypatch.setattr(budget_module.settings, "audit_log_path", str(tmp_path / "audit.jsonl"))
@@ -333,12 +379,12 @@ class TestSummarizerAutoFire:
         monkeypatch.setattr(summarizer_module, "summarize_session", should_not_be_called)
         reset_context_budget(session_id="cli-empty")
         with caplog.at_level(logging.INFO, logger="data_agents.hooks.context_budget"):
-            await budget_module._fire_summarizer(0.70)
+            await budget_module._schedule_compaction(0.80)
         assert any("transcript vazio" in r.message for r in caplog.records)
         assert not (tmp_path / "summaries" / "cli-empty.md").exists()
 
     @pytest.mark.asyncio
-    async def test_fire_graceful_on_summarize_error(self, monkeypatch, tmp_path, caplog):
+    async def test_schedule_graceful_on_summarize_error(self, monkeypatch, tmp_path, caplog):
         """Se summarize_session levantar, o hook loga WARNING e não propaga."""
         from utils import summarizer as summarizer_module
 
@@ -358,5 +404,41 @@ class TestSummarizerAutoFire:
         monkeypatch.setattr(summarizer_module, "summarize_session", raise_runtime)
         reset_context_budget(session_id="cli-err")
         with caplog.at_level(logging.WARNING, logger="data_agents.hooks.context_budget"):
-            await budget_module._fire_summarizer(0.70)
-        assert any("auto-fire falhou" in r.message for r in caplog.records)
+            await budget_module._schedule_compaction(0.80)
+        assert any("auto falhou" in r.message for r in caplog.records)
+
+
+# ─── check_and_consume_compaction ─────────────────────────────────────────────
+
+
+class TestCheckAndConsumeCompaction:
+    """Testes para check_and_consume_compaction."""
+
+    def test_returns_none_when_no_compaction(self):
+        """Sem compactação pendente, retorna None."""
+        assert check_and_consume_compaction() is None
+
+    def test_returns_summary_and_clears_flag(self):
+        """Quando pendente, retorna o summary e limpa o estado."""
+        budget_module._compaction_pending = True
+        budget_module._compaction_summary = "## Contexto\nresumo aqui"
+        result = check_and_consume_compaction()
+        assert result == "## Contexto\nresumo aqui"
+        assert budget_module._compaction_pending is False
+        assert budget_module._compaction_summary == ""
+
+    def test_consuming_twice_returns_none_second_time(self):
+        """Flag é consumível uma única vez."""
+        budget_module._compaction_pending = True
+        budget_module._compaction_summary = "summary"
+        first = check_and_consume_compaction()
+        second = check_and_consume_compaction()
+        assert first == "summary"
+        assert second is None
+
+    def test_returns_none_on_empty_summary(self):
+        """Summary vazio com flag True → retorna None (sem reconexão desnecessária)."""
+        budget_module._compaction_pending = True
+        budget_module._compaction_summary = ""
+        result = check_and_consume_compaction()
+        assert result is None

@@ -314,6 +314,10 @@ async def _get_or_create_supervisor() -> dict:
         if _supervisor_cache.get("client") is None:
             options = build_supervisor_options(enable_thinking=False)
             options.include_partial_messages = True
+            # Injeta prefix de compactação se a sessão anterior atingiu 80%
+            compaction_prefix = _supervisor_cache.pop("compaction_prefix", "")
+            if compaction_prefix:
+                options.system_prompt = (options.system_prompt or "") + compaction_prefix
             client = ClaudeSDKClient(options=options)
             await client.connect()
             _supervisor_cache["client"] = client
@@ -736,6 +740,32 @@ async def _handle_supervisor(user_input: str) -> None:
                 # Rodapé com métricas
                 metrics_str = f"\n\n---\n*💰 `${_result_cost:.4f}` · 🔄 `{_result_turns} turns` · ⏱️ `{duration:.1f}s`*"
                 await response_msg.stream_token(metrics_str)
+
+                # --- Compactação autônoma: reconecta se o hook atingiu 80% ---
+                from hooks.context_budget_hook import check_and_consume_compaction
+
+                _compaction_summary = check_and_consume_compaction()
+                if _compaction_summary:
+                    _compaction_prefix = (
+                        f"\n\n---\n## Contexto Compactado\n"
+                        f"_Compactado ao atingir 80% da janela._\n\n"
+                        f"{_compaction_summary}\n---\n\n"
+                    )
+                    base = cl.user_session.get("_base_system_prompt") or ""
+                    cl.user_session.set("_base_system_prompt", base + _compaction_prefix)
+                    _supervisor_cache["compaction_prefix"] = _compaction_prefix
+                    _supervisor_cache["needs_reconnect"] = True
+                    # Reseta o budget para que o novo cliente comece do zero
+                    from hooks.context_budget_hook import reset_context_budget as _reset_budget
+
+                    _reset_budget(session_id=cl.user_session.get("session_id"))
+                    await cl.Message(
+                        content=(
+                            "🔄 *Contexto compactado automaticamente — "
+                            "nova janela de contexto iniciada.*"
+                        ),
+                        author="Sistema",
+                    ).send()
 
     except Exception as exc:
         from config.exceptions import BudgetExceededError

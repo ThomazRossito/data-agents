@@ -24,13 +24,13 @@ class TestShouldSummarize:
         from utils.summarizer import should_summarize
 
         assert should_summarize(0.5) is False
-        assert should_summarize(0.64) is False
+        assert should_summarize(0.79) is False
 
     def test_at_or_above_threshold(self):
         from utils.summarizer import should_summarize
 
-        assert should_summarize(0.65) is True
         assert should_summarize(0.80) is True
+        assert should_summarize(0.90) is True
         assert should_summarize(1.0) is True
 
     def test_custom_threshold(self):
