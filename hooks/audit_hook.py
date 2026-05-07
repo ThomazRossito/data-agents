@@ -20,6 +20,18 @@ from typing import Any
 
 from config.settings import settings
 
+# ─── Estado de sessão (atualizado por session_lifecycle.on_session_start) ────
+_current_session_id: str = ""
+_current_session_key: bytes = b""
+
+
+def set_current_session(session_id: str, session_key: bytes) -> None:
+    """Registra a sessão ativa para que audit_tool_usage() assine as entradas."""
+    global _current_session_id, _current_session_key
+    _current_session_id = session_id
+    _current_session_key = session_key
+
+
 # Padrão que mascara valores após flags sensíveis em comandos shell
 _SECRET_FLAG_PATTERN = re.compile(
     r"((?:--?(?:token|password|key|secret|api[_-]?key|pat|pw|passwd|auth|credential|cred))"
@@ -145,6 +157,41 @@ def _classify_error(error_text: str) -> str:
     return "unknown"
 
 
+def _derive_result_type(has_error: bool, error_category: str | None) -> str:
+    """Classifica o resultado da tool call em 4 categorias."""
+    if not has_error:
+        return "success"
+    if error_category == "timeout":
+        return "timeout"
+    if error_category == "rate_limit":
+        return "partial"
+    return "error"
+
+
+def _extract_agent_name(tool_name: str, tool_input: dict[str, Any], context: Any) -> str | None:
+    """
+    Tenta extrair o nome do agente que emitiu o tool call.
+
+    Prioridade:
+      1. context.agent_name (quando o SDK expuser — ainda não disponível em v0.1.61)
+      2. tool_input["agent_name"] / tool_input["name"] quando tool == "Agent"
+      3. None (não disponível)
+    """
+    if context is not None:
+        name = getattr(context, "agent_name", None)
+        if not name and isinstance(context, dict):
+            name = context.get("agent_name")
+        if name:
+            return str(name)
+
+    if tool_name == "Agent" and tool_input:
+        name = tool_input.get("agent_name") or tool_input.get("name")
+        if name:
+            return str(name)
+
+    return None
+
+
 def _detect_platform(tool_name: str) -> str | None:
     """Detecta a plataforma a partir do nome da tool MCP."""
     if tool_name.startswith("mcp__"):
@@ -249,6 +296,9 @@ async def audit_tool_usage(
 
     tool_input = input_data.get("tool_input", {}) or {}
 
+    result_type = _derive_result_type(has_error, error_category if has_error else None)
+    agent_name = _extract_agent_name(tool_name, tool_input, context)
+
     log_entry: dict[str, Any] = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "event": "tool_call",
@@ -260,6 +310,10 @@ async def audit_tool_usage(
         # Campos v2: categorização de erros e plataforma
         "platform": _detect_platform(tool_name),
         "has_error": has_error,
+        # Campos v3 (Ledger): rastreabilidade e integridade
+        "session_id": _current_session_id or None,
+        "agent_name": agent_name,
+        "result_type": result_type,
     }
 
     # Para Read/Write/Glob/Grep: registra o path acessado (sem conteúdo sensível).
@@ -283,6 +337,16 @@ async def audit_tool_usage(
     cache_metrics = _extract_cache_metrics(input_data, context)
     if cache_metrics:
         log_entry.update(cache_metrics)
+
+    # Assinatura HMAC (Ledger) — só quando ledger_enabled e há chave de sessão ativa
+    if settings.ledger_enabled and _current_session_key:
+        try:
+            from memory.ledger import Ledger
+
+            ledger = Ledger(log_path=__import__("pathlib").Path(settings.audit_log_path))
+            log_entry["ledger_entry_hash"] = ledger.sign_entry(log_entry, _current_session_key)
+        except Exception as e:
+            logger.debug(f"Ledger sign falhou (entrada não assinada): {e}")
 
     log_line = json.dumps(log_entry, ensure_ascii=False) + "\n"
     log_path = settings.audit_log_path

@@ -66,6 +66,13 @@ dev = [
     "bandit>=1.7",
     "types-PyYAML>=6.0",
 ]
+memory = [
+    # Embeddings semânticos locais (ONNX runtime, sem PyTorch, sem API externa).
+    # Modelo padrão: BAAI/bge-small-en-v1.5 (~25MB, 384 dims).
+    # Habilita busca vetorial no ShortTermMemory (complementa FTS5/BM25).
+    # Instalar: pip install -e ".[memory]"
+    "fastembed>=0.3",
+]
 ontology = [
     # Web semântica — ontology-engineer agent
     # rdflib: parse/serialização de RDF, OWL, Turtle, N-Triples, JSON-LD + SPARQL in-memory

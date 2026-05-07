@@ -48,6 +48,56 @@ def on_session_start(session_id: str) -> None:
     # para o auto-fire do summarizer localizar o transcript quando disparar.
     reset_context_budget(session_id=session_id)
 
+    # Gera chave de sessão e registra no audit_hook para assinatura Ledger
+    try:
+        from hooks.audit_hook import set_current_session
+        from memory.ledger import Ledger
+
+        session_key = Ledger.generate_session_key()
+        set_current_session(session_id, session_key)
+        logger.debug(f"[session_start] Ledger session key gerada para sessão={session_id}")
+    except Exception as e:
+        logger.warning(
+            f"[session_start] Falha ao inicializar Ledger (continuando sem assinatura): {e}"
+        )
+
+    # Inicializa ShortTermMemory e registra no memory_hook
+    try:
+        from config.settings import settings as _settings
+        from memory.short_term import ShortTermMemory
+        from hooks.memory_hook import init_memory_hook
+        from pathlib import Path
+
+        embedder = None
+        if _settings.short_term_embedder_enabled:
+            try:
+                from memory.embedder import LocalEmbedder
+
+                embedder = LocalEmbedder(
+                    cache_db_path=Path(_settings.embedder_cache_db_path),
+                    model_name=_settings.short_term_embedder_model,
+                )
+                logger.info("[session_start] LocalEmbedder carregado para short-term memory")
+            except ImportError:
+                logger.info(
+                    "[session_start] fastembed não instalado — usando FTS5 (BM25) para short-term"
+                )
+
+        short_term = ShortTermMemory(
+            db_path=Path(_settings.short_term_db_path),
+            ttl_days=_settings.short_term_ttl_days,
+            embedder=embedder,
+        )
+        short_term.expire_old_entries()
+        init_memory_hook(session_id, short_term)
+        logger.debug(
+            f"[session_start] ShortTermMemory inicializado: ttl={_settings.short_term_ttl_days}d"
+        )
+    except Exception as e:
+        logger.warning(
+            f"[session_start] Falha ao inicializar ShortTermMemory (continuando com fallback): {e}"
+        )
+
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     logger.info(f"[session_start] sessão={session_id} | {now}")
 
@@ -55,18 +105,23 @@ def on_session_start(session_id: str) -> None:
 def on_session_end(
     session_id: str,
     flush_memory: bool = True,
+    memory_manager=None,
 ) -> None:
     """
     Chamado no encerramento de cada sessão (bloco finally do entry point).
 
     Ações:
-      1. Dispara flush de memória para persistir o contexto acumulado.
-      2. Loga estatísticas de uso do contexto.
+      1. Loga estatísticas de uso do contexto.
+      2. Dispara flush de memória (via memory_manager.end_session() se disponível,
+         senão via flush_session_memories() direto).
 
     Args:
         session_id: Identificador único da sessão.
-        flush_memory: Se True (padrão), dispara flush_session_memories().
+        flush_memory: Se True (padrão), dispara flush de memória.
                       Use False em testes ou quando flush manual já foi feito.
+        memory_manager: Instância de MemoryManager (opcional). Se fornecida,
+                        delega o flush para memory_manager.end_session(), que
+                        também sincroniza o índice long-term.
     """
     # Loga uso final do contexto antes do flush
     try:
@@ -81,11 +136,20 @@ def on_session_end(
 
     # Flush de memória: persiste o contexto acumulado da sessão
     if flush_memory:
-        try:
-            flush_session_memories()
-            logger.info(f"[session_end] Memory flush concluído para sessão={session_id}")
-        except Exception as e:
-            logger.warning(f"[session_end] Erro no memory flush (sessão={session_id}): {e}")
+        if memory_manager is not None:
+            try:
+                memory_manager.end_session()
+                logger.info(
+                    f"[session_end] MemoryManager.end_session() concluído para sessão={session_id}"
+                )
+            except Exception as e:
+                logger.warning(f"[session_end] Erro em memory_manager.end_session(): {e}")
+        else:
+            try:
+                flush_session_memories()
+                logger.info(f"[session_end] Memory flush concluído para sessão={session_id}")
+            except Exception as e:
+                logger.warning(f"[session_end] Erro no memory flush (sessão={session_id}): {e}")
 
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     logger.info(f"[session_end] sessão={session_id} encerrada | {now}")

@@ -405,16 +405,27 @@ Hooks automáticos protegem todas as operações:
 
 ## Sistema de Memória
 
-Memória persistente em dois níveis:
+Arquitetura multi-camada com custo de retrieval zero (sem chamada LLM).
 
-**Episódica (`memory/`):** Captura fatos da sessão automaticamente. Aplica decay temporal — memórias antigas perdem relevância gradualmente. Retrieval semântico antes de cada consulta ao Supervisor.
+| Camada | Backend | Função |
+|--------|---------|--------|
+| **Short-term** | SQLite + FTS5 (TTL 3 dias) | Captura contexto da sessão atual |
+| **Long-term** | SQLite + FTS5 + embeddings opcionais | Índice persistente de memórias compiladas |
+| **Ledger** | JSONL + HMAC-SHA256 | Audit log tamper-proof de todas as tool calls |
+| **Knowledge Graph** | `memory_mcp/` | Grafo de entidades nomeadas (tabelas, pipelines, decisões) |
 
-**Knowledge Graph (`memory_mcp/`):** Grafo de entidades nomeadas (tabelas, pipelines, decisões, times) e suas relações. Gerenciado pelos agentes. Não decai.
+**Pipeline:** sessão → `memory_hook` captura → `ShortTermMemory` (SQLite) → flush → extractor (Haiku) → `MemoryStore` (arquivos `.md`) → `LongTermMemory` (índice FTS5) → `MemoryManager.inject_context()` → injetado no prompt do Supervisor.
+
+**Retrieval:** BM25 lexical via FTS5 + rerank por cosine similarity quando `fastembed` instalado. Sem chamada Sonnet lateral — latência < 5ms, custo $0.
 
 ```bash
 MEMORY_ENABLED=true
 MEMORY_RETRIEVAL_ENABLED=true
 MEMORY_CAPTURE_ENABLED=true
+
+# Embeddings semânticos locais (opcional — requer pip install ".[memory]")
+SHORT_TERM_EMBEDDER_ENABLED=false
+LONG_TERM_EMBEDDER_ENABLED=false
 ```
 
 ---
