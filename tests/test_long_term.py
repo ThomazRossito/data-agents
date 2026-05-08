@@ -205,7 +205,7 @@ class TestSearch:
         assert isinstance(results, list)
 
     def test_fts5_special_chars_in_query_do_not_raise(self, lt: LongTermMemory) -> None:
-        """Operadores FTS5 na query devem ser sanitizados silenciosamente."""
+        """Qualquer caractere não-word na query deve ser sanitizado silenciosamente."""
         lt.upsert(_make_memory("m1", summary="databricks pipeline"))
         for query in [
             "databricks [pipeline]",
@@ -214,6 +214,9 @@ class TestSearch:
             "dados? qualidade*",
             "schema^evolution",
             "{bronze} -> silver -> gold",
+            "/plan quantos agentes no projeto",
+            "/sql select * from tabela",
+            "agentes, pipelines, schemas",
         ]:
             results = lt.search(query)
             assert isinstance(results, list), f"Falhou para query: {query!r}"
