@@ -1954,15 +1954,20 @@ elif page == "ℹ️ Sobre":
     st.markdown(
         """
         O **Data Agents** é um sistema multi-agente que segue a arquitetura **DOMA**
-        (Data Orchestration Method for Agents):
+        (Data Orchestration Method for Agents), com 23 agentes especialistas:
 
-        - **Supervisor** — orquestra os agentes especialistas, gerencia MCP servers e aplica hooks
-        - **SQL Expert** (T1) — queries SQL/KQL em Databricks e Fabric RTI
-        - **Spark Expert** (T1) — código PySpark, Delta Lake e pipelines DLT
-        - **Pipeline Architect** (T1) — design e execução de pipelines ETL/ELT cross-platform
-        - **Data Quality Steward** (T2) — validação, profiling e alertas de qualidade
-        - **Governance Auditor** (T2) — auditoria de acesso, linhagem e conformidade LGPD
-        - **Semantic Modeler** (T2) — modelos semânticos DAX e Metric Views
+        **Tier 1 — Core:**
+        SQL Expert · Spark Expert · Pipeline Architect · Python Expert · Migration Expert ·
+        AI Data Engineer · Streaming Engineer · CDC Specialist
+
+        **Tier 2 — Especializados:**
+        Data Quality Steward · Governance Auditor · Semantic Modeler · dbt Expert ·
+        Catalog Intelligence · Ontology Engineer · Data Contracts Engineer · Schema Designer ·
+        Cost Optimizer · Data Mesh Architect · Spark Diagnostics · Medallion Architect ·
+        Business Monitor
+
+        **Tier 3/0 — Conversacionais:**
+        Business Analyst · Geral (Haiku, zero MCP)
 
         Os **hooks** interceptam cada execução de ferramenta:
         `security_hook` bloqueia comandos destrutivos e queries SQL custosas,

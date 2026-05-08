@@ -161,10 +161,12 @@ def agent_display_name(raw: str) -> str:
 # ── Grupos de comandos para sidebar ──────────────────────────────────────────
 COMMAND_GROUPS: dict[str, list[str]] = {
     "📋 Intake & Planejamento": ["/brief", "/plan", "/review", "/status"],
-    "⚡ Databricks": ["/sql", "/spark", "/pipeline", "/dbt"],
+    "⚡ Engenharia Core": ["/sql", "/spark", "/pipeline", "/dbt", "/python", "/migrate"],
+    "🤖 AI & Streaming": ["/ai", "/streaming", "/cdc"],
     "🏭 Microsoft Fabric": ["/fabric", "/semantic"],
-    "🔍 Qualidade & Gov.": ["/quality", "/governance"],
-    "🐍 Python & Migração": ["/python", "/migrate"],
+    "🏗️ Arquitetura": ["/schema", "/medallion", "/mesh"],
+    "🔍 Qualidade & Gov.": ["/quality", "/governance", "/contract"],
+    "💰 FinOps & Diagnóstico": ["/finops", "/diagnose"],
     "🔧 Sistema": ["/health", "/skill"],
     "🧠 Memória": ["/memory"],
     "💬 Conversacional": ["/geral"],

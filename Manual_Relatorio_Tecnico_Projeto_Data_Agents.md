@@ -75,7 +75,7 @@ O **Data Agents** é um sistema de **múltiplos agentes de Inteligência Artific
 
 O sistema é construído sobre o modelo de linguagem **Claude** da Anthropic e utiliza o **Model Context Protocol (MCP)** para que a IA possa interagir diretamente com as plataformas de dados, como se fosse um engenheiro humano acessando o painel de controle.
 
-São **13 agentes especialistas** organizados em três tiers de custo e capacidade, orquestrados por um Supervisor que nunca acessa dados diretamente — apenas coordena, planeja e delega.
+São **23 agentes especialistas** organizados em três tiers de custo e capacidade, orquestrados por um Supervisor que nunca acessa dados diretamente — apenas coordena, planeja e delega.
 
 O grande diferencial em relação a um simples "chatbot de programação" é a **camada de governança e conhecimento**: a IA é obrigada a ler manuais de boas práticas (Skills) antes de agir, garantindo que o código gerado seja seguro, eficiente e alinhado com os padrões corporativos modernos.
 
@@ -144,7 +144,7 @@ Em paralelo a todo esse fluxo, **11 hooks** ficam monitorando cada ação: bloqu
 
 ## 4. Os Agentes: A Equipe Virtual
 
-O sistema possui **13 agentes especialistas** organizados em três tiers. O tier define qual modelo Claude é usado, quantos turns (chamadas de ferramenta) o agente pode fazer por tarefa e qual nível de "esforço" de raciocínio aplica.
+O sistema possui **23 agentes especialistas** organizados em três tiers. O tier define qual modelo Claude é usado, quantos turns (chamadas de ferramenta) o agente pode fazer por tarefa e qual nível de "esforço" de raciocínio aplica.
 
 | Tier | Modelo padrão | Max Turns | Effort | Perfil |
 |------|---------------|-----------|--------|--------|
@@ -278,7 +278,7 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente com pass
 
 Interface moderna com steps expandíveis em tempo real mostrando cada delegação e tool call enquanto acontecem. Dois modos disponíveis:
 
-- **Data Agents:** sistema completo com todos os 13 agentes
+- **Data Agents:** sistema completo com todos os 23 agentes
 - **Dev Assistant:** Claude direto com ferramentas de código (sem agentes especialistas)
 
 **Funcionalidades da Chainlit:**
@@ -826,7 +826,7 @@ O projeto **Data Agents** representa uma abordagem madura e corporativa para o u
 
 **O problema do custo** é resolvido pelo Cost Guard e pelo roteamento por tier: cada tarefa usa o modelo adequado ao seu nível de complexidade, e o limite de orçamento por sessão é configurável.
 
-**O problema da especialização** é resolvido pela arquitetura multi-agente: cada um dos 13 agentes tem papel bem definido, MCPs adequados ao seu domínio e permissões alinhadas ao seu nível de responsabilidade.
+**O problema da especialização** é resolvido pela arquitetura multi-agente: cada um dos 23 agentes tem papel bem definido, MCPs adequados ao seu domínio e permissões alinhadas ao seu nível de responsabilidade.
 
 **O problema da observabilidade** é resolvido pelo Dashboard de Monitoramento (9 páginas) e pelo sistema de memória em dois layers, que mantém contexto entre sessões e acumula conhecimento sobre o projeto ao longo do tempo.
 
