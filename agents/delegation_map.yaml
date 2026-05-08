@@ -64,41 +64,73 @@ routes:
     tier: T2
     keywords: [PII, LGPD, GDPR, sensível]
 
-  # Modelagem semântica e BI
-  - situation: "Gold Layer criada → preparar para consumo BI"
-    agent: semantic-modeler
-    tier: T2
-    keywords: [gold, BI, consumo]
-  - situation: "Semantic Model mencionado (Fabric/Power BI/DAX)"
-    agent: semantic-modeler
-    tier: T2
+  # Microsoft Fabric (plataforma completa)
+  - situation: "Qualquer tarefa exclusiva do Microsoft Fabric"
+    agent: fabric-engineer
+    tier: T1
+    keywords: [fabric, lakehouse, onelake, "data factory fabric", "power bi", DAX, "direct lake", "semantic model fabric"]
+  - situation: "Descoberta: listar workspaces / lakehouses / tabelas no Fabric"
+    agent: fabric-engineer
+    tier: T1
+    keywords: [workspace, lakehouse, "list items", "o que existe", descoberta]
+  - situation: "Design ou revisão de arquitetura Medallion no Fabric"
+    agent: fabric-engineer
+    tier: T1
+    keywords: [bronze, silver, gold, medallion, lakehouse]
+  - situation: "Semantic Model / DAX / Direct Lake (Fabric)"
+    agent: fabric-engineer
+    tier: T1
     keywords: ["semantic model", "power bi", DAX, "direct lake"]
-  - situation: "Criar/atualizar Genie Space (Databricks)"
-    agent: semantic-modeler
-    tier: T2
-    keywords: [genie, "conversational bi"]
-  - situation: "Criar/publicar AI/BI Dashboard (Databricks)"
-    agent: semantic-modeler
-    tier: T2
-    keywords: [dashboard, "ai/bi", aibi]
-  - situation: "Consultar endpoint de modelo ML/GenAI"
-    agent: semantic-modeler
-    tier: T2
-    keywords: ["model serving", mlflow, endpoint]
-  - situation: "Relatório de métricas / análise consumível"
-    agent: semantic-modeler
-    tier: T2
-    keywords: [métricas, KPI, relatório]
+  - situation: "Comentários de catálogo / Data Maturity Score (Fabric)"
+    agent: fabric-engineer
+    tier: T1
+    keywords: [comentários, catálogo, "maturity score", "estate scan"]
+  - situation: "Star Schema / Data Vault / SCD (Fabric)"
+    agent: fabric-engineer
+    tier: T1
+    keywords: ["star schema", "data vault", scd, dimensional, hub, satellite]
+  - situation: "Governança Fabric: Sensitivity Labels / Workspace Roles / linhagem"
+    agent: fabric-engineer
+    tier: T1
+    keywords: ["sensitivity label", "workspace role", linhagem, lineage, purview]
+  - situation: "FinOps Fabric: Capacity Units / rightsizing"
+    agent: fabric-engineer
+    tier: T1
+    keywords: [cu, "capacity unit", "capacity units", finops, rightsizing]
 
-  # Pipelines e infraestrutura
+  # Fabric Real-Time Intelligence
+  - situation: "Fabric RTI: Eventhouse / KQL / Eventstream / Activator"
+    agent: fabric-rti
+    tier: T2
+    keywords: [eventhouse, kql, kusto, eventstream, activator, rti, "real-time intelligence"]
+  - situation: "KQL queries / séries temporais em tempo real (Fabric)"
+    agent: fabric-rti
+    tier: T2
+    keywords: ["kql query", "time series", "bin()", "summarize", kusto]
+
+  # Fabric Ontology (OWL / Fabric IQ)
+  - situation: "OWL / RDF / ontologia / Fabric IQ Ontology"
+    agent: fabric-ontology
+    tier: T2
+    keywords: [owl, rdf, ontologia, ontology, turtle, skos, sparql, rdflib, "fabric iq"]
+
+  # Pipelines e infraestrutura (cross-platform / Databricks)
   - situation: "Criar Knowledge Assistant (KA) / Mosaic (MAS)"
     agent: pipeline-architect
     tier: T1
     keywords: [KA, MAS, "knowledge assistant", mosaic]
-  - situation: "Executar código serverless / criar cluster/warehouse"
+  - situation: "Executar código serverless / criar cluster/warehouse (Databricks)"
     agent: pipeline-architect
     tier: T1
     keywords: [serverless, cluster, warehouse, execute_code]
+  - situation: "Criar/atualizar Genie Space (Databricks)"
+    agent: pipeline-architect
+    tier: T1
+    keywords: [genie, "conversational bi"]
+  - situation: "Criar/publicar AI/BI Dashboard (Databricks)"
+    agent: pipeline-architect
+    tier: T1
+    keywords: [dashboard, "ai/bi", aibi]
 
   # SQL e Spark
   - situation: "Múltiplas queries SQL independentes em paralelo"
@@ -136,15 +168,11 @@ routes:
     tier: T1
     keywords: [mlflow, "model serving", evaluation, "feature store", llmops]
 
-  # Streaming e tempo real
+  # Streaming e tempo real (Kafka / Flink / Spark Streaming externos ao Fabric)
   - situation: "Kafka / Flink / Spark Structured Streaming"
     agent: streaming-engineer
     tier: T1
     keywords: [kafka, flink, streaming, "structured streaming", "spark streaming"]
-  - situation: "Fabric RTI / Eventhouse / KQL"
-    agent: streaming-engineer
-    tier: T1
-    keywords: [rti, eventhouse, kql, kusto, "real-time intelligence"]
   - situation: "Watermarks, late data, exactly-once"
     agent: streaming-engineer
     tier: T1
@@ -174,25 +202,11 @@ routes:
     tier: T2
     keywords: ["breaking change", "schema change", deprecation, compatibility]
 
-  # Schema Design
-  - situation: "Star Schema / Data Vault 2.0 / SCD"
-    agent: schema-designer
-    tier: T2
-    keywords: ["star schema", "data vault", scd, "slowly changing", dimensional, hub, satellite]
-  - situation: "Grain definition / modelagem dimensional"
-    agent: schema-designer
-    tier: T2
-    keywords: [grain, dimensional, fato, dimensão, snowflake, "fact table"]
-
-  # FinOps / Otimização de Custo
-  - situation: "Custo de DBU / CU elevado → investigar e otimizar"
-    agent: cost-optimizer
-    tier: T2
-    keywords: [dbu, cu, custo, cost, "rightsizing", otimização, finops]
-  - situation: "Rightsizing de cluster / warehouse / capacidade"
-    agent: cost-optimizer
-    tier: T2
-    keywords: [rightsizing, cluster, capacidade, "serverless", "all-purpose", budget]
+  # FinOps / Otimização de Custo (Databricks)
+  - situation: "Custo de DBU elevado → investigar e otimizar (Databricks)"
+    agent: pipeline-architect
+    tier: T1
+    keywords: [dbu, custo, cost, "rightsizing cluster", otimização, finops, databricks]
 
   # Data Mesh
   - situation: "Data Mesh: domínios, Data Products, governança federada"
@@ -217,20 +231,6 @@ routes:
     agent: spark-diagnostics
     tier: T2
     keywords: [dlt, lakeflow, "pipeline failure", "pipeline error", "expectations failed"]
-
-  # Medallion Architecture
-  - situation: "Design de camadas Bronze / Silver / Gold"
-    agent: medallion-architect
-    tier: T2
-    keywords: [bronze, silver, gold, medallion, camada, layer]
-  - situation: "STREAMING TABLE vs MATERIALIZED VIEW vs tabela Delta"
-    agent: medallion-architect
-    tier: T2
-    keywords: ["streaming table", "materialized view", "delta table", artefato]
-  - situation: "Particionamento e schema evolution por camada Medallion"
-    agent: medallion-architect
-    tier: T2
-    keywords: [particionamento, partition, "schema evolution", "z-order", "liquid clustering"]
 
   # Conceitual
   - situation: "Pergunta conceitual sem MCP"

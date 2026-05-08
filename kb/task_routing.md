@@ -55,55 +55,55 @@ Antes de planejar, leia a KB indicada. Skills são opcionais (detalhes operacion
 > `python -c "from agents.delegation import render_routing_table; print(render_routing_table())"`
 
 <!-- BEGIN delegation_map (auto-gerado) -->
-| Situação                                                | Agente a Acionar        |
-|---------------------------------------------------------|-------------------------|
-| Migração SQL Server/PostgreSQL → Databricks/Fabric      | migration-expert        |
-| /migrate ou assessment de banco relacional              | migration-expert        |
-| DDL de origem extraído → propor Medallion               | migration-expert        |
-| Transcript / briefing / notas brutas                    | business-analyst        |
-| Input não estruturado antes do /plan                    | business-analyst        |
-| Tabela nova ingerida → validar qualidade                | data-quality-steward    |
-| Alerta de qualidade disparado → investigar              | data-quality-steward    |
-| Schema drift em streaming                               | data-quality-steward    |
-| Pipeline modificado → verificar conformidade            | governance-auditor      |
-| Acesso incomum detectado → auditar                      | governance-auditor      |
-| Dados PII expostos → classificar e proteger             | governance-auditor      |
-| Gold Layer criada → preparar para consumo BI            | semantic-modeler        |
-| Semantic Model mencionado (Fabric/Power BI/DAX)         | semantic-modeler        |
-| Criar/atualizar Genie Space (Databricks)                | semantic-modeler        |
-| Criar/publicar AI/BI Dashboard (Databricks)             | semantic-modeler        |
-| Consultar endpoint de modelo ML/GenAI                   | semantic-modeler        |
-| Relatório de métricas / análise consumível              | semantic-modeler        |
-| Criar Knowledge Assistant (KA) / Mosaic (MAS)           | pipeline-architect      |
-| Executar código serverless / criar cluster/warehouse    | pipeline-architect      |
-| Múltiplas queries SQL independentes em paralelo         | sql-expert              |
-| PySpark / Spark SQL / DLT                               | spark-expert            |
-| dbt (models, refs, sources, testes, snapshots)          | dbt-expert              |
-| Python puro (pacotes, APIs, CLIs, pandas/polars)        | python-expert           |
-| Pipeline RAG / Vector Search / embeddings               | ai-data-engineer        |
-| AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks     | ai-data-engineer        |
-| LLMOps: MLflow evaluation, model registry, serving      | ai-data-engineer        |
-| Kafka / Flink / Spark Structured Streaming              | streaming-engineer      |
-| Fabric RTI / Eventhouse / KQL                           | streaming-engineer      |
-| Watermarks, late data, exactly-once                     | streaming-engineer      |
-| Debezium / Kafka Connect CDC                            | cdc-specialist          |
-| AUTO CDC INTO (Databricks DLT)                          | cdc-specialist          |
-| Transactional outbox / CQRS                             | cdc-specialist          |
-| Data Contract / ODCS / SLA de qualidade contratual      | data-contracts-engineer |
-| Breaking change em schema → impacto em consumidores     | data-contracts-engineer |
-| Star Schema / Data Vault 2.0 / SCD                      | schema-designer         |
-| Grain definition / modelagem dimensional                | schema-designer         |
-| Custo de DBU / CU elevado → investigar e otimizar       | cost-optimizer          |
-| Rightsizing de cluster / warehouse / capacidade         | cost-optimizer          |
-| Data Mesh: domínios, Data Products, governança federada | data-mesh-architect     |
-| Mapeamento de domínios de negócio → plataforma de dados | data-mesh-architect     |
-| Job Spark com OOM / data skew / shuffle excessivo       | spark-diagnostics       |
-| Job Spark travado / hung / timeout                      | spark-diagnostics       |
-| Pipeline DLT com falhas recorrentes                     | spark-diagnostics       |
-| Design de camadas Bronze / Silver / Gold                | medallion-architect     |
-| STREAMING TABLE vs MATERIALIZED VIEW vs tabela Delta    | medallion-architect     |
-| Particionamento e schema evolution por camada Medallion | medallion-architect     |
-| Pergunta conceitual sem MCP                             | geral                   |
+| Situação                                                           | Agente a Acionar        |
+|--------------------------------------------------------------------|-------------------------|
+| Migração SQL Server/PostgreSQL → Databricks/Fabric                 | migration-expert        |
+| /migrate ou assessment de banco relacional                         | migration-expert        |
+| DDL de origem extraído → propor Medallion                          | migration-expert        |
+| Transcript / briefing / notas brutas                               | business-analyst        |
+| Input não estruturado antes do /plan                               | business-analyst        |
+| Tabela nova ingerida → validar qualidade                           | data-quality-steward    |
+| Alerta de qualidade disparado → investigar                         | data-quality-steward    |
+| Schema drift em streaming                                          | data-quality-steward    |
+| Pipeline modificado → verificar conformidade                       | governance-auditor      |
+| Acesso incomum detectado → auditar                                 | governance-auditor      |
+| Dados PII expostos → classificar e proteger                        | governance-auditor      |
+| Qualquer tarefa exclusiva do Microsoft Fabric                      | fabric-engineer         |
+| Descoberta: listar workspaces / lakehouses / tabelas no Fabric     | fabric-engineer         |
+| Design ou revisão de arquitetura Medallion no Fabric               | fabric-engineer         |
+| Semantic Model / DAX / Direct Lake (Fabric)                        | fabric-engineer         |
+| Comentários de catálogo / Data Maturity Score (Fabric)             | fabric-engineer         |
+| Star Schema / Data Vault / SCD (Fabric)                            | fabric-engineer         |
+| Governança Fabric: Sensitivity Labels / Workspace Roles / linhagem | fabric-engineer         |
+| FinOps Fabric: Capacity Units / rightsizing                        | fabric-engineer         |
+| Fabric RTI: Eventhouse / KQL / Eventstream / Activator             | fabric-rti              |
+| KQL queries / séries temporais em tempo real (Fabric)              | fabric-rti              |
+| OWL / RDF / ontologia / Fabric IQ Ontology                         | fabric-ontology         |
+| Criar Knowledge Assistant (KA) / Mosaic (MAS)                      | pipeline-architect      |
+| Executar código serverless / criar cluster/warehouse (Databricks)  | pipeline-architect      |
+| Criar/atualizar Genie Space (Databricks)                           | pipeline-architect      |
+| Criar/publicar AI/BI Dashboard (Databricks)                        | pipeline-architect      |
+| Múltiplas queries SQL independentes em paralelo                    | sql-expert              |
+| PySpark / Spark SQL / DLT                                          | spark-expert            |
+| dbt (models, refs, sources, testes, snapshots)                     | dbt-expert              |
+| Python puro (pacotes, APIs, CLIs, pandas/polars)                   | python-expert           |
+| Pipeline RAG / Vector Search / embeddings                          | ai-data-engineer        |
+| AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks                | ai-data-engineer        |
+| LLMOps: MLflow evaluation, model registry, serving                 | ai-data-engineer        |
+| Kafka / Flink / Spark Structured Streaming                         | streaming-engineer      |
+| Watermarks, late data, exactly-once                                | streaming-engineer      |
+| Debezium / Kafka Connect CDC                                       | cdc-specialist          |
+| AUTO CDC INTO (Databricks DLT)                                     | cdc-specialist          |
+| Transactional outbox / CQRS                                        | cdc-specialist          |
+| Data Contract / ODCS / SLA de qualidade contratual                 | data-contracts-engineer |
+| Breaking change em schema → impacto em consumidores                | data-contracts-engineer |
+| Custo de DBU elevado → investigar e otimizar (Databricks)          | pipeline-architect      |
+| Data Mesh: domínios, Data Products, governança federada            | data-mesh-architect     |
+| Mapeamento de domínios de negócio → plataforma de dados            | data-mesh-architect     |
+| Job Spark com OOM / data skew / shuffle excessivo                  | spark-diagnostics       |
+| Job Spark travado / hung / timeout                                 | spark-diagnostics       |
+| Pipeline DLT com falhas recorrentes                                | spark-diagnostics       |
+| Pergunta conceitual sem MCP                                        | geral                   |
 <!-- END delegation_map -->
 
 
