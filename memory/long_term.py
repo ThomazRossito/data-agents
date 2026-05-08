@@ -292,6 +292,13 @@ class LongTermMemory:
         if not query or not query.strip():
             return []
 
+        # FTS5 trata ?  " * ( ) - ^ ~ como operadores; remove-os para evitar syntax error
+        import re
+
+        query = re.sub(r'[?"*()^\-~]', " ", query).strip()
+        if not query:
+            return []
+
         type_filter = ""
         params: list = [query, min_confidence]
         if include_types:

@@ -195,6 +195,13 @@ class ShortTermMemory:
         if not query or not query.strip():
             return []
 
+        # FTS5 trata ?  " * ( ) - ^ ~ como operadores; remove-os para evitar syntax error
+        import re
+
+        query = re.sub(r'[?"*()^\-~]', " ", query).strip()
+        if not query:
+            return []
+
         now = time.time()
         session_filter = "AND e.session_id = ?" if session_id else ""
         params: list = [query, now]
