@@ -79,30 +79,28 @@ Antes de planejar, leia a KB indicada. Skills são opcionais (detalhes operacion
 | Fabric RTI: Eventhouse / KQL / Eventstream / Activator             | fabric-rti              |
 | KQL queries / séries temporais em tempo real (Fabric)              | fabric-rti              |
 | OWL / RDF / ontologia / Fabric IQ Ontology                         | fabric-ontology         |
-| Criar Knowledge Assistant (KA) / Mosaic (MAS)                      | pipeline-architect      |
-| Executar código serverless / criar cluster/warehouse (Databricks)  | pipeline-architect      |
-| Criar/atualizar Genie Space (Databricks)                           | pipeline-architect      |
-| Criar/publicar AI/BI Dashboard (Databricks)                        | pipeline-architect      |
-| Múltiplas queries SQL independentes em paralelo                    | sql-expert              |
-| PySpark / Spark SQL / DLT                                          | spark-expert            |
+| Qualquer tarefa SQL / Spark SQL / Unity Catalog (Databricks)       | databricks-engineer     |
+| PySpark / DLT / LakeFlow / Delta Lake (Databricks)                 | databricks-engineer     |
+| Jobs e orquestração Databricks                                     | databricks-engineer     |
+| CDC com Debezium / Kafka Connect / AUTO CDC INTO (Databricks)      | databricks-engineer     |
+| Diagnóstico Spark: OOM / data skew / shuffle / job travado         | databricks-engineer     |
+| Criar Knowledge Assistant (KA) / Mosaic AI Supervisor (MAS)        | databricks-engineer     |
+| Executar código serverless / criar cluster/warehouse (Databricks)  | databricks-engineer     |
+| Criar/atualizar Genie Space (Databricks)                           | databricks-engineer     |
+| Criar/publicar AI/BI Dashboard (Databricks)                        | databricks-engineer     |
+| Custo de DBU elevado → investigar e otimizar (Databricks)          | databricks-engineer     |
+| Pipeline DLT com falhas recorrentes (Databricks)                   | databricks-engineer     |
+| Pipeline RAG / Vector Search / embeddings (Databricks)             | databricks-ai           |
+| AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks                | databricks-ai           |
+| LLMOps: MLflow evaluation, model registry, serving (Databricks)    | databricks-ai           |
+| Kafka / Flink / Spark Structured Streaming (Databricks)            | databricks-ai           |
+| Watermarks, late data, exactly-once (Databricks)                   | databricks-ai           |
 | dbt (models, refs, sources, testes, snapshots)                     | dbt-expert              |
 | Python puro (pacotes, APIs, CLIs, pandas/polars)                   | python-expert           |
-| Pipeline RAG / Vector Search / embeddings                          | ai-data-engineer        |
-| AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks                | ai-data-engineer        |
-| LLMOps: MLflow evaluation, model registry, serving                 | ai-data-engineer        |
-| Kafka / Flink / Spark Structured Streaming                         | streaming-engineer      |
-| Watermarks, late data, exactly-once                                | streaming-engineer      |
-| Debezium / Kafka Connect CDC                                       | cdc-specialist          |
-| AUTO CDC INTO (Databricks DLT)                                     | cdc-specialist          |
-| Transactional outbox / CQRS                                        | cdc-specialist          |
 | Data Contract / ODCS / SLA de qualidade contratual                 | data-contracts-engineer |
 | Breaking change em schema → impacto em consumidores                | data-contracts-engineer |
-| Custo de DBU elevado → investigar e otimizar (Databricks)          | pipeline-architect      |
 | Data Mesh: domínios, Data Products, governança federada            | data-mesh-architect     |
 | Mapeamento de domínios de negócio → plataforma de dados            | data-mesh-architect     |
-| Job Spark com OOM / data skew / shuffle excessivo                  | spark-diagnostics       |
-| Job Spark travado / hung / timeout                                 | spark-diagnostics       |
-| Pipeline DLT com falhas recorrentes                                | spark-diagnostics       |
 | Pergunta conceitual sem MCP                                        | geral                   |
 <!-- END delegation_map -->
 

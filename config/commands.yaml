@@ -17,31 +17,31 @@ commands:
       [DOMA INTAKE] Delegue IMEDIATAMENTE para business-analyst. NÃO crie PRD, NÃO peça aprovação neste momento. O agente deve: (1) Ler o template em `templates/backlog.md` para entender o formato de saída. (2) Processar o documento abaixo extraindo stakeholders, decisões, requisitos e restrições. (3) Mapear cada requisito ao domínio técnico correto (Databricks/Fabric/pipelines/SQL/etc). (4) Priorizar os itens em P0 (crítico, máx 3), P1 (importante) e P2 (desejável). (5) Garantir que o diretório `output/backlog/` existe (Bash: mkdir -p output/backlog). (6) Salvar o backlog preenchido em `output/backlog/backlog_<nome_descritivo>.md` via Write. (7) Apresentar resumo com contagem por prioridade e o próximo passo:     /plan output/backlog/backlog_<nome_descritivo>.md IMPORTANTE: Se o input for um caminho de arquivo (ex: inputs/reuniao.txt), leia o arquivo com Read() antes de processar. Documento: {task}
     display_template: '[bold blue]📋 [DOMA Intake] Processando documento com: {agent}[/bold blue]'
   sql:
-    agent: sql-expert
+    agent: databricks-engineer
     doma_mode: express
-    description: Envia tarefa SQL diretamente para o SQL Expert (DOMA Express).
+    description: Envia tarefa SQL diretamente para o Databricks Engineer (DOMA Express).
     skills:
     - skills/patterns/sql-generation/SKILL.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para sql-expert. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
     display_template: '[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
   spark:
-    agent: spark-expert
+    agent: databricks-engineer
     doma_mode: express
-    description: Envia tarefa PySpark diretamente para o Spark Expert (DOMA Express).
+    description: Envia tarefa PySpark diretamente para o Databricks Engineer (DOMA Express).
     skills:
     - skills/databricks/databricks-spark-declarative-pipelines/SKILL.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para spark-expert. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
     display_template: '[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
   pipeline:
-    agent: pipeline-architect
+    agent: databricks-engineer
     doma_mode: express
-    description: Envia tarefa de pipeline para o Pipeline Architect (DOMA Express).
+    description: Envia tarefa de pipeline Databricks para o Databricks Engineer (DOMA Express).
     skills:
     - skills/patterns/pipeline-design/SKILL.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para pipeline-architect. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler as skills relevantes do seu Mapa de Skills antes de gerar código. Tarefa: {task}
     display_template: '[bold yellow]🚀 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
   fabric:
     agent: fabric-engineer
@@ -168,22 +168,22 @@ commands:
       [DOMA MIGRATE] Delegue IMEDIATAMENTE para migration-expert. Não gere SQL diretamente. O agente deve: (1) Ler `kb/migration/index.md` para regras de mapeamento de tipos e anti-padrões. (2) Conectar ao banco de origem via migration_source MCP para extrair DDL e estatísticas. (3) Gerar assessment de complexidade (LOW/MEDIUM/HIGH) por objeto. (4) Propor arquitetura Medallion Bronze→Silver→Gold no destino. (5) Salvar o plano de migração em `output/migration/migration_plan_<nome>.md`. (6) Apresentar resumo e aguardar aprovação antes de gerar scripts. Tarefa: {task}
     display_template: '[bold yellow]🚚 [DOMA Migrate] Iniciando assessment com: {agent}[/bold yellow]'
   genie:
-    agent: pipeline-architect
+    agent: databricks-engineer
     doma_mode: express
     description: Cria ou atualiza Genie Spaces no Databricks para Conversational BI (DOMA Express).
     skills:
     - kb/semantic-modeling/index.md
     prompt_template: |-
-      [DOMA EXPRESS — GENIE] Delegue IMEDIATAMENTE para pipeline-architect. Não crie PRD, não peça aprovação. O agente deve usar as ferramentas Databricks Genie (mcp__databricks_genie__* e mcp__databricks__create_or_update_genie) para criar ou atualizar o Genie Space conforme solicitado. Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. Tarefa: {task}
+      [DOMA EXPRESS — GENIE] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. O agente deve usar as ferramentas Databricks Genie (mcp__databricks_genie__* e mcp__databricks__create_or_update_genie) para criar ou atualizar o Genie Space conforme solicitado. Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. Tarefa: {task}
     display_template: '[bold yellow]🧞 [DOMA Express] Criando Genie Space com: {agent}[/bold yellow]'
   dashboard:
-    agent: pipeline-architect
+    agent: databricks-engineer
     doma_mode: express
     description: Cria ou publica AI/BI Dashboards no Databricks (DOMA Express).
     skills:
     - kb/semantic-modeling/index.md
     prompt_template: |-
-      [DOMA EXPRESS — DASHBOARD] Delegue IMEDIATAMENTE para pipeline-architect. Não crie PRD, não peça aprovação. O agente deve usar as ferramentas Databricks AI/BI Dashboard (mcp__databricks__create_or_update_dashboard) para criar ou publicar o dashboard conforme solicitado. Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. Tarefa: {task}
+      [DOMA EXPRESS — DASHBOARD] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. O agente deve usar as ferramentas Databricks AI/BI Dashboard (mcp__databricks__create_or_update_dashboard) para criar ou publicar o dashboard conforme solicitado. Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. Tarefa: {task}
     display_template: '[bold yellow]📈 [DOMA Express] Criando Dashboard com: {agent}[/bold yellow]'
   party:
     agent: null
@@ -304,34 +304,34 @@ commands:
       [DOMA WORKFLOW] Execute o workflow pré-definido identificado na tarefa abaixo. Consulte `kb/collaboration-workflows.md` para os detalhes do workflow solicitado. Siga a sequência de agentes definida, passando o contexto de cada etapa para a próxima. Compile o contexto do workflow em `output/workflow-context/<wf-id>-context.md` antes de invocar o primeiro agente. Se o workflow exigir aprovação humana em alguma etapa, pause e aguarde confirmação. Tarefa: {task}
     display_template: '[bold magenta]⚙️ [DOMA Workflow] Iniciando workflow colaborativo...[/bold magenta]'
   streaming:
-    agent: streaming-engineer
+    agent: databricks-ai
     doma_mode: express
     description: |-
-      Envia tarefa de streaming para o Streaming Engineer (DOMA Express). Use para Kafka, Apache Flink, Spark Structured Streaming, Fabric RTI Eventstream, CDC com Debezium e arquiteturas event-driven (Lambda/Kappa). Exemplos: /streaming pipeline Kafka → Delta | /streaming Flink job com exactly-once
+      Envia tarefa de streaming para o Databricks AI (DOMA Express). Use para Kafka, Apache Flink, Spark Structured Streaming, CDC com Debezium e arquiteturas event-driven (Lambda/Kappa). Para Fabric RTI use /fabric. Exemplos: /streaming pipeline Kafka → Delta | /streaming Flink job com exactly-once
     skills:
     - kb/spark-patterns/index.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para streaming-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/spark-patterns/index.md` antes de executar e a usar context7 para documentação atualizada de Kafka/Flink. Tarefa: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-ai. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/spark-patterns/index.md` antes de executar e a usar context7 para documentação atualizada de Kafka/Flink. Tarefa: {task}
     display_template: '[bold yellow]⚡ [DOMA Express] Direcionando para: {agent}[/bold yellow]'
   ai:
-    agent: ai-data-engineer
+    agent: databricks-ai
     doma_mode: express
     description: |-
-      Envia tarefa de AI Data Engineering para o AI Data Engineer (DOMA Express). Use para RAG pipelines, vector search (Databricks Vector Search), embeddings e chunking, feature stores, LLMOps com MLflow e AI Functions (ai_query, ai_summarize). Exemplos: /ai pipeline RAG com Vector Search | /ai feature store para modelo de churn
+      Envia tarefa de AI Data Engineering para o Databricks AI (DOMA Express). Use para RAG pipelines, vector search (Databricks Vector Search), embeddings e chunking, feature stores, LLMOps com MLflow e AI Functions (ai_query, ai_summarize). Exemplos: /ai pipeline RAG com Vector Search | /ai feature store para modelo de churn
     skills:
     - kb/databricks/index.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para ai-data-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/databricks/index.md` e a buscar documentação atualizada via context7 antes de executar. Tarefa: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-ai. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/databricks/index.md` e a buscar documentação atualizada via context7 antes de executar. Tarefa: {task}
     display_template: '[bold yellow]🤖 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
   cdc:
-    agent: cdc-specialist
+    agent: databricks-engineer
     doma_mode: express
     description: |-
-      Envia tarefa de Change Data Capture para o CDC Specialist (DOMA Express). Use para Debezium, Kafka Connect, AUTO CDC INTO no DLT/LakeFlow, captura de binlog/WAL e sincronização incremental de banco relacional para lakehouse. Exemplos: /cdc PostgreSQL → Databricks com Debezium | /cdc avaliação de viabilidade CDC no SQL Server
+      Envia tarefa de Change Data Capture para o Databricks Engineer (DOMA Express). Use para Debezium, Kafka Connect, AUTO CDC INTO no DLT/LakeFlow, captura de binlog/WAL e sincronização incremental de banco relacional para lakehouse. Exemplos: /cdc PostgreSQL → Databricks com Debezium | /cdc avaliação de viabilidade CDC no SQL Server
     skills:
     - kb/pipeline-design/index.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para cdc-specialist. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/pipeline-design/index.md` antes de executar. Tarefa: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/pipeline-design/index.md` antes de executar. Tarefa: {task}
     display_template: '[bold yellow]🔄 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
   schema:
     agent: fabric-engineer
@@ -365,14 +365,14 @@ commands:
       [DOMA FULL] Delegue IMEDIATAMENTE para data-mesh-architect. Instrua o agente a ler `kb/governance/index.md` antes de executar. Antes de propor arquitetura, identificar domínios de negócio existentes e avaliar maturidade atual (0-25). Tarefa: {task}
     display_template: '[bold purple]🕸️ [DOMA Full] Direcionando para: {agent}[/bold purple]'
   diagnose:
-    agent: spark-diagnostics
+    agent: databricks-engineer
     doma_mode: express
     description: |-
-      Envia problema de Spark para o Spark Diagnostics (DOMA Express). Use quando um job está falhando (OOM, data skew, shuffle failure, hang) ou com performance degradada — forneça stack trace, job_id ou descrição do comportamento anômalo. NÃO use para gerar código novo (/spark). Exemplos: /diagnose OOM no job de Silver | /diagnose job lento com data skew em coluna país
+      Envia problema de Spark para o Databricks Engineer (DOMA Express). Use quando um job está falhando (OOM, data skew, shuffle failure, hang) ou com performance degradada — forneça stack trace, job_id ou descrição do comportamento anômalo. NÃO use para gerar código novo (/spark). Exemplos: /diagnose OOM no job de Silver | /diagnose job lento com data skew em coluna país
     skills:
     - kb/spark-patterns/index.md
     prompt_template: |-
-      [DOMA EXPRESS] Delegue IMEDIATAMENTE para spark-diagnostics. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/spark-patterns/index.md` e a coletar dados concretos via MCP antes de diagnosticar. Problema: {task}
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/spark-patterns/index.md` e a coletar dados concretos via MCP antes de diagnosticar. Problema: {task}
     display_template: '[bold yellow]🔍 [DOMA Express] Diagnosticando com: {agent}[/bold yellow]'
   medallion:
     agent: fabric-engineer

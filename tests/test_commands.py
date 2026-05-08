@@ -10,22 +10,22 @@ class TestParseCommand:
         result = parse_command("/sql SELECT * FROM tabela")
         assert result is not None
         assert result.command == "/sql"
-        assert result.agent == "sql-expert"
+        assert result.agent == "databricks-engineer"
         assert result.doma_mode == "express"
-        assert "sql-expert" in result.doma_prompt
+        assert "databricks-engineer" in result.doma_prompt
 
     def test_spark_command(self):
         result = parse_command("/spark Crie um DataFrame com filtro")
         assert result is not None
         assert result.command == "/spark"
-        assert result.agent == "spark-expert"
+        assert result.agent == "databricks-engineer"
         assert result.doma_mode == "express"
 
     def test_pipeline_command(self):
         result = parse_command("/pipeline Crie um pipeline Medallion")
         assert result is not None
         assert result.command == "/pipeline"
-        assert result.agent == "pipeline-architect"
+        assert result.agent == "databricks-engineer"
         assert result.doma_mode == "express"
 
     def test_fabric_command(self):
