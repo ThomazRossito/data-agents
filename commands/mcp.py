@@ -25,9 +25,11 @@ def handle_mcp_command(user_input: str, console: Console) -> None:
     parts = user_input.strip().split(maxsplit=1)
     filter_name = parts[1].strip().lower() if len(parts) > 1 else ""
 
+    from config.mcp_servers import ALWAYS_ACTIVE_MCPS
+
     status = settings.validate_platform_credentials()
 
-    always_active = {"context7", "memory_mcp"}
+    always_active = set(ALWAYS_ACTIVE_MCPS)
 
     table = Table(
         title="Status dos MCP Servers",
@@ -85,8 +87,10 @@ def handle_mcp_command_chainlit(user_input: str) -> str:
     parts = user_input.strip().split(maxsplit=1)
     filter_name = parts[1].strip().lower() if len(parts) > 1 else ""
 
+    from config.mcp_servers import ALWAYS_ACTIVE_MCPS
+
     status = settings.validate_platform_credentials()
-    always_active = {"context7", "memory_mcp"}
+    always_active = set(ALWAYS_ACTIVE_MCPS)
 
     lines = ["### Status dos MCP Servers\n"]
     lines.append("| MCP | Status | Detalhes |")

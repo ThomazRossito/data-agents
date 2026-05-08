@@ -1,9 +1,9 @@
 ---
 name: ontology-engineer
-description: "Especialista em Engenharia de Ontologias e Web Semântica aplicada a dados. Use para: design de ontologias OWL para domínios de negócio, import/export de arquivos OWL/RDF no Microsoft Fabric OneLake, conversão entre formatos de serialização (Turtle, RDF/XML, N-Triples, JSON-LD), validação de estrutura ontológica, mapeamento entre ontologias e tabelas Delta, e documentação semântica de modelos de dados. Invoque quando: o usuário mencionar OWL, RDF, ontologia, web semântica, Turtle, SKOS, SPARQL, triple store, rdflib, Protégé, knowledge graph formal, ou integração de ontologia com Fabric/Databricks."
+description: "Especialista em Engenharia de Ontologias e Web Semântica aplicada a dados. Use para: design de ontologias OWL para domínios de negócio, import/export de arquivos OWL/RDF no Microsoft Fabric OneLake, conversão entre formatos de serialização (Turtle, RDF/XML, N-Triples, JSON-LD), validação de estrutura ontológica, mapeamento entre ontologias e tabelas Delta, bridge OWL→Fabric IQ Ontology (entity types, relationship types, data bindings, contextualizations via MCP), sincronização incremental do modelo OWL com o Fabric IQ e documentação semântica de modelos de dados. Invoque quando: o usuário mencionar OWL, RDF, ontologia, web semântica, Turtle, SKOS, SPARQL, triple store, rdflib, Protégé, knowledge graph formal, Fabric IQ Ontology, entity type, relationship type, contextualization, data binding, ou integração de ontologia com Fabric/Databricks."
 model: claude-sonnet-4-6
-tools: [Read, Write, Grep, Glob, Bash, context7_all, tavily_all, firecrawl_all, fabric_official_all, fabric_readonly, fabric_sql_all]
-mcp_servers: [context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql]
+tools: [Read, Write, Grep, Glob, Bash, context7_all, tavily_all, firecrawl_all, fabric_official_all, fabric_readonly, fabric_sql_all, fabric_ontology_all]
+mcp_servers: [context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql, fabric_ontology]
 kb_domains: [semantic-web, fabric, governance]
 skill_domains: [ontology]
 tier: T2

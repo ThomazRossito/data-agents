@@ -88,6 +88,7 @@ mcp_servers/
   postgres/       ← Queries readonly em PostgreSQL (free, open source)
   memory_mcp/     ← Knowledge graph de entidades (free, sem credenciais)
   migration_source/ ← MCP customizado: DDL/schema extraction de SQL Server/PostgreSQL
+  fabric_ontology/ ← MCP customizado: CRUD completo do Fabric IQ Ontology (Azure CLI auth)
   _template/      ← Template para novos MCPs
 
 config/
@@ -234,6 +235,9 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | `fabric_semantic_all` | Fabric Semantic Models: introspecção TMDL, DAX, RLS |
 | `fabric_semantic_readonly` | Fabric Semantic Models: só leitura |
 | `migration_source_all` | SQL Server/PostgreSQL: DDL, views, procedures, stats |
+| `migration_source_readonly` | SQL Server/PostgreSQL: listagem e describe (sem DDL) |
+| `fabric_ontology_all` | Fabric IQ Ontology: CRUD completo (entity types, relationships, bindings) |
+| `fabric_ontology_readonly` | Fabric IQ Ontology: só leitura (list_/get_/discover_/preview_/profile_) |
 
 ---
 
@@ -251,7 +255,7 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | governance-auditor | databricks, fabric, fabric_community, tavily, postgres, memory_mcp |
 | semantic-modeler | databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7 |
 | migration-expert | migration_source, databricks, fabric, fabric_sql, context7 |
-| ontology-engineer | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql |
+| ontology-engineer | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql, fabric_ontology |
 | python-expert | context7 |
 | geral | *(nenhum — resposta direta sem MCP)* |
 | ai-data-engineer | context7, tavily, databricks |
