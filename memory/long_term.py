@@ -292,10 +292,12 @@ class LongTermMemory:
         if not query or not query.strip():
             return []
 
-        # FTS5 trata ?  " * ( ) - ^ ~ como operadores; remove-os para evitar syntax error
+        # FTS5 trata vários caracteres como operadores de query — remove-os para evitar
+        # syntax error. Inclui [ ] que aparecem em tags JSON e : dos column filters.
         import re
 
-        query = re.sub(r'[?"*()^\-~]', " ", query).strip()
+        query = re.sub(r'[?"*()^\-~\[\]{}:|]', " ", query)
+        query = re.sub(r"\s+", " ", query).strip()
         if not query:
             return []
 
