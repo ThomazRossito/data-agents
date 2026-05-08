@@ -114,33 +114,73 @@ routes:
     tier: T2
     keywords: [owl, rdf, ontologia, ontology, turtle, skos, sparql, rdflib, "fabric iq"]
 
-  # Pipelines e infraestrutura (cross-platform / Databricks)
-  - situation: "Criar Knowledge Assistant (KA) / Mosaic (MAS)"
-    agent: pipeline-architect
+  # Databricks — Engenharia de Dados (plataforma completa)
+  - situation: "Qualquer tarefa SQL / Spark SQL / Unity Catalog (Databricks)"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [sql, "spark sql", "unity catalog", schema, catalog, table, databricks]
+  - situation: "PySpark / DLT / LakeFlow / Delta Lake (Databricks)"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [pyspark, "spark sql", dlt, lakeflow, delta, "delta lake", "streaming table", "materialized view"]
+  - situation: "Jobs e orquestração Databricks"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [jobs, job, orquestração, orchestration, cron, agendamento, databricks]
+  - situation: "CDC com Debezium / Kafka Connect / AUTO CDC INTO (Databricks)"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [debezium, "kafka connect", cdc, binlog, wal, "change data capture", "apply changes", "auto cdc", scd2]
+  - situation: "Diagnóstico Spark: OOM / data skew / shuffle / job travado"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [oom, skew, shuffle, spill, "out of memory", "spark ui", aqe, hung, hang, timeout, deadlock]
+  - situation: "Criar Knowledge Assistant (KA) / Mosaic AI Supervisor (MAS)"
+    agent: databricks-engineer
     tier: T1
     keywords: [KA, MAS, "knowledge assistant", mosaic]
   - situation: "Executar código serverless / criar cluster/warehouse (Databricks)"
-    agent: pipeline-architect
+    agent: databricks-engineer
     tier: T1
     keywords: [serverless, cluster, warehouse, execute_code]
   - situation: "Criar/atualizar Genie Space (Databricks)"
-    agent: pipeline-architect
+    agent: databricks-engineer
     tier: T1
     keywords: [genie, "conversational bi"]
   - situation: "Criar/publicar AI/BI Dashboard (Databricks)"
-    agent: pipeline-architect
+    agent: databricks-engineer
     tier: T1
     keywords: [dashboard, "ai/bi", aibi]
+  - situation: "Custo de DBU elevado → investigar e otimizar (Databricks)"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [dbu, custo, cost, "rightsizing cluster", otimização, finops, databricks]
+  - situation: "Pipeline DLT com falhas recorrentes (Databricks)"
+    agent: databricks-engineer
+    tier: T1
+    keywords: [dlt, lakeflow, "pipeline failure", "pipeline error", "expectations failed"]
 
-  # SQL e Spark
-  - situation: "Múltiplas queries SQL independentes em paralelo"
-    agent: sql-expert
+  # Databricks — AI e Streaming
+  - situation: "Pipeline RAG / Vector Search / embeddings (Databricks)"
+    agent: databricks-ai
     tier: T1
-    keywords: [execute_sql_multi, "queries paralelas"]
-  - situation: "PySpark / Spark SQL / DLT"
-    agent: spark-expert
+    keywords: [rag, vector, embedding, embeddings, "vector search", llmops]
+  - situation: "AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks"
+    agent: databricks-ai
     tier: T1
-    keywords: [pyspark, "spark sql", dlt, lakeflow, delta]
+    keywords: ["ai functions", "ai_query", "ai_summarize", "ai_classify", llm, genai]
+  - situation: "LLMOps: MLflow evaluation, model registry, serving (Databricks)"
+    agent: databricks-ai
+    tier: T1
+    keywords: [mlflow, "model serving", evaluation, "feature store", llmops]
+  - situation: "Kafka / Flink / Spark Structured Streaming (Databricks)"
+    agent: databricks-ai
+    tier: T1
+    keywords: [kafka, flink, streaming, "structured streaming", "spark streaming"]
+  - situation: "Watermarks, late data, exactly-once (Databricks)"
+    agent: databricks-ai
+    tier: T1
+    keywords: [watermark, "late data", "exactly-once", "at-least-once", trigger]
 
   # dbt
   - situation: "dbt (models, refs, sources, testes, snapshots)"
@@ -154,44 +194,6 @@ routes:
     tier: T1
     keywords: [python, pandas, polars, fastapi, typer, pytest, pydantic]
 
-  # AI e GenAI aplicados a dados
-  - situation: "Pipeline RAG / Vector Search / embeddings"
-    agent: ai-data-engineer
-    tier: T1
-    keywords: [rag, vector, embedding, embeddings, "vector search", llmops]
-  - situation: "AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks"
-    agent: ai-data-engineer
-    tier: T1
-    keywords: ["ai functions", "ai_query", "ai_summarize", "ai_classify", llm, genai]
-  - situation: "LLMOps: MLflow evaluation, model registry, serving"
-    agent: ai-data-engineer
-    tier: T1
-    keywords: [mlflow, "model serving", evaluation, "feature store", llmops]
-
-  # Streaming e tempo real (Kafka / Flink / Spark Streaming externos ao Fabric)
-  - situation: "Kafka / Flink / Spark Structured Streaming"
-    agent: streaming-engineer
-    tier: T1
-    keywords: [kafka, flink, streaming, "structured streaming", "spark streaming"]
-  - situation: "Watermarks, late data, exactly-once"
-    agent: streaming-engineer
-    tier: T1
-    keywords: [watermark, "late data", "exactly-once", "at-least-once", trigger]
-
-  # CDC — Change Data Capture
-  - situation: "Debezium / Kafka Connect CDC"
-    agent: cdc-specialist
-    tier: T1
-    keywords: [debezium, "kafka connect", cdc, binlog, wal, "change data capture"]
-  - situation: "AUTO CDC INTO (Databricks DLT)"
-    agent: cdc-specialist
-    tier: T1
-    keywords: ["auto cdc", "apply changes", "apply changes into", scd2, cdc]
-  - situation: "Transactional outbox / CQRS"
-    agent: cdc-specialist
-    tier: T1
-    keywords: [outbox, cqrs, saga, "event sourcing"]
-
   # Data Contracts
   - situation: "Data Contract / ODCS / SLA de qualidade contratual"
     agent: data-contracts-engineer
@@ -202,12 +204,6 @@ routes:
     tier: T2
     keywords: ["breaking change", "schema change", deprecation, compatibility]
 
-  # FinOps / Otimização de Custo (Databricks)
-  - situation: "Custo de DBU elevado → investigar e otimizar (Databricks)"
-    agent: pipeline-architect
-    tier: T1
-    keywords: [dbu, custo, cost, "rightsizing cluster", otimização, finops, databricks]
-
   # Data Mesh
   - situation: "Data Mesh: domínios, Data Products, governança federada"
     agent: data-mesh-architect
@@ -217,20 +213,6 @@ routes:
     agent: data-mesh-architect
     tier: T2
     keywords: [domínio, domain, ownership, "data product"]
-
-  # Diagnóstico Spark
-  - situation: "Job Spark com OOM / data skew / shuffle excessivo"
-    agent: spark-diagnostics
-    tier: T2
-    keywords: [oom, skew, shuffle, spill, "out of memory", "spark ui", aqe]
-  - situation: "Job Spark travado / hung / timeout"
-    agent: spark-diagnostics
-    tier: T2
-    keywords: [hung, hang, timeout, deadlock, "driver timeout", "executor lost"]
-  - situation: "Pipeline DLT com falhas recorrentes"
-    agent: spark-diagnostics
-    tier: T2
-    keywords: [dlt, lakeflow, "pipeline failure", "pipeline error", "expectations failed"]
 
   # Conceitual
   - situation: "Pergunta conceitual sem MCP"

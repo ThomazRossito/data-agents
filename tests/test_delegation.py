@@ -76,7 +76,7 @@ class TestClassify:
         assert classify("xyz abc qualquer coisa não relacionada 12345") is None
 
     def test_matches_spark_keyword(self):
-        assert classify("preciso escrever um job pyspark") == "spark-expert"
+        assert classify("preciso escrever um job pyspark") == "databricks-engineer"
 
     def test_matches_dbt_keyword(self):
         assert classify("vamos criar models dbt") == "dbt-expert"

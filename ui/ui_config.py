@@ -104,9 +104,8 @@ def tool_label(name: str) -> str:
 
 # ── Nomes de exibição por agente ──────────────────────────────────────────────
 AGENT_DISPLAY_NAMES: dict[str, str] = {
-    "sql-expert": "SQL Expert",
-    "spark-expert": "Spark Expert",
-    "pipeline-architect": "Pipeline Architect",
+    "databricks-engineer": "Databricks Engineer",
+    "databricks-ai": "Databricks AI",
     "python-expert": "Python Expert",
     "migration-expert": "Migration Expert",
     "data-quality-steward": "Data Quality Steward",
@@ -116,12 +115,8 @@ AGENT_DISPLAY_NAMES: dict[str, str] = {
     "fabric-ontology": "Fabric Ontology",
     "business-analyst": "Business Analyst",
     "dbt-expert": "dbt Expert",
-    "ai-data-engineer": "AI Data Engineer",
-    "streaming-engineer": "Streaming Engineer",
-    "cdc-specialist": "CDC Specialist",
     "data-contracts-engineer": "Data Contracts Engineer",
     "data-mesh-architect": "Data Mesh Architect",
-    "spark-diagnostics": "Spark Diagnostics",
     "geral": "Geral",
 }
 
@@ -198,7 +193,7 @@ WORKFLOW_METADATA: dict[str, dict] = {
         "icon": "🏗️",
         "description": "Bronze→Silver→Gold + Quality + Governance + Semantic Layer",
         "agents": [
-            "spark-expert",
+            "databricks-engineer",
             "data-quality-steward",
             "governance-auditor",
             "fabric-engineer",
@@ -209,17 +204,16 @@ WORKFLOW_METADATA: dict[str, dict] = {
         "name": "Star Schema",
         "icon": "⭐",
         "description": "Schema Discovery → Star Schema → Quality → Semantic Modeling",
-        "agents": ["sql-expert", "spark-expert", "data-quality-steward", "fabric-engineer"],
+        "agents": ["databricks-engineer", "data-quality-steward", "fabric-engineer"],
         "when": "Criar camada Gold em Star Schema a partir de tabelas Silver",
     },
     "WF-03": {
         "name": "Migração Cross-Platform",
         "icon": "🔀",
-        "description": "Design → SQL+Spark (paralelo) → Reconciliation → Governance",
+        "description": "Design → Databricks+Fabric (paralelo) → Reconciliation → Governance",
         "agents": [
-            "pipeline-architect",
-            "sql-expert",
-            "spark-expert",
+            "databricks-engineer",
+            "fabric-engineer",
             "data-quality-steward",
             "governance-auditor",
         ],
@@ -238,8 +232,7 @@ WORKFLOW_METADATA: dict[str, dict] = {
         "description": "Assessment → Design → DDL+Pipeline (paralelo) → Reconciliation → PII",
         "agents": [
             "migration-expert",
-            "sql-expert",
-            "spark-expert",
+            "databricks-engineer",
             "data-quality-steward",
             "governance-auditor",
         ],
