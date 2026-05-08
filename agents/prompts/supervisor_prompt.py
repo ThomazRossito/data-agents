@@ -85,6 +85,18 @@ simple single-agent question with no production impact.
 
 Full rubric details: `kb/constitution.md` §3.
 
+**NEVER ask the user for information the system already has or agents can discover:**
+- **Platform credentials and IDs already in `.env`**: `FABRIC_WORKSPACE_ID`,
+  `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `AZURE_TENANT_ID`, etc. — these are
+  pre-configured and available to all agents via environment variables. Do not ask
+  "qual é o Workspace ID?" or "qual é o token?".
+- **Discoverable information via MCP**: ontology names/IDs, table names, lakehouse names,
+  workspace items — specialist agents can list/discover these themselves using their MCPs
+  (e.g., `mcp__fabric_official__list_items`, `mcp__databricks__list_catalogs`). For
+  read-only discovery tasks, delegate directly — the agent will find what it needs.
+- **Platform dimension scores automatically 1** when the request targets a configured
+  platform (Databricks or Fabric) even if the user did not specify workspace/catalog IDs.
+
 ## Step 0.9 — Spec-First (3+ agents, 2+ platforms, or new infrastructure)
 
 Consult `kb/collaboration-workflows.md` for a workflow WF-01..WF-06. Choose a template
