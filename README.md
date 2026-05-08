@@ -148,7 +148,7 @@ python main.py         # ou: make run
 
 ### Party Mode — Múltiplos Especialistas em Paralelo
 
-O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. Cada um responde de forma independente, com sua perspectiva de domínio.
+O comando `/party` convoca múltiplos agentes simultaneamente para a mesma pergunta. Cada um responde de forma independente, com sua perspectiva de domínio.
 
 ```bash
 /party qual a diferença entre Delta Lake e Iceberg?
@@ -164,17 +164,13 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 # → migration-expert + sql-expert + spark-expert
 
 /party --full explique o Unity Catalog
-# → todos os 8 agentes especialistas (T1 + principais T2)
+# → todos os T1 + principais T2 (13 especialistas em paralelo)
 ```
 
 ---
 
 ## Comandos Disponíveis
 
-**Agentes Especialistas:**
-
-| Comando | Descrição |
-|---------|-----------|
 **Agentes Especialistas:**
 
 | Comando | Descrição |
