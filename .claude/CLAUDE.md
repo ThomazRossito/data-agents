@@ -1,8 +1,8 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 14 agentes especialistas
-em Engenharia, Qualidade, Governança, Análise de Dados e Web Semântica.
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 23 agentes especialistas
+em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
 
 ---
 
@@ -35,20 +35,29 @@ make health-fabric
 ```
 Usuário → main.py / ui/chainlit_app.py
   └─► Supervisor (claude-sonnet-4-6, sem MCP direto)
-        ├─► business-analyst      [T3] — intake de requisitos, /brief
-        ├─► sql-expert            [T1] — SQL, schemas, catálogos
-        ├─► spark-expert          [T1] — PySpark, DLT, Delta Lake
-        ├─► python-expert        [T1] — Python puro: pacotes, APIs, CLIs, testes
-        ├─► pipeline-architect   [T1] — ETL/ELT cross-platform
-        ├─► migration-expert     [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
-        ├─► dbt-expert         [T2] — dbt Core: models, testes, snapshots
-        ├─► data-quality-steward [T2] — validação, profiling, SLA
-        ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
-        ├─► semantic-modeler      [T2] — modelos semânticos, DAX, Genie
-        ├─► catalog-intelligence  [T2] — comentários AI, Data Maturity Score, valor de negócio (/catalog)
-        ├─► ontology-engineer     [T2] — ontologias OWL 2, import/export OneLake, rdflib, triples → Delta (/ontology)
-        ├─► business-monitor      [T2] — Q&A interativo sobre alertas (daemon em `scripts/monitor_daemon.py`)
-        └─► geral                [T0] — perguntas conceituais, zero MCP (Haiku)
+        ├─► business-analyst          [T3] — intake de requisitos, /brief
+        ├─► sql-expert                [T1] — SQL, schemas, catálogos
+        ├─► spark-expert              [T1] — PySpark, DLT, Delta Lake
+        ├─► python-expert             [T1] — Python puro: pacotes, APIs, CLIs, testes
+        ├─► pipeline-architect        [T1] — ETL/ELT cross-platform
+        ├─► migration-expert          [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
+        ├─► ai-data-engineer          [T1] — RAG, Vector Search, embeddings, LLMOps, AI Functions
+        ├─► streaming-engineer        [T1] — Kafka, Flink, Spark Streaming, Fabric RTI
+        ├─► cdc-specialist            [T1] — Debezium, Kafka Connect, AUTO CDC INTO
+        ├─► dbt-expert                [T2] — dbt Core: models, testes, snapshots
+        ├─► data-quality-steward      [T2] — validação, profiling, SLA
+        ├─► governance-auditor        [T2] — auditoria, LGPD, linhagem, RLS/OLS
+        ├─► semantic-modeler          [T2] — modelos semânticos, DAX, Genie
+        ├─► catalog-intelligence      [T2] — comentários AI, Data Maturity Score (/catalog)
+        ├─► ontology-engineer         [T2] — ontologias OWL 2, triples → Delta (/ontology)
+        ├─► data-contracts-engineer   [T2] — ODCS, SLA contratual, breaking changes (/contract)
+        ├─► schema-designer           [T2] — Star Schema, Data Vault 2.0, SCD (/schema)
+        ├─► cost-optimizer            [T2] — DBU/CU, rightsizing, FinOps (/finops)
+        ├─► data-mesh-architect       [T2] — Data Mesh, Data Products (/mesh)
+        ├─► spark-diagnostics         [T2] — OOM, skew, shuffle, DLT failures (/diagnose)
+        ├─► medallion-architect       [T2] — Bronze/Silver/Gold design (/medallion)
+        ├─► business-monitor          [T2] — Q&A sobre alertas (daemon `scripts/monitor_daemon.py`)
+        └─► geral                     [T0] — perguntas conceituais, zero MCP (Haiku)
 ```
 
 **Regra central:** O Supervisor **nunca** executa código, acessa MCP ou gera SQL/PySpark.
@@ -247,6 +256,15 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | ontology-engineer | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql |
 | python-expert | context7 |
 | geral | *(nenhum — resposta direta sem MCP)* |
+| ai-data-engineer | context7, tavily, databricks |
+| streaming-engineer | context7, tavily, databricks, fabric_rti |
+| cdc-specialist | context7, tavily, databricks, migration_source, postgres |
+| data-contracts-engineer | context7, databricks, fabric_sql, postgres, memory_mcp |
+| schema-designer | context7, databricks, fabric_sql |
+| cost-optimizer | databricks, fabric, fabric_community, tavily |
+| data-mesh-architect | context7, tavily, databricks, memory_mcp |
+| spark-diagnostics | databricks |
+| medallion-architect | context7, databricks, fabric_sql |
 
 > MCPs sem credenciais (context7, memory_mcp) são ativados automaticamente.
 > Os demais requerem variáveis de ambiente configuradas no `.env`.
@@ -324,6 +342,15 @@ MEMORY_CAPTURE_ENABLED=true
 | `/party <query>` | — | Multi-agente paralelo: perspectivas independentes (flags: --quality, --arch, --engineering, --migration, --full) |
 | `/workflow <wf-id> <query>` | — | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
 | `/geral <pergunta>` | — | Resposta direta sem Supervisor (zero agentes, ~95% mais barato) |
+| `/streaming <tarefa>` | streaming-engineer | Kafka, Flink, Spark Structured Streaming, Fabric RTI direto |
+| `/ai <tarefa>` | ai-data-engineer | RAG, Vector Search, embeddings, LLMOps, AI Functions direto |
+| `/cdc <tarefa>` | cdc-specialist | CDC com Debezium, Kafka Connect, AUTO CDC INTO direto |
+| `/schema <tarefa>` | schema-designer | Star Schema, Data Vault 2.0, SCD, modelagem dimensional |
+| `/finops <tarefa>` | cost-optimizer | Análise DBU/CU, rightsizing, otimização de armazenamento Delta |
+| `/mesh <tarefa>` | data-mesh-architect | Data Mesh: domínios, Data Products, governança federada |
+| `/diagnose <tarefa>` | spark-diagnostics | Diagnóstico de jobs Spark: OOM, skew, shuffle, hangs |
+| `/medallion <tarefa>` | medallion-architect | Design Medallion: Bronze/Silver/Gold, artefatos, evolução |
+| `/contract <tarefa>` | data-contracts-engineer | Data Contracts ODCS, SLA, schema evolution, breaking changes |
 
 ---
 
@@ -425,9 +452,11 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
 | `registry/_template.md` | — | Template para criar novos agentes |
 
-**14 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
+**23 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
 `dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `ontology-engineer`, `pipeline-architect`,
-`python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`.
+`python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`,
+`ai-data-engineer`, `streaming-engineer`, `cdc-specialist`, `data-contracts-engineer`, `schema-designer`,
+`cost-optimizer`, `data-mesh-architect`, `spark-diagnostics`, `medallion-architect`.
 
 ### config/ — Configuração Central
 

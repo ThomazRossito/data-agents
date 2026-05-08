@@ -182,6 +182,18 @@ class TestPartyModeGroups:
         "semantic-modeler",
         "dbt-expert",
         "business-analyst",
+        "business-monitor",
+        "catalog-intelligence",
+        "ontology-engineer",
+        "ai-data-engineer",
+        "streaming-engineer",
+        "cdc-specialist",
+        "data-contracts-engineer",
+        "schema-designer",
+        "cost-optimizer",
+        "data-mesh-architect",
+        "spark-diagnostics",
+        "medallion-architect",
         "geral",
     }
 

@@ -75,7 +75,13 @@ Adicione o agente em 2 tabelas:
 - [ ] `agents/prompts/supervisor_prompt.py` referencia o novo agente
 - [ ] `tests/test_agents.py` atualizado se necessário
 - [ ] Loader reconhece o agente (smoke test do passo 5 passou)
-- [ ] `CLAUDE.md` atualizado em 2 tabelas
-- [ ] Contagem de agentes no CLAUDE.md atualizada (ex: "14 agentes")
+- [ ] `CLAUDE.md` atualizado: diagrama de arquitetura, tabela MCPs por Agente, Slash Commands, contagem no registry
+- [ ] Contagem de agentes atualizada em todos os artefatos: `CLAUDE.md`, `README.md`, `PRODUCT.md`, `wiki/index.md`, `Manual_Relatorio_Tecnico_Projeto_Data_Agents.md`
+- [ ] `workflow/dag.py`: KNOWN_AGENTS e _DISPLAY_NAMES
+- [ ] `ui/ui_config.py`: AGENT_DISPLAY_NAMES, AGENT_TIERS e COMMAND_GROUPS
+- [ ] `commands/party.py`: PARTY_GROUPS["full"], AGENT_PERSONAS e _AGENT_TIERS
+- [ ] `tests/test_functional.py`: VALID_AGENTS set
+- [ ] `agents/delegation_map.yaml`: rotas para o novo agente (keywords + situações)
+- [ ] `kb/task_routing.md`: tabela `<!-- BEGIN delegation_map -->` regenerada via `python3 -c "from agents.delegation import render_routing_table; print(render_routing_table())"`
 
 Se algum passo falhar, **pare e reporte** em vez de tentar remendar silenciosamente.

@@ -292,10 +292,12 @@ class LongTermMemory:
         if not query or not query.strip():
             return []
 
-        # FTS5 trata ?  " * ( ) - ^ ~ como operadores; remove-os para evitar syntax error
+        # Mantém apenas word chars (\w) e espaços — whitelist que cobre todos os operadores
+        # FTS5 problemáticos sem precisar enumerá-los individualmente.
         import re
 
-        query = re.sub(r'[?"*()^\-~]', " ", query).strip()
+        query = re.sub(r"[^\w\s]", " ", query)
+        query = re.sub(r"\s+", " ", query).strip()
         if not query:
             return []
 
