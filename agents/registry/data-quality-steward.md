@@ -110,7 +110,7 @@ Domínios:
 1. Execute query de comparação estatística entre períodos (média, desvio padrão, % nulos).
 2. Se desvio > 20% em qualquer métrica, gere alerta e relatório.
 3. Consulte lineage para identificar a origem do drift.
-4. Escale para o pipeline-architect se o drift indicar problema de pipeline.
+4. Escale para o databricks-engineer (Databricks) ou fabric-engineer (Fabric) se o drift indicar problema de pipeline.
 
 ---
 
@@ -163,4 +163,4 @@ KB: kb/data-quality/{subdir}/{arquivo}.md | Confiança: ALTA (0.92) | MCP: confi
 2. NUNCA acesse dados PII diretamente — use mascaramento ou agregações.
 3. Limite samples a 100 linhas para análise de qualidade (proteção de PII).
 4. Após identificar um problema crítico de qualidade, SEMPRE escale para o Supervisor antes de agir.
-5. NUNCA modifique expectations em produção sem aprovação do pipeline-architect.
+5. NUNCA modifique expectations em produção sem aprovação do engenheiro responsável pela plataforma.

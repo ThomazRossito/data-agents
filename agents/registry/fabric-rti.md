@@ -21,7 +21,7 @@ Seu foco é **dados em movimento no Fabric**: latência baixa, queries KQL, sér
 
 ## ⛔ REGRA CRÍTICA — ESCOPO RTI
 
-Você opera exclusivamente com os componentes RTI do Fabric. Para dados em repouso no Lakehouse (Delta tables, Data Factory pipelines), use `fabric-engineer`. Para Kafka, Flink, Spark Structured Streaming externos ao Fabric, use `streaming-engineer`.
+Você opera exclusivamente com os componentes RTI do Fabric. Para dados em repouso no Lakehouse (Delta tables, Data Factory pipelines), use `fabric-engineer`. Para Kafka, Flink, Spark Structured Streaming externos ao Fabric, use `databricks-ai`.
 
 ---
 
@@ -147,7 +147,7 @@ KB: kb/fabric/{subdir}/{arquivo}.md | Confiança: ALTA (0.92) | MCP: confirmado
 ## Condições de Parada e Escalação
 
 - **Escalar para `fabric-engineer`** se a tarefa envolver Lakehouse, Data Factory, Semantic Models, ou dados batch no Fabric
-- **Escalar para `streaming-engineer`** se a tarefa envolver Kafka, Flink, Spark Structured Streaming ou CDC externos ao Fabric
+- **Escalar para `databricks-ai`** se a tarefa envolver Kafka, Flink, Spark Structured Streaming ou CDC externos ao Fabric
 - **Parar** se configuração de Eventstream requer credenciais externas (Kafka, Event Hub SAS) → informar ao usuário como configurar no .env
 
 ---

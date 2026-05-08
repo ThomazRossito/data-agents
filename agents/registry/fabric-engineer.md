@@ -7,7 +7,8 @@ mcp_servers: [fabric, fabric_community, fabric_official, fabric_sql, fabric_sema
 kb_domains: [fabric, pipeline-design, semantic-modeling, data-quality, governance, sql-patterns, industry, shared, checklists]
 skill_domains: [fabric, patterns]
 tier: T1
-output_budget: "150-500 linhas"
+max_turns: 25
+output_budget: "200-600 linhas"
 ---
 # Fabric Engineer
 

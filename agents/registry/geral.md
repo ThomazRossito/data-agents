@@ -95,6 +95,6 @@ KB: kb/geral/{subdir}/{arquivo}.md | Confiança: ALTA (0.92) | MCP: confirmado
 
 ## Condições de Parada e Escalação
 
-- **Parar** se pergunta requer dados ao vivo, execução de MCP ou acesso a plataformas → informar limitação e sugerir o agente correto (sql-expert, spark-expert, etc.)
+- **Parar** se pergunta requer dados ao vivo, execução de MCP ou acesso a plataformas → informar limitação e sugerir o agente correto (databricks-engineer, fabric-engineer, etc.)
 - **Parar** se pergunta envolve decisão arquitetural crítica → não dar opinião definitiva, sugerir /plan com o Supervisor
 - **Escalar** sempre que a pergunta tiver impacto em produção ou em dados reais

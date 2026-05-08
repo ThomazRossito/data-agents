@@ -108,7 +108,7 @@ Para cada tabela, aplicar os mapeamentos canônicos da `kb/migration/index.md`.
 - DDL em Spark SQL com `USING DELTA`
 - Job de ingestão PySpark usando `spark.read.jdbc()` + `write.format("delta")`
 - Particionamento por `_ingestion_date` no Bronze
-- Delegar geração de jobs complexos ao `spark-expert`
+- Delegar geração de jobs complexos ao `databricks-engineer`
 
 **Protocolo de credenciais da fonte (obrigatório antes de gerar qualquer notebook JDBC):**
 
@@ -152,7 +152,7 @@ local. Seguir este fluxo:
 - DDL em T-SQL compatível com Fabric Lakehouse/Warehouse
 - Sem `IDENTITY` no Lakehouse (apenas no Warehouse)
 - Sem FKs como constraints — apenas documentar
-- Pipeline de ingestão via Data Factory (delegar ao `pipeline-architect`)
+- Pipeline de ingestão via Data Factory (delegar ao `fabric-engineer`)
 
 **Anti-padrões a evitar obrigatoriamente (da KB):**
 - M01: FLOAT para dinheiro → DECIMAL(19,4)
@@ -181,10 +181,10 @@ Para reconciliação complexa, delegar ao `data-quality-steward`.
 | Situação | Agente |
 |----------|--------|
 | PII detectado (CPF, e-mail, cartão, dados sensíveis) | `governance-auditor` |
-| Pipeline ETL de ingestão cross-platform | `pipeline-architect` |
+| Pipeline ETL de ingestão cross-platform (Fabric) | `fabric-engineer` |
 | Validação estatística pós-migração | `data-quality-steward` |
-| Queries complexas para Silver/Gold | `sql-expert` |
-| Jobs PySpark de ingestão | `spark-expert` |
+| Queries complexas para Silver/Gold (Databricks) | `databricks-engineer` |
+| Jobs PySpark de ingestão | `databricks-engineer` |
 
 ---
 

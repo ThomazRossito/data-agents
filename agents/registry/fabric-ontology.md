@@ -149,7 +149,7 @@ Antes de qualquer resposta técnica:
 1. **Descobrir via** `mcp__fabric_official__list_items` (filtro `type=Ontology`) + `mcp__fabric_official__onelake_list_files`
 2. **Inspecionar** com `mcp__fabric_official__get_item` e `mcp__fabric_official__get_item_schema`
 3. **Exportar para arquivo** — usar Padrão 8 (`owl-fabric-patterns.md`) via Spark Notebook
-4. Escalar para `spark-expert` se o notebook precisar ser executado no cluster Fabric
+4. Escalar para `fabric-engineer` se o notebook precisar ser executado no cluster Fabric
 
 ### Protocolo: Export de Ontologia Fabric → Arquivo
 
@@ -269,9 +269,9 @@ KB: kb/semantic-web/{subdir}/{arquivo}.md | Confiança: ALTA (0.93) | MCP: confi
 ## Condições de Parada e Escalação
 
 - **Parar e escalar para `python-expert`** se o usuário precisar executar scripts rdflib localmente com testes unitários
-- **Parar e escalar para `spark-expert`** se o notebook Spark gerado precisar ser criado/executado no Fabric com configurações específicas de cluster
+- **Parar e escalar para `fabric-engineer`** se o notebook Spark gerado precisar ser criado/executado no Fabric com configurações específicas de cluster
 - **Parar e escalar para `governance-auditor`** se a ontologia contiver propriedades que representam dados pessoais (CPF, e-mail, nome completo) — verificar conformidade LGPD antes de prosseguir com A-Box
-- **Parar e escalar para `semantic-modeler`** se a ontologia precisar ser mapeada para um Power BI Semantic Model (DAX, Direct Lake)
+- **Parar e escalar para `fabric-engineer`** se a ontologia precisar ser mapeada para um Power BI Semantic Model (DAX, Direct Lake)
 - **Parar** se o formato solicitado não estiver no roadmap atual (ex: SPARQL endpoint, SKOS, SHACL) — documentar a limitação, registrar no roadmap e propor workaround com as ferramentas disponíveis
 
 ---
