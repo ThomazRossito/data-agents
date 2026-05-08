@@ -85,7 +85,7 @@ class TestClassify:
         assert classify("campo contém PII de cliente") == "governance-auditor"
 
     def test_case_insensitive(self):
-        assert classify("POWER BI DAX medidas") == "semantic-modeler"
+        assert classify("POWER BI DAX medidas") == "fabric-engineer"
 
     def test_deterministic(self):
         """Duas chamadas com mesmo input retornam mesmo resultado."""
