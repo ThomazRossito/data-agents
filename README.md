@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-1.2.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.3.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Databricks-MCP-FF3621" alt="Databricks">
   <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4" alt="Fabric">
@@ -44,7 +44,7 @@
 
 ## O que é o Data Agents?
 
-**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **14 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
+**Data Agents** é um sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração nativa via **Model Context Protocol (MCP)** ao **Databricks** e **Microsoft Fabric**. Em vez de um único assistente genérico, o sistema orquestra **23 agentes especialistas** que operam diretamente nas suas plataformas de dados, cada um com seu domínio de conhecimento, ferramentas e regras corporativas declarativas.
 
 ---
 
@@ -120,16 +120,25 @@ python main.py         # ou: make run
 | **Supervisor** | `/plan` | — | Coordena, planeja e valida tudo contra a Constituição |
 | **Business Analyst** | `/brief`, `/ship` | T3 | Converte reuniões e briefings em backlog P0/P1/P2; gera SHIPPED docs |
 | **SQL Expert** | `/sql` | T1 | SQL (Spark SQL, T-SQL, KQL), schemas, Unity Catalog; auto-revisão de DDL/DML |
-| **Spark Expert** | `/spark` | T1 | PySpark, Delta Lake, pipelines Medallion |
+| **Spark Expert** | `/spark` | T1 | PySpark, Delta Lake, Spark Declarative Pipelines — geração de código |
 | **Pipeline Architect** | `/pipeline` | T1 | ETL/ELT, orquestração, cross-platform Databricks ↔ Fabric |
-| **dbt Expert** | `/dbt` | T2 | dbt Core: models, testes, snapshots, seeds, docs |
-| **Data Quality Steward** | `/quality` | T2 | Validação de dados, profiling, alertas, SLAs |
-| **Governance Auditor** | `/governance` | T2 | Auditoria de acessos, linhagem, PII, LGPD/GDPR |
-| **Semantic Modeler** | `/semantic`, `/genie` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards; Genie Health Check |
-| **Catalog Intelligence** | `/catalog` | T2 | Documenta catálogo com AI, calcula Data Maturity Score, Business Value Engine e alinhamento a indústria |
+| **AI Data Engineer** | `/ai` | T1 | RAG pipelines, Databricks Vector Search, embeddings, feature stores, LLMOps com MLflow, AI Functions |
+| **Streaming Engineer** | `/streaming` | T1 | Kafka, Apache Flink, Spark Structured Streaming, Fabric RTI Eventstream, arquiteturas event-driven |
+| **CDC Specialist** | `/cdc` | T1 | Change Data Capture com Debezium, AUTO CDC no LakeFlow/DLT, transactional outbox, CDC → Delta Lake |
 | **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion); auto-revisão de DDL |
 | **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
-| **Ontology Engineer** | `/ontology` | T2 | Design de ontologias OWL 2, import/export de arquivos OWL/RDF/Turtle no Fabric OneLake, conversão entre formatos, triples → Delta Lake |
+| **dbt Expert** | `/dbt` | T2 | dbt Core: models, testes, snapshots, seeds, docs |
+| **Data Quality Steward** | `/quality` | T2 | Validação de dados, profiling, alertas, SLAs |
+| **Governance Auditor** | `/governance` | T2 | Auditoria de acessos, linhagem, PII, LGPD/GDPR, RLS/OLS/Sensitivity Labels |
+| **Data Contracts Engineer** | `/contract` | T2 | Contratos ODCS, SLA de qualidade, schema governance, breaking change management |
+| **Schema Designer** | `/schema` | T2 | Star Schema, Data Vault 2.0, SCD types 1-6, grain definition, revisão de schemas |
+| **Semantic Modeler** | `/semantic`, `/genie` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards; Genie Health Check |
+| **Catalog Intelligence** | `/catalog` | T2 | Documenta catálogo com AI, calcula Data Maturity Score, Business Value Engine e alinhamento a indústria |
+| **Spark Diagnostics** | `/diagnose` | T2 | Diagnóstico de OOM, data skew, shuffle failure, hang; Spark UI analysis; performance tuning |
+| **Medallion Architect** | `/medallion` | T2 | Design de camadas Bronze/Silver/Gold, decisão de artefatos (STREAMING TABLE vs MATERIALIZED VIEW) |
+| **Cost Optimizer** | `/finops` | T2 | FinOps: análise DBU/CU, rightsizing de clusters, otimização Delta, forecasting de gastos |
+| **Data Mesh Architect** | `/mesh` | T2 | Data Mesh: domínios de negócio, Data Products, governança federada, avaliação de maturidade |
+| **Ontology Engineer** | `/ontology` | T2 | Design de ontologias OWL 2, import/export de arquivos OWL/RDF/Turtle no Fabric OneLake, triples → Delta Lake |
 | **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
 | **Geral** | `/geral` | T0 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
@@ -162,24 +171,48 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 
 | Comando | Descrição |
 |---------|-----------|
+**Agentes Especialistas:**
+
+| Comando | Descrição |
+|---------|-----------|
 | `/sql <query>` | SQL direto para o sql-expert |
-| `/spark <tarefa>` | PySpark/DLT direto para o spark-expert |
+| `/spark <tarefa>` | PySpark/LakeFlow direto para o spark-expert (geração de código) |
 | `/pipeline <tarefa>` | Pipeline ETL direto para o pipeline-architect |
+| `/streaming <tarefa>` | Kafka, Flink, Spark Structured Streaming, Fabric RTI — streaming-engineer |
+| `/ai <tarefa>` | RAG pipelines, Vector Search, embeddings, LLMOps — ai-data-engineer |
+| `/cdc <tarefa>` | Change Data Capture com Debezium, AUTO CDC no LakeFlow — cdc-specialist |
 | `/dbt <tarefa>` | dbt Core direto para o dbt-expert |
-| `/quality <tarefa>` | Qualidade de dados direta |
-| `/governance <tarefa>` | Auditoria e governança direta |
-| `/semantic <tarefa>` | Modelagem semântica direta |
+| `/quality <tarefa>` | Qualidade de dados — data-quality-steward |
+| `/governance <tarefa>` | Auditoria, linhagem, PII, LGPD/GDPR, RLS/OLS — governance-auditor |
+| `/contract <tarefa>` | Data Contracts ODCS, SLA definition, schema governance — data-contracts-engineer |
+| `/schema <tarefa>` | Star Schema, Data Vault 2.0, SCD types, grain — schema-designer |
+| `/semantic <tarefa>` | DAX, Direct Lake, Metric Views — semantic-modeler |
+| `/diagnose <problema>` | Diagnóstico Spark: OOM, skew, shuffle, hang — spark-diagnostics |
+| `/medallion <tarefa>` | Design de camadas Bronze/Silver/Gold — medallion-architect |
+| `/finops <tarefa>` | FinOps: custo DBU/CU, rightsizing, otimização Delta — cost-optimizer |
+| `/mesh <tarefa>` | Data Mesh: domínios, Data Products, governança federada — data-mesh-architect |
 | `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
-| `/python <tarefa>` | Python puro direto para o python-expert |
-| `/ontology <tarefa>` | Web semântica: design OWL 2, import/export OneLake, conversão de formatos, triples → Delta |
+| `/python <tarefa>` | Python puro — python-expert |
+| `/ontology <tarefa>` | OWL 2, import/export OneLake, triples → Delta — ontology-engineer |
 | `/monitor <pergunta>` | Q&A sobre alertas do daemon de monitoramento de negócio |
 | `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
+| `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |
+
+**Catalog Intelligence:**
+
+| Comando | Descrição |
+|---------|-----------|
 | `/catalog comments <schema>` | Gera comentários de AI para tabelas e colunas de um schema |
 | `/catalog scan [schema]` | Calcula Data Maturity Score (0–100, A–F) e exporta relatório em `output/catalog/` |
 | `/catalog discover [schema]` | Descobre casos de uso de negócio para tabelas existentes |
 | `/catalog industry <schema>` | Alinha tabelas a KPIs e casos de uso da indústria detectada |
 | `/catalog value [schema]` | Business Value Engine: ranking de tabelas por valor com custo estimado de downtime |
+
+**Orquestração e Sessão:**
+
+| Comando | Descrição |
+|---------|-----------|
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |
 | `/ship <feature>` | Gera SHIPPED doc — decisões, trade-offs e próximos passos de uma feature entregue |
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
@@ -187,7 +220,6 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/party <query>` | Multi-agente paralelo (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
 | `/workflow <wf-id> <query>` | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
 | `/fabric <tarefa>` | Pipeline Architect com foco em Microsoft Fabric |
-| `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |
 | `/health` | Status das plataformas configuradas |
 | `/status` | Estado da sessão atual |
 | `/memory <query>` | Consulta à memória persistente (`/memory clear` para limpar com confirmação) |
@@ -503,7 +535,7 @@ make health-fabric
 Com 8+ anos em Engenharia e Arquitetura de Dados, atua na intersecção entre Big Data, Arquitetura Lakehouse e Agentic AI — aplicando agentes autônomos e GenAI no ciclo completo de dados: pipelines, discovery, migrações, governança e orquestração autônoma. Certificado 10x (Databricks 5x · Azure 4x · AWS 1x).
 
 **Projetos open-source:**
-- 🤖 **Data Agents** — framework de orquestração multi-agente para dados corporativos com 14 agentes especialistas, integrações nativas Databricks + Fabric via MCP e protocolo DOMA
+- 🤖 **Data Agents** — framework de orquestração multi-agente para dados corporativos com 23 agentes especialistas, integrações nativas Databricks + Fabric via MCP e protocolo DOMA
 - 🧭 **SifTools** — engenharia de contexto via pruning semântico de tools por embeddings: entrega exatamente os MCPs que cada agente precisa, sem custo extra de inferência → [github.com/ThomazRossito/siftools](https://github.com/ThomazRossito/siftools)
 
 > *"Dados sem estratégia são apenas ruído. Agentes sem governança são apenas caos."*
