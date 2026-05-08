@@ -1,8 +1,8 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 14 agentes especialistas
-em Engenharia, Qualidade, Governança, Análise de Dados e Web Semântica.
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 23 agentes especialistas
+em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
 
 ---
 
@@ -247,6 +247,15 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | ontology-engineer | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql |
 | python-expert | context7 |
 | geral | *(nenhum — resposta direta sem MCP)* |
+| ai-data-engineer | context7, tavily, databricks |
+| streaming-engineer | context7, tavily, databricks, fabric_rti |
+| cdc-specialist | context7, tavily, databricks, migration_source, postgres |
+| data-contracts-engineer | context7, databricks, fabric_sql, postgres, memory_mcp |
+| schema-designer | context7, databricks, fabric_sql |
+| cost-optimizer | databricks, fabric, fabric_community, tavily |
+| data-mesh-architect | context7, tavily, databricks, memory_mcp |
+| spark-diagnostics | databricks |
+| medallion-architect | context7, databricks, fabric_sql |
 
 > MCPs sem credenciais (context7, memory_mcp) são ativados automaticamente.
 > Os demais requerem variáveis de ambiente configuradas no `.env`.
@@ -324,6 +333,15 @@ MEMORY_CAPTURE_ENABLED=true
 | `/party <query>` | — | Multi-agente paralelo: perspectivas independentes (flags: --quality, --arch, --engineering, --migration, --full) |
 | `/workflow <wf-id> <query>` | — | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
 | `/geral <pergunta>` | — | Resposta direta sem Supervisor (zero agentes, ~95% mais barato) |
+| `/streaming <tarefa>` | streaming-engineer | Kafka, Flink, Spark Structured Streaming, Fabric RTI direto |
+| `/ai <tarefa>` | ai-data-engineer | RAG, Vector Search, embeddings, LLMOps, AI Functions direto |
+| `/cdc <tarefa>` | cdc-specialist | CDC com Debezium, Kafka Connect, AUTO CDC INTO direto |
+| `/schema <tarefa>` | schema-designer | Star Schema, Data Vault 2.0, SCD, modelagem dimensional |
+| `/finops <tarefa>` | cost-optimizer | Análise DBU/CU, rightsizing, otimização de armazenamento Delta |
+| `/mesh <tarefa>` | data-mesh-architect | Data Mesh: domínios, Data Products, governança federada |
+| `/diagnose <tarefa>` | spark-diagnostics | Diagnóstico de jobs Spark: OOM, skew, shuffle, hangs |
+| `/medallion <tarefa>` | medallion-architect | Design Medallion: Bronze/Silver/Gold, artefatos, evolução |
+| `/contract <tarefa>` | data-contracts-engineer | Data Contracts ODCS, SLA, schema evolution, breaking changes |
 
 ---
 
@@ -425,9 +443,11 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
 | `registry/_template.md` | — | Template para criar novos agentes |
 
-**14 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
+**23 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
 `dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `ontology-engineer`, `pipeline-architect`,
-`python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`.
+`python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`,
+`ai-data-engineer`, `streaming-engineer`, `cdc-specialist`, `data-contracts-engineer`, `schema-designer`,
+`cost-optimizer`, `data-mesh-architect`, `spark-diagnostics`, `medallion-architect`.
 
 ### config/ — Configuração Central
 
