@@ -1,7 +1,7 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 22 agentes especialistas
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 14 agentes especialistas
 em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
 
 ---
@@ -35,28 +35,23 @@ make health-fabric
 ```
 Usuário → main.py / ui/chainlit_app.py
   └─► Supervisor (claude-sonnet-4-6, sem MCP direto)
-        ├─► business-analyst          [T3] — intake de requisitos, /brief
-        ├─► sql-expert                [T1] — SQL, schemas, catálogos
-        ├─► spark-expert              [T1] — PySpark, DLT, Delta Lake
-        ├─► python-expert             [T1] — Python puro: pacotes, APIs, CLIs, testes
-        ├─► pipeline-architect        [T1] — ETL/ELT cross-platform
-        ├─► migration-expert          [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
-        ├─► ai-data-engineer          [T1] — RAG, Vector Search, embeddings, LLMOps, AI Functions
-        ├─► streaming-engineer        [T1] — Kafka, Flink, Spark Streaming, Fabric RTI
-        ├─► cdc-specialist            [T1] — Debezium, Kafka Connect, AUTO CDC INTO
-        ├─► dbt-expert                [T2] — dbt Core: models, testes, snapshots
-        ├─► data-quality-steward      [T2] — validação, profiling, SLA
-        ├─► governance-auditor        [T2] — auditoria, LGPD, linhagem, RLS/OLS
-        ├─► semantic-modeler          [T2] — modelos semânticos, DAX, Genie
-        ├─► catalog-intelligence      [T2] — comentários AI, Data Maturity Score (/catalog)
-        ├─► ontology-engineer         [T2] — ontologias OWL 2, triples → Delta (/ontology)
-        ├─► data-contracts-engineer   [T2] — ODCS, SLA contratual, breaking changes (/contract)
-        ├─► schema-designer           [T2] — Star Schema, Data Vault 2.0, SCD (/schema)
-        ├─► cost-optimizer            [T2] — DBU/CU, rightsizing, FinOps (/finops)
-        ├─► data-mesh-architect       [T2] — Data Mesh, Data Products (/mesh)
-        ├─► spark-diagnostics         [T2] — OOM, skew, shuffle, DLT failures (/diagnose)
-        ├─► medallion-architect       [T2] — Bronze/Silver/Gold design (/medallion)
-        └─► geral                     [T0] — perguntas conceituais, zero MCP (Haiku)
+        ├─► Tier 1 — Engineering Core
+        │   ├─► databricks-engineer  [T1] — SQL, PySpark, LakeFlow/DLT, CDC, Jobs, diagnóstico Spark, Genie, AI/BI, KA/MAS
+        │   ├─► databricks-ai        [T1] — RAG, Vector Search, LLMOps, Kafka/Flink, Spark Streaming, AI Functions
+        │   ├─► fabric-engineer      [T1] — Fabric: Medallion, Star Schema, Semantic Model, DAX, governança, FinOps
+        │   ├─► migration-expert     [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
+        │   └─► python-expert        [T1] — Python puro: pacotes, APIs, CLIs, testes
+        ├─► Tier 2 — Specialized
+        │   ├─► dbt-expert           [T2] — dbt Core: models, testes, snapshots
+        │   ├─► data-quality-steward [T2] — qualidade cross-platform: expectations, profiling, SLA
+        │   ├─► governance-auditor   [T2] — governança cross-platform: LGPD, PII, linhagem, RLS/OLS
+        │   ├─► data-contracts-engineer [T2] — ODCS, SLA contratual, breaking changes (/contract)
+        │   ├─► data-mesh-architect  [T2] — Data Mesh, Data Products, governança federada (/mesh)
+        │   ├─► fabric-rti           [T2] — Fabric RTI: Eventhouse, KQL, Eventstream, Activator
+        │   └─► fabric-ontology      [T2] — OWL 2, RDF, SPARQL, Fabric IQ Ontology (/ontology)
+        └─► Tier 3 — Conversational & Intake
+            ├─► business-analyst     [T3] — intake de requisitos, /brief
+            └─► geral                [T0] — perguntas conceituais, zero MCP (Haiku)
 ```
 
 **Regra central:** O Supervisor **nunca** executa código, acessa MCP ou gera SQL/PySpark.
@@ -245,28 +240,20 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 
 | Agente | MCPs Configurados |
 |--------|-------------------|
-| business-analyst | tavily, firecrawl |
-| catalog-intelligence | databricks, fabric, fabric_community, fabric_official, fabric_sql |
-| spark-expert | context7 |
-| sql-expert | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres |
-| pipeline-architect | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, github, firecrawl, memory_mcp |
+| databricks-engineer | databricks, databricks_genie, context7, migration_source, postgres, memory_mcp, github, tavily |
+| databricks-ai | databricks, context7, tavily |
+| fabric-engineer | fabric, fabric_community, fabric_official, fabric_sql, fabric_semantic |
+| fabric-rti | fabric_rti |
+| fabric-ontology | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql, fabric_ontology |
+| migration-expert | migration_source, databricks, fabric, fabric_sql, context7 |
+| python-expert | context7 |
 | dbt-expert | context7, postgres |
 | data-quality-steward | databricks, fabric, fabric_community, fabric_rti, postgres |
 | governance-auditor | databricks, fabric, fabric_community, tavily, postgres, memory_mcp |
-| semantic-modeler | databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7 |
-| migration-expert | migration_source, databricks, fabric, fabric_sql, context7 |
-| ontology-engineer | context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql, fabric_ontology |
-| python-expert | context7 |
-| geral | *(nenhum — resposta direta sem MCP)* |
-| ai-data-engineer | context7, tavily, databricks |
-| streaming-engineer | context7, tavily, databricks, fabric_rti |
-| cdc-specialist | context7, tavily, databricks, migration_source, postgres |
 | data-contracts-engineer | context7, databricks, fabric_sql, postgres, memory_mcp |
-| schema-designer | context7, databricks, fabric_sql |
-| cost-optimizer | databricks, fabric, fabric_community, tavily |
 | data-mesh-architect | context7, tavily, databricks, memory_mcp |
-| spark-diagnostics | databricks |
-| medallion-architect | context7, databricks, fabric_sql |
+| business-analyst | tavily, firecrawl |
+| geral | *(nenhum — resposta direta sem MCP)* |
 
 > MCPs sem credenciais (context7, memory_mcp) são ativados automaticamente.
 > Os demais requerem variáveis de ambiente configuradas no `.env`.
@@ -320,20 +307,21 @@ MEMORY_CAPTURE_ENABLED=true
 | Comando | Agente Alvo | Uso |
 |---------|-------------|-----|
 | `/brief <texto>` | business-analyst | Converte transcript/briefing em backlog estruturado |
-| `/sql <query>` | sql-expert | SQL direto sem passar pelo Supervisor |
-| `/spark <tarefa>` | spark-expert | PySpark/DLT direto |
-| `/pipeline <tarefa>` | pipeline-architect | Pipeline ETL direto |
+| `/sql <query>` | databricks-engineer | SQL/Spark SQL direto no Databricks |
+| `/spark <tarefa>` | databricks-engineer | PySpark/DLT/LakeFlow direto |
+| `/pipeline <tarefa>` | databricks-engineer | Pipeline ETL Databricks direto |
+| `/fabric <tarefa>` | fabric-engineer | Qualquer tarefa Microsoft Fabric |
 | `/dbt <tarefa>` | dbt-expert | dbt Core direto: models, testes, snapshots, docs |
-| `/fabric <tarefa>` | pipeline-architect | Foco em Fabric |
 | `/plan <objetivo>` | Supervisor + DOMA Full | Planejamento com thinking habilitado (8k tokens) |
-| `/quality <tarefa>` | data-quality-steward | Qualidade de dados direta |
-| `/governance <tarefa>` | governance-auditor | Governança/auditoria direta |
-| `/semantic <tarefa>` | semantic-modeler | Modelagem semântica direta |
+| `/quality <tarefa>` | data-quality-steward | Qualidade de dados cross-platform direta |
+| `/governance <tarefa>` | governance-auditor | Governança/auditoria cross-platform direta |
+| `/semantic <tarefa>` | fabric-engineer | Modelagem semântica, DAX, Direct Lake no Fabric |
 | `/migrate <fonte> para <destino>` | migration-expert | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | python-expert | Python puro: pacotes, testes, APIs, CLIs, automação |
-| `/genie <tarefa>` | semantic-modeler | Criar/atualizar Genie Spaces no Databricks |
-| `/dashboard <tarefa>` | semantic-modeler | Criar/publicar AI/BI Dashboards |
-| `/ontology <tarefa>` | ontology-engineer | OWL 2: design, import/export Fabric OneLake, conversão de formatos, triples → Delta |
+| `/genie <tarefa>` | databricks-engineer | Criar/atualizar Genie Spaces no Databricks |
+| `/dashboard <tarefa>` | databricks-engineer | Criar/publicar AI/BI Dashboards no Databricks |
+| `/ontology <tarefa>` | fabric-ontology | OWL 2: design, import/export Fabric OneLake, triples → Delta |
+| `/catalog <subcmd>` | fabric-engineer | Documentar/avaliar catálogo de dados Fabric |
 | `/review <artefato>` | Supervisor | Review de código/pipeline |
 | `/health` | — | Status das plataformas configuradas |
 | `/status` | — | Estado da sessão atual |
@@ -342,16 +330,17 @@ MEMORY_CAPTURE_ENABLED=true
 | `/resume [last\|<id>]` | — | Retoma sessão anterior reconstruindo contexto do transcript |
 | `/party <query>` | — | Multi-agente paralelo: perspectivas independentes (flags: --quality, --arch, --engineering, --migration, --full) |
 | `/workflow <wf-id> <query>` | — | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
-| `/geral <pergunta>` | — | Resposta direta sem Supervisor (zero agentes, ~95% mais barato) |
-| `/streaming <tarefa>` | streaming-engineer | Kafka, Flink, Spark Structured Streaming, Fabric RTI direto |
-| `/ai <tarefa>` | ai-data-engineer | RAG, Vector Search, embeddings, LLMOps, AI Functions direto |
-| `/cdc <tarefa>` | cdc-specialist | CDC com Debezium, Kafka Connect, AUTO CDC INTO direto |
-| `/schema <tarefa>` | schema-designer | Star Schema, Data Vault 2.0, SCD, modelagem dimensional |
-| `/finops <tarefa>` | cost-optimizer | Análise DBU/CU, rightsizing, otimização de armazenamento Delta |
+| `/geral <pergunta>` | geral | Resposta direta sem Supervisor (zero MCP, ~95% mais barato) |
+| `/streaming <tarefa>` | databricks-ai | Kafka, Flink, Spark Structured Streaming direto |
+| `/ai <tarefa>` | databricks-ai | RAG, Vector Search, embeddings, LLMOps, AI Functions direto |
+| `/cdc <tarefa>` | databricks-engineer | CDC com Debezium, Kafka Connect, AUTO CDC INTO direto |
+| `/schema <tarefa>` | fabric-engineer | Star Schema, Data Vault 2.0, SCD, modelagem dimensional no Fabric |
+| `/finops <tarefa>` | fabric-engineer | FinOps Fabric: Capacity Units, rightsizing, análise de custo |
 | `/mesh <tarefa>` | data-mesh-architect | Data Mesh: domínios, Data Products, governança federada |
-| `/diagnose <tarefa>` | spark-diagnostics | Diagnóstico de jobs Spark: OOM, skew, shuffle, hangs |
-| `/medallion <tarefa>` | medallion-architect | Design Medallion: Bronze/Silver/Gold, artefatos, evolução |
+| `/diagnose <tarefa>` | databricks-engineer | Diagnóstico de jobs Spark: OOM, skew, shuffle, hangs |
+| `/medallion <tarefa>` | fabric-engineer | Design Medallion Fabric: Bronze/Silver/Gold, artefatos |
 | `/contract <tarefa>` | data-contracts-engineer | Data Contracts ODCS, SLA, schema evolution, breaking changes |
+| `/ship <título>` | business-analyst | Arquivar tarefa concluída com lições aprendidas |
 
 ---
 
@@ -387,7 +376,7 @@ ou qualquer conteúdo dinâmico. O arquivo deve ser byte-idêntico a cada execu�
 | S3 | KB-First: consultar `kb/` ANTES de planejar qualquer tarefa |
 | S4 | Apresentar plano ao usuário ANTES de delegação múltipla |
 | S5 | Nunca expor tokens/secrets em artefatos ou respostas |
-| S6 | Qualidade → data-quality-steward. Governança → governance-auditor. NUNCA pipeline-architect. |
+| S6 | Qualidade → data-quality-steward. Governança → governance-auditor. NUNCA delegue governança a agentes de engenharia. |
 | S7 | Clarity Checkpoint antes de tarefas complexas (score mínimo 3/5) |
 
 Arquivo completo: `kb/constitution.md`
@@ -453,11 +442,10 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
 | `registry/_template.md` | — | Template para criar novos agentes |
 
-**22 agentes no registry:** `business-analyst`, `catalog-intelligence`, `data-quality-steward`,
-`dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `ontology-engineer`, `pipeline-architect`,
-`python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`,
-`ai-data-engineer`, `streaming-engineer`, `cdc-specialist`, `data-contracts-engineer`, `schema-designer`,
-`cost-optimizer`, `data-mesh-architect`, `spark-diagnostics`, `medallion-architect`.
+**14 agentes no registry:** `databricks-engineer`, `databricks-ai`, `fabric-engineer`,
+`fabric-rti`, `fabric-ontology`, `migration-expert`, `python-expert`, `dbt-expert`,
+`data-quality-steward`, `governance-auditor`, `data-contracts-engineer`, `data-mesh-architect`,
+`business-analyst`, `geral`.
 
 ### config/ — Configuração Central
 
