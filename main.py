@@ -71,7 +71,7 @@ from hooks.transcript_hook import append_turn as _append_transcript_turn
 from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
 from memory.manager import MemoryManager
-from agents.loader import preload_registry
+from config.agent_meta import get_agent_tiers as _get_agent_tiers
 from commands.geral import run_geral_query
 from commands.party import run_party_query, parse_party_args
 
@@ -130,42 +130,11 @@ def _signal_handler(signum: int, _frame: object) -> None:
 
 # ─── Mapeamento de tool → label amigável para o usuário ──────────────
 
-# Pré-carrega apenas o frontmatter (fase rápida) para lookup de tier em tempo real.
-_AGENT_TIERS: dict[str, str] = {
-    name: meta.tier for name, meta in preload_registry().items() if meta.tier
-}
+# Tier de cada agente — lido dinamicamente do registry (evita dessincronização)
+_AGENT_TIERS: dict[str, str] = _get_agent_tiers()
 
-TOOL_LABELS: dict[str, str] = {
-    # Ferramentas do Supervisor
-    "Agent": "🤖 Delegando para agente especialista",
-    "Read": "📖 Lendo arquivo",
-    "Grep": "🔍 Buscando conteúdo",
-    "Glob": "📂 Listando arquivos",
-    "Bash": "⚙️  Executando comando",
-    "AskUserQuestion": "❓ Aguardando resposta do usuário",
-    # Ferramentas MCP — Databricks
-    "mcp__databricks__execute_sql": "🗄️  Executando SQL no Databricks",
-    "mcp__databricks__list_catalogs": "📋 Listando catálogos do Unity Catalog",
-    "mcp__databricks__list_schemas": "📋 Listando schemas",
-    "mcp__databricks__list_tables": "📋 Listando tabelas",
-    "mcp__databricks__describe_table": "🔎 Inspecionando tabela",
-    "mcp__databricks__get_table_schema": "🔎 Obtendo schema da tabela",
-    "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline LakeFlow",
-    "mcp__databricks__upload_to_volume": "⬆️  Enviando arquivo para Volume",
-    "mcp__databricks__list_volume_files": "📂 Listando arquivos no Volume",
-    "mcp__databricks__run_job_now": "🚀 Executando Job Databricks",
-    "mcp__databricks__start_pipeline": "🚀 Iniciando Pipeline Databricks",
-    "mcp__databricks__get_pipeline": "📊 Consultando status do Pipeline",
-    # Ferramentas MCP — Fabric
-    "mcp__fabric_official__list_workspaces": "📋 Listando workspaces do Fabric",
-    "mcp__fabric_official__list_lakehouses": "📋 Listando Lakehouses",
-    "mcp__fabric_official__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
-    "mcp__fabric_official__onelake_list_files": "📂 Listando arquivos no OneLake",
-    # Ferramentas MCP — Fabric RTI
-    "mcp__fabric_rti__kusto_query": "🔍 Executando query KQL",
-    "mcp__fabric_rti__kusto_command": "⚙️  Executando comando KQL",
-    "mcp__fabric_rti__kusto_list_databases": "📋 Listando databases do Eventhouse",
-}
+# Labels de tools — importados de ui/ui_config.py (fonte única de verdade)
+from ui.ui_config import TOOL_LABELS  # noqa: E402
 
 
 def _get_tool_label(tool_name: str) -> str:

@@ -81,6 +81,16 @@ TOOL_LABELS: dict[str, str] = {
     "mcp__migration_source__get_ddl": "🔄 Extraindo DDL da origem",
     "mcp__migration_source__list_tables": "🔄 Inventário do banco de origem",
     "mcp__migration_source__get_table_stats": "🔄 Estatísticas do banco de origem",
+    # Fabric Official — OneLake file ops
+    "mcp__fabric_official__list_lakehouses": "📋 Listando Lakehouses",
+    "mcp__fabric_official__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
+    "mcp__fabric_official__onelake_list_files": "📂 Listando arquivos no OneLake",
+    # Databricks — pipeline e volume ops
+    "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline LakeFlow",
+    "mcp__databricks__upload_to_volume": "⬆️  Enviando arquivo para Volume",
+    "mcp__databricks__list_volume_files": "📂 Listando arquivos no Volume",
+    # Fabric RTI
+    "mcp__fabric_rti__kusto_command": "⚙️  Executando comando KQL",
 }
 
 
@@ -118,31 +128,10 @@ AGENT_DISPLAY_NAMES: dict[str, str] = {
     "geral": "Geral",
 }
 
-# Tier de cada agente (para badges no dashboard)
-AGENT_TIERS: dict[str, str] = {
-    "sql-expert": "T1",
-    "spark-expert": "T1",
-    "pipeline-architect": "T1",
-    "python-expert": "T1",
-    "migration-expert": "T1",
-    "ai-data-engineer": "T1",
-    "streaming-engineer": "T1",
-    "cdc-specialist": "T1",
-    "data-quality-steward": "T2",
-    "governance-auditor": "T2",
-    "semantic-modeler": "T2",
-    "dbt-expert": "T2",
-    "catalog-intelligence": "T2",
-    "ontology-engineer": "T2",
-    "data-contracts-engineer": "T2",
-    "schema-designer": "T2",
-    "cost-optimizer": "T2",
-    "data-mesh-architect": "T2",
-    "spark-diagnostics": "T2",
-    "medallion-architect": "T2",
-    "business-analyst": "T3",
-    "geral": "T0",
-}
+# Tier de cada agente — lido dinamicamente do registry para evitar dessincronização
+from config.agent_meta import get_agent_tiers as _get_agent_tiers  # noqa: E402
+
+AGENT_TIERS: dict[str, str] = _get_agent_tiers()
 
 TIER_COLORS: dict[str, str] = {
     "T1": "#3FB950",  # verde (core engineering)

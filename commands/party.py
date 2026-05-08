@@ -262,31 +262,10 @@ def parse_party_args(user_input: str) -> tuple[list[str], str]:
     return PARTY_GROUPS["default"], rest
 
 
-# Mapa de tier por agente para uso no Party Mode (sem MCPs — respostas conceituais)
-_AGENT_TIERS: dict[str, str] = {
-    "sql-expert": "T1",
-    "spark-expert": "T1",
-    "pipeline-architect": "T1",
-    "python-expert": "T1",
-    "migration-expert": "T1",
-    "ai-data-engineer": "T1",
-    "streaming-engineer": "T1",
-    "cdc-specialist": "T1",
-    "dbt-expert": "T2",
-    "data-quality-steward": "T2",
-    "governance-auditor": "T2",
-    "semantic-modeler": "T2",
-    "catalog-intelligence": "T2",
-    "ontology-engineer": "T2",
-    "data-contracts-engineer": "T2",
-    "schema-designer": "T2",
-    "cost-optimizer": "T2",
-    "data-mesh-architect": "T2",
-    "spark-diagnostics": "T2",
-    "medallion-architect": "T2",
-    "business-analyst": "T3",
-    "geral": "T0",
-}
+# Mapa de tier por agente — lido dinamicamente do registry para evitar dessincronização
+from config.agent_meta import get_agent_tiers as _get_agent_tiers  # noqa: E402
+
+_AGENT_TIERS: dict[str, str] = _get_agent_tiers()
 
 # Número de turns padrão por tier para Party Mode (respostas diretas, sem MCPs)
 _PARTY_MAX_TURNS: dict[str, int] = {"T1": 3, "T2": 2, "T3": 1}

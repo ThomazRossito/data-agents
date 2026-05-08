@@ -76,7 +76,8 @@ class TestPlatformCredentials:
         # MCPs sem credenciais obrigatórias são sempre ready — excluídos desta verificação.
         # context7: plano free não requer credenciais (repos públicos).
         # memory_mcp: knowledge graph local, sem autenticação.
-        CREDENTIAL_FREE_MCPS = {"context7", "memory_mcp"}
+        # fabric_ontology: auth via Azure CLI (az login), sem env vars extras.
+        CREDENTIAL_FREE_MCPS = {"context7", "memory_mcp", "fabric_ontology"}
         for platform, info in status.items():
             if platform != "anthropic" and platform not in CREDENTIAL_FREE_MCPS:
                 assert not info["ready"], f"{platform} deveria estar not ready"
