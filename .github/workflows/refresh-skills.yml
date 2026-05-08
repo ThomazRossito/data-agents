@@ -1,0 +1,106 @@
+name: Refresh Skills — Databricks & Fabric
+
+on:
+  schedule:
+    # Toda segunda-feira às 6h UTC (3h BRT) — após o fim de semana de releases
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      domains:
+        description: "Domínios a atualizar (separados por vírgula)"
+        required: false
+        default: "databricks,fabric"
+      force:
+        description: "Forçar refresh mesmo de skills recentes"
+        required: false
+        default: "false"
+        type: boolean
+      dry_run:
+        description: "Apenas listar skills sem atualizar"
+        required: false
+        default: "false"
+        type: boolean
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  refresh:
+    name: Refresh Skills
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: dev
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Run skill refresh
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SKILL_REFRESH_ENABLED: "true"
+          # Em execução agendada: sempre force. Em manual: usa o input.
+          SKILL_REFRESH_INTERVAL_DAYS: ${{ github.event_name == 'schedule' && '0' || (inputs.force == 'true' && '0' || '3') }}
+        run: |
+          DOMAINS="${{ inputs.domains || 'databricks,fabric' }}"
+          ARGS="--domains ${DOMAINS}"
+
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            ARGS="${ARGS} --dry-run"
+          fi
+
+          if [ "${{ github.event_name }}" = "schedule" ] || [ "${{ inputs.force }}" = "true" ]; then
+            ARGS="${ARGS} --force"
+          fi
+
+          echo "Rodando: python scripts/refresh_skills.py ${ARGS}"
+          python scripts/refresh_skills.py ${ARGS}
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git diff --quiet skills/ && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
+          CHANGED_FILES=$(git diff --name-only skills/ | wc -l | tr -d ' ')
+          echo "count=${CHANGED_FILES}" >> $GITHUB_OUTPUT
+          git diff --name-only skills/ | head -30
+
+      - name: Commit updated skills
+        if: steps.changes.outputs.changed == 'true' && inputs.dry_run != 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add skills/
+          git commit -m "chore(skills): refresh automático de skills [${{ inputs.domains || 'databricks,fabric' }}] — ${{ steps.changes.outputs.count }} arquivo(s) atualizado(s)
+
+          Executado via GitHub Actions (schedule/workflow_dispatch).
+          Upstream: databricks-solutions/ai-dev-kit"
+
+      - name: Push to dev
+        if: steps.changes.outputs.changed == 'true' && inputs.dry_run != 'true'
+        run: git push origin dev
+
+      - name: Summary
+        run: |
+          if [ "${{ steps.changes.outputs.changed }}" = "true" ]; then
+            echo "### ✅ Skills atualizadas" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**${{ steps.changes.outputs.count }} arquivo(s) modificado(s)** nos domínios: \`${{ inputs.domains || 'databricks,fabric' }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Commit enviado para branch \`dev\`." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### ℹ️ Nenhuma alteração" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Todas as skills já estão atualizadas." >> $GITHUB_STEP_SUMMARY
+          fi
