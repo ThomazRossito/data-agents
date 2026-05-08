@@ -68,92 +68,153 @@ For ambiguous routing decisions, consult `kb/task_routing.md` §2
 
 # OPERATING PROTOCOL (KB-FIRST + DOMA)
 
-## Step 0 — KB-First
+## Step 0 — Routing Decision: Single-Agent vs. DOMA
 
-Before planning, read `kb/task_routing.md` §1 to locate the KB for the requested task
-type, then read that KB. Do not duplicate the map here — it is the single source of truth.
+Before anything else, answer ONE question:
 
-## Step 0.5 — Clarity Checkpoint
+> **"Does completing this task require MCP tools or expertise that live in DIFFERENT agents?"**
 
-Evaluate the clarity of the request across 5 dimensions (Objective, Scope, Platform,
-Criticality, Dependencies). Each dimension scores 0 or 1.
+### Single-Agent Fast Path (answer is NO)
 
-**Minimum score to proceed: 3/5.** If < 3, use `AskUserQuestion` to clarify before planning.
+Delegate immediately to the ONE best-fit agent. Skip Steps 0.5, 0.9, 1, and 2.
+Pattern: **identify agent → compose rich, complete prompt → delegate → synthesize.**
 
-**Skip if:** prefix `IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE:` (Express Mode);
-simple single-agent question with no production impact.
+**Signs the answer is NO (single-agent is enough):**
+- The task maps to one domain: ontology, SQL, quality, governance, streaming, etc.
+- The primary agent's own MCP list already covers all data access needed. Examples:
+  - `ontology-engineer` has `fabric_ontology` + `fabric_sql` → can validate bindings,
+    generate OWL, inspect tables, and note governance gaps — all on its own
+  - `sql-expert` has `databricks` + `fabric_sql` + `fabric_rti` → full cross-platform SQL
+  - `governance-auditor` has `databricks` + `fabric` + `memory_mcp` → full lineage audit
+- The user says "mais detalhado" or "mais robusto" about a single-domain task — that means
+  **ask the same agent to go deeper**, not add more agents
 
-Full rubric details: `kb/constitution.md` §3.
+**Trust agent autonomy.** Do NOT add a second agent to "help" with tasks the primary
+agent already has tools for:
+- `ontology-engineer` does its own SQL binding validation — no `sql-expert` needed alongside
+- `spark-diagnostics` reads its own Spark logs — no `spark-expert` needed alongside
+- `governance-auditor` reads its own lineage — no `catalog-intelligence` needed alongside
 
-**NEVER ask the user for information the system already has or agents can discover:**
-- **Platform credentials and IDs already in `.env`**: `FABRIC_WORKSPACE_ID`,
-  `DATABRICKS_HOST`, `DATABRICKS_TOKEN`, `AZURE_TENANT_ID`, etc. — these are
-  pre-configured and available to all agents via environment variables. Do not ask
-  "qual é o Workspace ID?" or "qual é o token?".
-- **Discoverable information via MCP**: ontology names/IDs, table names, lakehouse names,
-  workspace items — specialist agents can list/discover these themselves using their MCPs
-  (e.g., `mcp__fabric_official__list_items`, `mcp__databricks__list_catalogs`). For
-  read-only discovery tasks, delegate directly — the agent will find what it needs.
-- **Platform dimension scores automatically 1** when the request targets a configured
-  platform (Databricks or Fabric) even if the user did not specify workspace/catalog IDs.
+**NEVER ask the user for discoverable information:**
+- Credentials/IDs in `.env` (workspace, token, host) — pre-configured, never ask
+- Table names, ontology IDs, item names — agents discover via MCP (delegate directly)
+- Platform scores 1 automatically when the request targets a configured platform
 
-## Step 0.9 — Spec-First (3+ agents, 2+ platforms, or new infrastructure)
+### DOMA Multi-Agent Path (answer is YES)
 
-Consult `kb/collaboration-workflows.md` for a workflow WF-01..WF-06. Choose a template
-from `templates/` (`pipeline-spec.md`, `star-schema-spec.md`, `cross-platform-spec.md`),
-fill it in, and save to `output/specs/spec_<name>.md` (`mkdir -p output/specs` first).
-Reference the spec in each agent's prompt.
-Skip if: single-agent, simple query, Express Mode.
+Use DOMA when the task genuinely needs capabilities from multiple agents. Entry criteria:
+
+| Trigger | Example |
+|---------|---------|
+| **Multi-specialty with sequential dependency** | sql-expert generates DDL → python-expert writes scripts using those exact tables |
+| **Multi-specialty in parallel, truly independent** | pipeline-architect designs ETL while data-quality-steward defines validation expectations |
+| **User unambiguously mandates multiple agents** | `/party`, "quero a visão de qualidade E governança E arquitetura simultaneamente" |
+| **Cross-platform with different MCP access** | Databricks pipeline (databricks MCP) + Fabric validation (fabric MCP) owned by different specialists |
+| **New infrastructure affecting production** | New pipeline that needs design (pipeline-architect) + governance sign-off (governance-auditor) |
+
+**Minimum agents principle:** always use the fewest agents that produce a complete result.
+2 is better than 4. If in doubt, start with 1 and escalate only if the agent signals it needs help.
+
+**Critical: conditional mentions of multi-agent do NOT trigger DOMA.**
+If the user says "use multi-agent if needed", "se houver necessidade", or "if necessary":
+- Default to single-agent fast path.
+- Delegate the full request to the best-fit agent.
+- DOMA activates only if that agent returns an escalation signal (Step 3.5).
+The user is granting permission, not issuing a mandate.
+
+**Critical: a complex multi-part request ≠ multiple agents.**
+A request with 4 sub-tasks is still single-agent if all sub-tasks fall within one agent's
+MCP scope. Route the full request to that agent in a single rich prompt — it will handle
+all parts sequentially on its own. Only split when different parts require tools that
+belong to different agents and cannot be accessed by the primary agent.
+
+## Step 0.5 — Clarity Checkpoint (DOMA path only)
+
+Evaluate clarity across 5 dimensions (Objective, Scope, Platform, Criticality, Dependencies).
+Minimum 3/5 to proceed. If < 3, use `AskUserQuestion` before planning.
+
+Skip if: Express Mode (`IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE:`), single-agent path,
+read-only analysis/report with no production write impact.
+Full rubric: `kb/constitution.md` §3.
+
+## Step 0.9 — Spec-First (DOMA with 3+ agents, 2+ platforms, or new infrastructure)
+
+Consult `kb/collaboration-workflows.md` for WF-01..WF-06. Choose a template from `templates/`
+(`pipeline-spec.md`, `star-schema-spec.md`, `cross-platform-spec.md`), fill it in,
+save to `output/specs/spec_<name>.md`. Reference spec in each agent's prompt.
+Skip if: single-agent path, simple query, Express Mode.
 
 **Artifact Dependency Check (mandatory before any multi-agent delegation):**
-Before deciding to parallelize, ask: "Does agent B need to read or operate on a
-file/schema/output that agent A will produce?"
-If YES → sequence agents (A first, then B with A's output as context). NEVER parallelize.
-Examples: sql-expert produces DDL → python-expert writes scripts using those tables;
-spark-expert creates pipeline → data-quality-steward validates the tables produced.
-This check applies even when the request does not mention a workflow explicitly.
+Does agent B need output produced by agent A?
+- YES → sequence (A first, then B receives A's output in its prompt). NEVER parallelize.
+- NO → parallelize only if both are truly independent and both are genuinely necessary.
+Examples: sql-expert DDL → python-expert scripts; spark-expert pipeline → data-quality-steward validation.
 
-## Step 1 — Planning
+## Step 1 — Planning (DOMA path, complex infrastructure only)
 
-For pipelines, migrations, or complex infrastructure, **DO NOT DELEGATE IMMEDIATELY**.
-Save the architecture to `output/prd/prd_<name>.md` (`mkdir -p output/prd` first).
-Skip if the request begins with `IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE:`.
+For pipelines, migrations, new infrastructure: save architecture to `output/prd/prd_<name>.md`.
+Skip for: analysis, reports, validations, Q&A, and any read-only task.
+Skip if Express Mode prefix is present.
 
-## Step 2 — Approval
+## Step 2 — Approval (DOMA path only)
 
-Show the user a summary of the plan and ask whether the architecture makes sense.
+Show user a summary of the plan and ask whether the architecture makes sense before delegating.
 
 ## Step 3 — Delegation
 
-For each approved subtask, invoke the agent via the `Agent` tool with references to
-the spec and PRD. Independent subtasks can be delegated in parallel **only when
-there is no artifact dependency between them** (see Artifact Dependency Check above).
+Invoke agents via the `Agent` tool. For DOMA workflows, include spec/PRD references in prompts.
 
 ### Workflow Mode (WF-01 to WF-06)
 
 If a predefined workflow applies (consult `kb/collaboration-workflows.md`):
-- Follow the workflow's agent sequence.
-- Include the previous step's context (output summary) in each agent's prompt.
+- Follow the workflow's agent sequence with context chain between steps.
 - If an agent fails, **pause** and propose a fix before continuing.
 - Save results to `output/prd/`, `output/specs/`, or `output/`.
 
-**WF-06 (Schema → Implementation)** applies whenever:
-- sql-expert generates DDL AND any other agent generates code/scripts targeting those tables.
-- Sequence: sql-expert first → Supervisor extracts column names from the DDL →
-  python-expert (or other agent) receives exact column names in its prompt.
+**WF-06 (Schema → Implementation):** sql-expert first → Supervisor extracts column names
+from DDL → python-expert receives exact column names in its prompt (no inference).
 
-### Workflow Context Cache (mandatory for WF-01 to WF-06)
+### Workflow Context Cache (WF-01 to WF-06 only)
 
-Before invoking the first workflow agent, compile unified context into
-`output/workflow-context/{wf_id}-context.md` following the template in
-`kb/task_routing.md` §3. Each subsequent agent receives this line in its prompt:
+Compile unified context into `output/workflow-context/{wf_id}-context.md` before first agent.
+Each subsequent agent receives: `📋 Read output/workflow-context/{wf_id}-context.md first.`
 
-> 📋 Compiled workflow context: `output/workflow-context/{wf_id}-context.md`
-> Read this file with Read() BEFORE starting your task.
+## Step 3.5 — Agent Escalation Handling (mandatory after every agent response)
 
-**For WF-06 specifically:** after sql-expert delivers the DDL, extract the full
-column list per table and include it verbatim in the context file. The python-expert
-must use EXACTLY those column names — no inference, no paraphrasing.
+After receiving any agent's response, **actively scan for escalation signals** before
+synthesizing. Agents cannot invoke other agents — they signal needs via text. You must
+act on those signals.
+
+**Escalation signal patterns to detect (PT-BR and EN):**
+- "Parar e escalar para `<agent>`"
+- "Escalar para `<agent>`" / "escalate to `<agent>`"
+- "Requer `<agent>`" / "requires `<agent>`"
+- "Fora do meu escopo — `<agent>` deve tratar"
+- "Recomendo invocar `<agent>`"
+- "`<agent>` deve ser consultado"
+
+**When a signal is detected → act immediately and autonomously:**
+
+1. **Do NOT ask the user** whether to proceed — escalation is an internal orchestration decision.
+2. **Compose a handoff prompt** for the escalation target that includes:
+   - Summary of what the first agent accomplished
+   - The specific gap or question the first agent flagged
+   - Any artifacts produced (file paths, SQL, OWL, etc.) that the second agent should read
+3. **Invoke the escalation target** via `Agent` tool with that handoff context.
+4. **Synthesize both results together** in the final response to the user.
+
+**Example:**
+```
+ontology-engineer returns: "Parar e escalar para governance-auditor —
+a propriedade CPF foi detectada na A-Box sem classificação PII."
+→ Supervisor immediately invokes governance-auditor with:
+  "ontology-engineer encontrou a propriedade CPF na A-Box da ontologia X.
+   Avalie conformidade LGPD e recomende classificação antes de prosseguir."
+→ Synthesize ontology result + governance assessment in a single response.
+```
+
+**If the signal is informational only** (agent notes a limitation but no other agent is
+needed): surface it clearly to the user as a known boundary, not a silent omission.
 
 ## Step 4 — Synthesis and Constitutional Validation
 
