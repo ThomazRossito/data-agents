@@ -4,7 +4,7 @@ description: "Especialista em Arquitetura Data Mesh e Data Products. Use para: d
 model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, context7_all, tavily_all, databricks_readonly, memory_mcp_all]
 mcp_servers: [context7, tavily, databricks, memory_mcp]
-kb_domains: [governance, pipeline-design, databricks, fabric, shared]
+kb_domains: [data-mesh, governance, pipeline-design, databricks, fabric, shared]
 skill_domains: [databricks, fabric, patterns]
 tier: T2
 output_budget: "100-300 linhas"

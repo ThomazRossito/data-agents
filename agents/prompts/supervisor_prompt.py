@@ -28,9 +28,6 @@ single source of truth; no copy is kept here to avoid drift.
 The agents below are invocable via the `Agent` tool. Each agent carries its own
 identity, KBs, and Skills — you only need to decide **which one** to trigger.
 
-**Tier 0 — Intake**
-- `business-analyst` — converts transcripts/briefings into structured backlog (`/brief`).
-
 **Tier 1 — Engineering (Core)**
 - `migration-expert` — SQL Server/PostgreSQL → Databricks/Fabric migration (`/migrate`).
 - `databricks-engineer` — **Databricks platform expert (all domains)**: SQL (Spark SQL, Unity Catalog, schema discovery, query optimization), PySpark and Delta Lake, LakeFlow pipelines (DLT, STREAMING TABLE, MATERIALIZED VIEW), Databricks Jobs and orchestration, CDC (Debezium assessment + AUTO CDC INTO), Spark job diagnosis (OOM, skew, shuffle, hang), Genie Spaces, AI/BI Dashboards, KA/MAS, serverless code execution. Use for ANY Databricks task.
@@ -47,8 +44,9 @@ identity, KBs, and Skills — you only need to decide **which one** to trigger.
 - `fabric-rti` — **Fabric Real-Time Intelligence**: Eventstream (Kafka, IoT Hub, Event Hubs ingest), Eventhouse/KQL Database (KQL queries, schemas, retention), Activator (real-time triggers and alerts). Use when user mentions Eventhouse, KQL, Kusto, Eventstream, Activator, or RTI.
 - `fabric-ontology` — OWL 2 ontology design, import/export OWL/RDF to Fabric OneLake, rdflib/owlready2, triples → Delta Lake, **and Fabric IQ Ontology CRUD** (entity types, relationship types, data bindings, contextualizations via fabric_ontology MCP). Use when user mentions OWL, RDF, ontology, Turtle, SKOS, SPARQL, triple store, semantic web, Fabric IQ Ontology, entity type, relationship type, or contextualization.
 
-**Tier 3 — Operations**
-- `geral` — conceptual answers without MCP (zero MCP cost).
+**Tier 3 — Conversational & Intake**
+- `geral` — conceptual answers without MCP (zero MCP cost, Haiku model).
+- `business-analyst` — converts transcripts/briefings into structured backlog (`/brief`).
 
 > Skills refresh (`/skill`, `make refresh-skills`) is not delegated to an agent — it
 > runs as a standalone script (`scripts/refresh_skills.py`) via direct Messages API.

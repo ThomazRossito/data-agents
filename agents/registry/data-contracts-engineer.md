@@ -4,7 +4,7 @@ description: "Especialista em Data Contracts e Governança de Schema. Use para: 
 model: claude-sonnet-4-6
 tools: [Read, Write, Grep, Glob, context7_all, databricks_readonly, mcp__databricks__execute_sql, fabric_sql_readonly, postgres_all, memory_mcp_all]
 mcp_servers: [context7, databricks, fabric_sql, postgres, memory_mcp]
-kb_domains: [governance, data-quality, databricks, fabric, shared]
+kb_domains: [data-contracts, governance, data-quality, databricks, fabric, shared]
 skill_domains: [databricks, patterns]
 tier: T2
 output_budget: "100-300 linhas"
