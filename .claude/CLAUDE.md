@@ -620,7 +620,7 @@ Estrutura: `kb/<domain>/index.md` + `concepts/*.md` + `patterns/*.md`
 | `fabric/` | cross-platform, data-factory, deployment-pipelines, direct-lake, eventhouse-rti, git-integration, medallion, monitoring-dmv, notebook-manager, workspace-manager |
 | `migration/` | Skill completa de assessment e migração |
 | `patterns/` | data-quality, pipeline-design, spark-patterns, sql-generation, star-schema-design |
-| `python/` | fastapi-patterns, pandas-polars-patterns, pytest-patterns, python-packaging *(async-patterns e cli-patterns planejados — ainda não criados)* |
+| `python/` | fastapi-patterns, pandas-polars-patterns, pytest-patterns, python-packaging, async-patterns, cli-patterns |
 
 ---
 

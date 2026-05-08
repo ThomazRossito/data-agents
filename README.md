@@ -144,6 +144,8 @@ python main.py         # ou: make run
 
 > Refresh de Skills é um script independente — `python scripts/refresh_skills.py` (não é mais um agente).
 
+---
+
 ### Party Mode — Múltiplos Especialistas em Paralelo
 
 O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. Cada um responde de forma independente, com sua perspectiva de domínio.
@@ -168,6 +170,8 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 ---
 
 ## Comandos Disponíveis
+
+**Agentes Especialistas:**
 
 | Comando | Descrição |
 |---------|-----------|
@@ -199,6 +203,8 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
 | `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |
 
+---
+
 **Catalog Intelligence:**
 
 | Comando | Descrição |
@@ -208,6 +214,8 @@ O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. 
 | `/catalog discover [schema]` | Descobre casos de uso de negócio para tabelas existentes |
 | `/catalog industry <schema>` | Alinha tabelas a KPIs e casos de uso da indústria detectada |
 | `/catalog value [schema]` | Business Value Engine: ranking de tabelas por valor com custo estimado de downtime |
+
+---
 
 **Orquestração e Sessão:**
 

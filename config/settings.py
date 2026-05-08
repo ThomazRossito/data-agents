@@ -339,13 +339,12 @@ class Settings(BaseSettings):
     # 180K é o teto conservador para deixar margem para a resposta final.
     # Override via .env: CONTEXT_BUDGET_INPUT_LIMIT=180000
     context_budget_input_limit: int = 180_000
-    # Limiares: 80% → WARNING, 95% → ERROR + salva checkpoint.
-    context_budget_warn_threshold: float = 0.80
+    # Limiares: 70% → WARNING, 80% → compactação automática, 95% → ERROR.
+    context_budget_warn_threshold: float = 0.70
     context_budget_critical_threshold: float = 0.95
-    # T4.4: limiar para disparar sumarização lateral via Haiku (compactação do
-    # histórico em 7 campos estruturados). Default 65% — abaixo do warn para
-    # agir preventivamente antes do usuário sentir o impacto.
-    context_budget_summarize_threshold: float = 0.65
+    # Limiar para disparar compactação autônoma: gera summary via Haiku, reconecta
+    # o cliente com o summary injetado no system prompt — transparente ao usuário.
+    context_budget_summarize_threshold: float = 0.80
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

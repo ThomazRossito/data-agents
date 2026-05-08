@@ -418,7 +418,7 @@ Os hooks são interceptadores automáticos ativados antes (`PreToolUse`) ou depo
 | `audit_hook.py` | PostToolUse | Registra todas as tool calls no JSONL de auditoria (timestamp, tool, tipo, parâmetros) |
 | `cost_guard_hook.py` | PostToolUse | Classifica operações HIGH/MEDIUM/LOW; alerta após 5 HIGH na sessão |
 | `output_compressor_hook.py` | PostToolUse | Trunca outputs verbosos para preservar tokens de contexto |
-| `context_budget_hook.py` | PostToolUse | Alerta a 80% do limite de contexto (180K tokens); salva checkpoint a 95% |
+| `context_budget_hook.py` | PostToolUse | Alerta a 70%; compacta autonomamente a 80% (summary Haiku + reconexão); ERROR a 95% |
 | `workflow_tracker.py` | PostToolUse | Rastreia delegações, Clarity Checkpoint e cascade PRD→SPEC |
 | `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente |
 | `session_logger.py` | PostToolUse | Registra métricas finais de custo/turns/duração por sessão |

@@ -815,6 +815,10 @@ async def run_interactive() -> None:
         logger.error(f"Falha na inicialização: {e}", exc_info=True)
         return
 
+    # System prompt base — memória e compactação são sempre injetadas SOBRE este,
+    # nunca acumuladas no options.system_prompt diretamente.
+    _base_system_prompt: str = options.system_prompt or ""
+
     # ── 4. ClaudeSDKClient emite "Using bundled Claude Code CLI..." aqui ─────
     import uuid
 
@@ -920,7 +924,7 @@ async def run_interactive() -> None:
                             )
                         # Flush de memória antes de encerrar
                         try:
-                            n_mem = flush_session_memories(session_id="interactive")
+                            n_mem = flush_session_memories(session_id=_session_id)
                             if n_mem > 0:
                                 console.print(
                                     f"[dim]🧠 {n_mem} memórias capturadas desta sessão.[/dim]"
@@ -933,7 +937,7 @@ async def run_interactive() -> None:
                     if user_input.lower() in ("limpar", "clear", "reset"):
                         # Flush de memória antes de limpar
                         try:
-                            flush_session_memories(session_id="interactive")
+                            flush_session_memories(session_id=_session_id)
                         except Exception:
                             pass
                         # Salvar checkpoint antes de limpar
@@ -1148,7 +1152,7 @@ async def run_interactive() -> None:
                     # --- Memory Retrieval: injeta memórias relevantes no system prompt ---
                     options.system_prompt = memory_manager.inject_context(
                         query=doma_prompt,
-                        system_prompt=options.system_prompt or "",
+                        system_prompt=_base_system_prompt,
                     )
 
                     # T4.1: registrar o turno do usuário no transcript ANTES de enviar
@@ -1178,6 +1182,32 @@ async def run_interactive() -> None:
                     _session_state["total_cost"] += result_metrics.get("cost", 0)
                     _session_state["total_turns"] += result_metrics.get("turns", 0)
 
+                    # --- Compactação autônoma: reconecta se o hook atingiu 80% ---
+                    from hooks.context_budget_hook import check_and_consume_compaction
+
+                    _compaction_summary = check_and_consume_compaction()
+                    if _compaction_summary:
+                        _compaction_prefix = (
+                            f"\n\n---\n## Contexto Compactado\n"
+                            f"_Sessão {_session_id} — compactado ao atingir 80%._\n\n"
+                            f"{_compaction_summary}\n---\n\n"
+                        )
+                        _base_system_prompt = _base_system_prompt + _compaction_prefix
+                        _session_id = f"cli-{uuid.uuid4().hex[:8]}"
+                        _active_session_id = _session_id
+                        await client.disconnect()
+                        await client.connect()
+                        on_session_start(_session_id)
+                        memory_manager.start_session(_session_id)
+                        reset_session_counters()
+                        _session_state["total_cost"] = 0.0
+                        _session_state["total_turns"] = 0
+                        _session_state["last_prompt"] = ""
+                        console.print(
+                            "[dim]🔄 Contexto compactado automaticamente — nova janela iniciada.[/dim]"
+                        )
+                        logger.info(f"Auto-compactação concluída. Nova sessão: {_session_id}")
+
                 except KeyboardInterrupt:
                     console.print("\n[yellow]Interrompido. Digite 'sair' para encerrar.[/yellow]")
                     continue
@@ -1185,7 +1215,7 @@ async def run_interactive() -> None:
                 except BudgetExceededError as e:
                     # Flush de memória antes do checkpoint
                     try:
-                        flush_session_memories(session_id="interactive")
+                        flush_session_memories(session_id=_session_id)
                     except Exception:
                         pass
                     # Salvar checkpoint automaticamente ao exceder budget

@@ -1,7 +1,7 @@
 """
 Session Summarizer — Sumariza um transcript de sessão via Claude Haiku.
 
-Motivação (T4.4): quando a sessão se aproxima do limite de contexto (>65%),
+Motivação (T4.4): quando a sessão se aproxima do limite de contexto (≥80%),
 compactamos o histórico em 7 campos estruturados. O resumo é emitido por
 Claude Haiku (modelo barato e rápido) via Anthropic Messages API diretamente
 — sem passar pelo Claude Agent SDK nem pelo Supervisor.
@@ -94,13 +94,14 @@ def _estimate_cost_usd(input_tokens: int, output_tokens: int) -> float:
     return round(cost_in + cost_out, 6)
 
 
-def should_summarize(context_used_ratio: float, threshold: float = 0.65) -> bool:
+def should_summarize(context_used_ratio: float, threshold: float = 0.80) -> bool:
     """
     Decide se é hora de rodar o sumarizador.
 
     Args:
         context_used_ratio: Fração [0, 1] do context budget já consumida.
-        threshold: Limiar para disparar o resumo (default 0.65).
+        threshold: Limiar para disparar o resumo (default 0.80, alinhado com
+                   settings.context_budget_summarize_threshold).
 
     Returns:
         True quando o consumo ultrapassou o limiar.
