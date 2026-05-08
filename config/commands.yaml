@@ -317,3 +317,96 @@ commands:
     prompt_template: |-
       [DOMA WORKFLOW] Execute o workflow pré-definido identificado na tarefa abaixo. Consulte `kb/collaboration-workflows.md` para os detalhes do workflow solicitado. Siga a sequência de agentes definida, passando o contexto de cada etapa para a próxima. Compile o contexto do workflow em `output/workflow-context/<wf-id>-context.md` antes de invocar o primeiro agente. Se o workflow exigir aprovação humana em alguma etapa, pause e aguarde confirmação. Tarefa: {task}
     display_template: '[bold magenta]⚙️ [DOMA Workflow] Iniciando workflow colaborativo...[/bold magenta]'
+  streaming:
+    agent: streaming-engineer
+    doma_mode: express
+    description: |-
+      Envia tarefa de streaming para o Streaming Engineer (DOMA Express). Use para Kafka, Apache Flink, Spark Structured Streaming, Fabric RTI Eventstream, CDC com Debezium e arquiteturas event-driven (Lambda/Kappa). Exemplos: /streaming pipeline Kafka → Delta | /streaming Flink job com exactly-once
+    skills:
+    - kb/spark-patterns/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para streaming-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/spark-patterns/index.md` antes de executar e a usar context7 para documentação atualizada de Kafka/Flink. Tarefa: {task}
+    display_template: '[bold yellow]⚡ [DOMA Express] Direcionando para: {agent}[/bold yellow]'
+  ai:
+    agent: ai-data-engineer
+    doma_mode: express
+    description: |-
+      Envia tarefa de AI Data Engineering para o AI Data Engineer (DOMA Express). Use para RAG pipelines, vector search (Databricks Vector Search), embeddings e chunking, feature stores, LLMOps com MLflow e AI Functions (ai_query, ai_summarize). Exemplos: /ai pipeline RAG com Vector Search | /ai feature store para modelo de churn
+    skills:
+    - kb/databricks/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para ai-data-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/databricks/index.md` e a buscar documentação atualizada via context7 antes de executar. Tarefa: {task}
+    display_template: '[bold yellow]🤖 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
+  cdc:
+    agent: cdc-specialist
+    doma_mode: express
+    description: |-
+      Envia tarefa de Change Data Capture para o CDC Specialist (DOMA Express). Use para Debezium, Kafka Connect, AUTO CDC INTO no DLT/LakeFlow, captura de binlog/WAL e sincronização incremental de banco relacional para lakehouse. Exemplos: /cdc PostgreSQL → Databricks com Debezium | /cdc avaliação de viabilidade CDC no SQL Server
+    skills:
+    - kb/pipeline-design/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para cdc-specialist. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/pipeline-design/index.md` antes de executar. Tarefa: {task}
+    display_template: '[bold yellow]🔄 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
+  schema:
+    agent: schema-designer
+    doma_mode: express
+    description: |-
+      Envia tarefa de modelagem de dados para o Schema Designer (DOMA Express). Use para Star Schema, Snowflake Schema, Data Vault 2.0 (Hub/Link/Satellite), SCD types 1-6, grain definition e revisão de schemas existentes. NÃO use para SQL de transformação (/sql) nem para pipelines (/pipeline). Exemplos: /schema Star Schema para domínio de vendas | /schema Data Vault para entidade Cliente
+    skills:
+    - kb/sql-patterns/index.md
+    - kb/pipeline-design/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para schema-designer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/sql-patterns/index.md` e `kb/pipeline-design/index.md` antes de executar. Tarefa: {task}
+    display_template: '[bold yellow]📐 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
+  finops:
+    agent: cost-optimizer
+    doma_mode: express
+    description: |-
+      Envia tarefa de FinOps para o Cost Optimizer (DOMA Express). Use para análise de consumo DBU/CU, rightsizing de clusters e SQL Warehouses, otimização de armazenamento Delta (OPTIMIZE/VACUUM), forecasting de gastos e configuração de budget alerts. Exemplos: /finops análise de custo dos últimos 30 dias | /finops rightsizing do cluster de produção
+    skills:
+    - kb/databricks/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para cost-optimizer. Não crie PRD, não peça aprovação. Instrua o agente a consultar system tables de billing via MCP antes de fazer recomendações. Tarefa: {task}
+    display_template: '[bold yellow]💰 [DOMA Express] Direcionando para: {agent}[/bold yellow]'
+  mesh:
+    agent: data-mesh-architect
+    doma_mode: full
+    description: |-
+      Inicia design ou assessment de arquitetura Data Mesh (DOMA Full). Use para mapeamento de domínios de negócio, especificação de Data Products, design de self-serve platform, governança federada e avaliação de maturidade Data Mesh. Exemplos: /mesh assessment de maturidade Data Mesh | /mesh especificar Data Product para domínio de clientes
+    skills:
+    - kb/governance/index.md
+    prompt_template: |-
+      [DOMA FULL] Delegue IMEDIATAMENTE para data-mesh-architect. Instrua o agente a ler `kb/governance/index.md` antes de executar. Antes de propor arquitetura, identificar domínios de negócio existentes e avaliar maturidade atual (0-25). Tarefa: {task}
+    display_template: '[bold purple]🕸️ [DOMA Full] Direcionando para: {agent}[/bold purple]'
+  diagnose:
+    agent: spark-diagnostics
+    doma_mode: express
+    description: |-
+      Envia problema de Spark para o Spark Diagnostics (DOMA Express). Use quando um job está falhando (OOM, data skew, shuffle failure, hang) ou com performance degradada — forneça stack trace, job_id ou descrição do comportamento anômalo. NÃO use para gerar código novo (/spark). Exemplos: /diagnose OOM no job de Silver | /diagnose job lento com data skew em coluna país
+    skills:
+    - kb/spark-patterns/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para spark-diagnostics. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/spark-patterns/index.md` e a coletar dados concretos via MCP antes de diagnosticar. Problema: {task}
+    display_template: '[bold yellow]🔍 [DOMA Express] Diagnosticando com: {agent}[/bold yellow]'
+  medallion:
+    agent: medallion-architect
+    doma_mode: express
+    description: |-
+      Envia tarefa de design de Arquitetura Medallion para o Medallion Architect (DOMA Express). Use para projetar ou revisar camadas Bronze/Silver/Gold, decidir entre STREAMING TABLE vs MATERIALIZED VIEW por camada, schema evolution entre layers e qualidade progressiva. NÃO use para implementar pipelines (/pipeline). Exemplos: /medallion design Medallion para domínio de pedidos | /medallion review da arquitetura atual do lakehouse
+    skills:
+    - kb/pipeline-design/index.md
+    - kb/spark-patterns/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para medallion-architect. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/pipeline-design/index.md` e `kb/spark-patterns/index.md` antes de executar. Tarefa: {task}
+    display_template: '[bold yellow]🏛️ [DOMA Express] Direcionando para: {agent}[/bold yellow]'
+  contract:
+    agent: data-contracts-engineer
+    doma_mode: express
+    description: |-
+      Envia tarefa de Data Contract para o Data Contracts Engineer (DOMA Express). Use para autoria de contratos ODCS, definição de SLAs de qualidade (freshness, completeness, validity), schema governance, breaking change management e acordos produtor-consumidor. Exemplos: /contract criar contrato ODCS para tabela fct_orders | /contract avaliar impacto de breaking change no schema
+    skills:
+    - kb/governance/index.md
+    - kb/data-quality/index.md
+    prompt_template: |-
+      [DOMA EXPRESS] Delegue IMEDIATAMENTE para data-contracts-engineer. Não crie PRD, não peça aprovação. Instrua o agente a ler `kb/governance/index.md` e `kb/data-quality/index.md` antes de executar. Tarefa: {task}
+    display_template: '[bold yellow]📋 [DOMA Express] Direcionando para: {agent}[/bold yellow]'

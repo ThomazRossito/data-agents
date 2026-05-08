@@ -101,6 +101,15 @@ class TestLoadAllAgents:
             "migration-expert",
             "catalog-intelligence",
             "ontology-engineer",
+            "ai-data-engineer",
+            "streaming-engineer",
+            "cdc-specialist",
+            "data-contracts-engineer",
+            "schema-designer",
+            "cost-optimizer",
+            "data-mesh-architect",
+            "spark-diagnostics",
+            "medallion-architect",
         ]
         for name in expected:
             assert name in agents, f"Agente '{name}' não encontrado no registry"
