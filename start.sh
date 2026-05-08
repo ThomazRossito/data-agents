@@ -9,7 +9,6 @@
 #   ./start.sh                # Chat (Chainlit) + Monitoring
 #   ./start.sh --chat-only    # somente UI de Chat
 #   ./start.sh --monitor-only # somente Monitoramento
-#   ./start.sh --biz-monitor  # junto com Business Monitor autônomo
 # ═══════════════════════════════════════════════════════════════════════════════
 
 set -euo pipefail
@@ -33,12 +32,10 @@ cd "$SCRIPT_DIR"
 # ── Flags ────────────────────────────────────────────────────────────────────
 CHAT_ONLY=false
 MONITOR_ONLY=false
-BIZ_MONITOR=false
 for arg in "$@"; do
   case "$arg" in
     --chat-only)    CHAT_ONLY=true ;;
     --monitor-only) MONITOR_ONLY=true ;;
-    --biz-monitor)  BIZ_MONITOR=true ;;
     --help|-h)
       echo ""
       echo "  ${BOLD}./start.sh${RESET} [opções]"
@@ -46,12 +43,10 @@ for arg in "$@"; do
       echo "  Opções:"
       echo "    ${CYAN}--chat-only${RESET}     Inicia somente a UI de Chat Chainlit      (porta $CHAINLIT_PORT)"
       echo "    ${CYAN}--monitor-only${RESET}  Inicia somente o Monitoramento            (porta $MONITOR_PORT)"
-      echo "    ${CYAN}--biz-monitor${RESET}   Inicia o Business Monitor autônomo junto com o chat"
       echo "    ${CYAN}--help${RESET}          Exibe esta ajuda"
       echo ""
       echo "  Exemplos:"
       echo "    ./start.sh                    # Chainlit Chat + Monitoring"
-      echo "    ./start.sh --biz-monitor      # Chat + Business Monitor autônomo"
       echo "    ./start.sh --monitor-only     # Somente Monitoring"
       echo ""
       exit 0
@@ -151,7 +146,6 @@ rotate_log "$SCRIPT_DIR/logs/monitor.log"
 # ── PIDs dos processos filhos ─────────────────────────────────────────────────
 CHAT_PID=""
 MONITOR_PID=""
-BIZ_MONITOR_PID=""
 
 # ── Função de shutdown ────────────────────────────────────────────────────────
 cleanup() {
@@ -164,10 +158,6 @@ cleanup() {
   if [[ -n "$MONITOR_PID" ]] && kill -0 "$MONITOR_PID" 2>/dev/null; then
     kill "$MONITOR_PID" 2>/dev/null
     echo -e "  ${GREEN}✔${RESET}  Monitoramento encerrado (PID $MONITOR_PID)"
-  fi
-  if [[ -n "$BIZ_MONITOR_PID" ]] && kill -0 "$BIZ_MONITOR_PID" 2>/dev/null; then
-    kill "$BIZ_MONITOR_PID" 2>/dev/null
-    echo -e "  ${GREEN}✔${RESET}  Business Monitor encerrado (PID $BIZ_MONITOR_PID)"
   fi
   echo ""
   exit 0
@@ -184,14 +174,6 @@ if [[ "$CHAT_ONLY" == false ]]; then
     --theme.base dark \
     > logs/monitor.log 2>&1 &
   MONITOR_PID=$!
-fi
-
-# ── Inicia Business Monitor autônomo (daemon) ─────────────────────────────────
-if [[ "$BIZ_MONITOR" == true ]]; then
-  echo -e "  ${GREEN}▶${RESET}  Business Monitor  →  daemon (ciclos 08h–18h)"
-  $PYTHON_CMD scripts/monitor_daemon.py \
-    > logs/biz_monitor.log 2>&1 &
-  BIZ_MONITOR_PID=$!
 fi
 
 # ── Inicia UI de Chat (Chainlit) ──────────────────────────────────────────────

@@ -56,7 +56,6 @@ identity, KBs, and Skills — you only need to decide **which one** to trigger.
 - `medallion-architect` — Medallion Architecture design (Bronze/Silver/Gold layer decisions, artefact selection, schema evolution, quality gates per layer). Use when user wants to design or review a Medallion lakehouse — NOT for implementing pipelines (pipeline-architect).
 
 **Tier 3 — Operations**
-- `business-monitor` — business alerts (stock, sales, SLA) via `/monitor`.
 - `geral` — conceptual answers without MCP (zero MCP cost).
 
 > Skills refresh (`/skill`, `make refresh-skills`) is not delegated to an agent — it

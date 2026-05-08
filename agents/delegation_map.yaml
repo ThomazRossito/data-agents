@@ -122,12 +122,6 @@ routes:
     tier: T1
     keywords: [python, pandas, polars, fastapi, typer, pytest, pydantic]
 
-  # Operações
-  - situation: "Alerta de negócio recebido (estoque, vendas, SLA)"
-    agent: business-monitor
-    tier: T2
-    keywords: [alerta, estoque, vendas, "sla violado"]
-
   # AI e GenAI aplicados a dados
   - situation: "Pipeline RAG / Vector Search / embeddings"
     agent: ai-data-engineer

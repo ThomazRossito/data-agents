@@ -80,7 +80,6 @@ Antes de planejar, leia a KB indicada. Skills são opcionais (detalhes operacion
 | PySpark / Spark SQL / DLT                               | spark-expert            |
 | dbt (models, refs, sources, testes, snapshots)          | dbt-expert              |
 | Python puro (pacotes, APIs, CLIs, pandas/polars)        | python-expert           |
-| Alerta de negócio recebido (estoque, vendas, SLA)       | business-monitor        |
 | Pipeline RAG / Vector Search / embeddings               | ai-data-engineer        |
 | AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks     | ai-data-engineer        |
 | LLMOps: MLflow evaluation, model registry, serving      | ai-data-engineer        |

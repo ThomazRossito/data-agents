@@ -38,7 +38,6 @@ Orquestra 23 agentes especialistas em Engenharia, Qualidade, Governança, Análi
 - [[data-mesh-architect]] — Data Mesh, Data Products, governança federada
 - [[spark-diagnostics]] — OOM, skew, shuffle, falhas DLT
 - [[medallion-architect]] — Bronze/Silver/Gold design
-- [[business-monitor]] — Q&A interativo sobre alertas
 
 ### Tier 3 — Conversacionais
 - [[business-analyst]] — Intake de requisitos, /brief

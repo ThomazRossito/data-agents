@@ -18,7 +18,7 @@ Seleção de modo via cl.Action no início do chat.
 Troca de modo a qualquer momento com /modo.
 
 Iniciar:
-    ./start_chainlit.sh
+    ./start.sh
     chainlit run ui/chainlit_app.py --port 8503
 """
 

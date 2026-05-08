@@ -182,7 +182,6 @@ class TestPartyModeGroups:
         "semantic-modeler",
         "dbt-expert",
         "business-analyst",
-        "business-monitor",
         "catalog-intelligence",
         "ontology-engineer",
         "ai-data-engineer",
