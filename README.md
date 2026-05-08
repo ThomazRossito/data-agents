@@ -139,7 +139,6 @@ python main.py         # ou: make run
 | **Cost Optimizer** | `/finops` | T2 | FinOps: análise DBU/CU, rightsizing de clusters, otimização Delta, forecasting de gastos |
 | **Data Mesh Architect** | `/mesh` | T2 | Data Mesh: domínios de negócio, Data Products, governança federada, avaliação de maturidade |
 | **Ontology Engineer** | `/ontology` | T2 | Design de ontologias OWL 2, import/export de arquivos OWL/RDF/Turtle no Fabric OneLake, triples → Delta Lake |
-| **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
 | **Geral** | `/geral` | T0 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 > Refresh de Skills é um script independente — `python scripts/refresh_skills.py` (não é mais um agente).
@@ -194,7 +193,6 @@ O comando `/party` convoca múltiplos agentes simultaneamente para a mesma pergu
 | `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
 | `/python <tarefa>` | Python puro — python-expert |
 | `/ontology <tarefa>` | OWL 2, import/export OneLake, triples → Delta — ontology-engineer |
-| `/monitor <pergunta>` | Q&A sobre alertas do daemon de monitoramento de negócio |
 | `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
 | `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |

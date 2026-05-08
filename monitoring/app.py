@@ -1450,7 +1450,6 @@ elif page == "🔭 Observabilidade":
         "migrate": "migration-expert",
         "fabric": "pipeline-architect",
         "geral": "geral",
-        "monitor": "business-monitor",
     }
     _SUPERVISOR_LIKE = {
         "interactive",

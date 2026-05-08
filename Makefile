@@ -39,7 +39,7 @@ evals: ## Roda queries canônicas (~$$0.08) e gera scoreboard
 # ─── Quality ──────────────────────────────────────────────────────
 
 test: ## Executa testes com cobertura
-	pytest tests/ -v --tb=short \
+	TESTMON_DATAFILE=logs/.testmondata pytest tests/ -v --tb=short \
 		--cov=agents --cov=config --cov=hooks --cov=commands \
 		--cov-report=term-missing \
 		--cov-fail-under=80
@@ -110,6 +110,7 @@ skill-stats-full: ## Relatório completo: skills usadas + não usadas (30 dias)
 clean: ## Remove arquivos temporários e cache
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
-	rm -rf .pytest_cache .ruff_cache .mypy_cache htmlcov coverage.xml
+	rm -rf .cache htmlcov coverage.xml
+	rm -f logs/.coverage logs/.testmondata
 	rm -rf dist build *.egg-info
 	@echo "$(GREEN)Limpeza concluída.$(RESET)"

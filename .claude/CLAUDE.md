@@ -1,7 +1,7 @@
 # Data Agents — Guia para Claude Code
 
 Sistema multi-agente construído sobre o **Claude Agent SDK** da Anthropic com integração
-nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 23 agentes especialistas
+nativa via MCP ao **Databricks** e **Microsoft Fabric**. Orquestra 22 agentes especialistas
 em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
 
 ---
@@ -56,7 +56,6 @@ Usuário → main.py / ui/chainlit_app.py
         ├─► data-mesh-architect       [T2] — Data Mesh, Data Products (/mesh)
         ├─► spark-diagnostics         [T2] — OOM, skew, shuffle, DLT failures (/diagnose)
         ├─► medallion-architect       [T2] — Bronze/Silver/Gold design (/medallion)
-        ├─► business-monitor          [T2] — Q&A sobre alertas (daemon `scripts/monitor_daemon.py`)
         └─► geral                     [T0] — perguntas conceituais, zero MCP (Haiku)
 ```
 
@@ -243,7 +242,6 @@ Use estes aliases no frontmatter `tools:` dos agentes em vez de listar cada tool
 | Agente | MCPs Configurados |
 |--------|-------------------|
 | business-analyst | tavily, firecrawl |
-| business-monitor | databricks, fabric_sql, postgres, memory_mcp |
 | catalog-intelligence | databricks, fabric, fabric_community, fabric_official, fabric_sql |
 | spark-expert | context7 |
 | sql-expert | databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres |
@@ -332,7 +330,6 @@ MEMORY_CAPTURE_ENABLED=true
 | `/genie <tarefa>` | semantic-modeler | Criar/atualizar Genie Spaces no Databricks |
 | `/dashboard <tarefa>` | semantic-modeler | Criar/publicar AI/BI Dashboards |
 | `/ontology <tarefa>` | ontology-engineer | OWL 2: design, import/export Fabric OneLake, conversão de formatos, triples → Delta |
-| `/monitor <pergunta>` | business-monitor | Q&A sobre alertas do daemon de monitoramento |
 | `/review <artefato>` | Supervisor | Review de código/pipeline |
 | `/health` | — | Status das plataformas configuradas |
 | `/status` | — | Estado da sessão atual |
@@ -426,7 +423,7 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | Arquivo | Propósito |
 |---------|-----------|
 | `main.py` | Entry point CLI — inicializa Supervisor, lida com args, gerencia sessão e loop |
-| `start.sh` / `start_chainlit.sh` | Scripts que sobem Chainlit + processo de monitoramento |
+| `start.sh` | Script que sobe Chainlit + Monitoring Streamlit + Business Monitor (opcional) |
 | `pyproject.toml` | Dependências, extras `[dev]` `[ui]` `[monitoring]`, config ruff/mypy/pytest |
 | `Makefile` | Targets: `test`, `lint`, `format`, `type-check`, `health-databricks`, `health-fabric` |
 | `chainlit.md` | Página de boas-vindas do Chat UI (Chainlit) |
@@ -452,7 +449,7 @@ POSTGRES_URL=postgresql://...     # banco PostgreSQL
 | `registry/*.md` | Frontmatter YAML + corpo Markdown | Definição declarativa de cada agente |
 | `registry/_template.md` | — | Template para criar novos agentes |
 
-**23 agentes no registry:** `business-analyst`, `business-monitor`, `catalog-intelligence`, `data-quality-steward`,
+**22 agentes no registry:** `business-analyst`, `catalog-intelligence`, `data-quality-steward`,
 `dbt-expert`, `geral`, `governance-auditor`, `migration-expert`, `ontology-engineer`, `pipeline-architect`,
 `python-expert`, `semantic-modeler`, `spark-expert`, `sql-expert`,
 `ai-data-engineer`, `streaming-engineer`, `cdc-specialist`, `data-contracts-engineer`, `schema-designer`,
@@ -530,7 +527,6 @@ Cada subdiretório: `__init__.py` + `server_config.py` (+ `server.py` para MCPs 
 |---------|---------|---------------|
 | `parser.py` | `parse_command()`, `CommandRegistry` | Parsing genérico de qualquer `/comando <args>` |
 | `geral.py` | `handle_geral()` | `/geral` — resposta direta sem Supervisor (~95% mais barato) |
-| `monitor.py` | `handle_monitor()` | `/monitor` — Q&A sobre alertas do daemon |
 | `party.py` | `handle_party()` | `/party` — multi-agente paralelo com flags: --quality, --arch, --engineering, --full |
 | `sessions.py` | `handle_sessions()`, `handle_resume()` | `/sessions` + `/resume` — listagem e retomada |
 | `workflow.py` | `handle_workflow()` | `/workflow` — executa workflows WF-01 a WF-05 |
@@ -567,7 +563,6 @@ Cada subdiretório: `__init__.py` + `server_config.py` (+ `server.py` para MCPs 
 | `frontmatter.py` | `parse_yaml_frontmatter()` | Parser de YAML frontmatter dos `.md` dos agentes |
 | `tokenizer.py` | `count_tokens()`, `estimate_cost()` | Contagem de tokens e estimativa de custo |
 | `summarizer.py` | `summarize_text()` | Sumarização via Haiku para compressão de contexto |
-| `monitor_alerter.py` | `send_alert()`, `AlertChannel` | Envio de alertas do daemon de monitoramento |
 
 ### tests/ — Cobertura de Testes (mínimo 80%)
 

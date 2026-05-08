@@ -284,7 +284,6 @@ _AGENT_TIERS: dict[str, str] = {
     "data-mesh-architect": "T2",
     "spark-diagnostics": "T2",
     "medallion-architect": "T2",
-    "business-monitor": "T2",
     "business-analyst": "T3",
     "geral": "T0",
 }

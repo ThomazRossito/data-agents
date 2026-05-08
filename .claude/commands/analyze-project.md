@@ -121,7 +121,6 @@ Leia o arquivo completo e extraia:
 
 Agentes a analisar:
 - `agents/registry/business-analyst.md`
-- `agents/registry/business-monitor.md`
 - `agents/registry/data-quality-steward.md`
 - `agents/registry/dbt-expert.md`
 - `agents/registry/geral.md`
@@ -178,7 +177,6 @@ MCP servers a analisar:
 
 - `commands/parser.py` — `CommandRegistry`, como faz parse de args
 - `commands/geral.py` — implementação do `/geral`
-- `commands/monitor.py` — implementação do `/monitor`
 - `commands/party.py` — flags `--quality`, `--arch`, `--engineering`, `--migration`, `--full`; como executa em paralelo
 - `commands/sessions.py` — como lista e restaura sessões
 - `commands/workflow.py` — como executa WF-01 a WF-05
@@ -203,8 +201,6 @@ MCP servers a analisar:
 - `utils/frontmatter.py` — `parse_yaml_frontmatter()`: regex/parser
 - `utils/tokenizer.py` — modelo de contagem de tokens, preços por modelo
 - `utils/summarizer.py` — quando usa Haiku, como estrutura o prompt de sumarização
-- `utils/monitor_alerter.py` — canais de alerta disponíveis
-- `scripts/monitor_daemon.py` — frequência de checagem, formato de alertas
 - `scripts/refresh_skills.py` — como chama Messages API diretamente
 - `scripts/bootstrap.py` — o que valida no ambiente
 - `scripts/analyze_tool_coverage.py` — métricas de cobertura de tools

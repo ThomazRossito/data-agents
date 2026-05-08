@@ -24,13 +24,17 @@ Pré-requisitos:
 
 def get_databricks_mcp_config() -> dict:
     """Retorna a configuração MCP para o Databricks."""
+    import sys
+    from pathlib import Path
     from config.settings import settings  # importação local para evitar circular import
+
+    _wrapper = str(Path(__file__).parent / "run_server.py")
 
     return {
         "databricks": {
             "type": "stdio",
-            "command": "databricks-mcp-server",
-            "args": [],
+            "command": sys.executable,
+            "args": [_wrapper],
             "env": {
                 "DATABRICKS_HOST": settings.databricks_host,
                 "DATABRICKS_TOKEN": settings.databricks_token,

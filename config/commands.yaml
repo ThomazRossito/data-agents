@@ -231,14 +231,6 @@ commands:
     prompt_template: |-
       [DOMA EXPRESS] Delegue IMEDIATAMENTE para geral. NÃO leia arquivos, NÃO use ferramentas, NÃO consulte KBs. O agente responde do próprio conhecimento. Não crie PRD, não peça aprovação. Pergunta: {task}
     display_template: '[bold cyan]💬 [Geral] Respondendo com Claude Haiku...[/bold cyan]'
-  monitor:
-    agent: business-monitor
-    doma_mode: internal
-    description: |-
-      Controla o Business Monitor autônomo. Subcomandos: on | off | status | run | ask <pergunta>. Exemplos: /monitor status | /monitor off | /monitor ask por que o estoque do SKU-001 foi alertado?
-    skills: []
-    prompt_template: '{task}'
-    display_template: '[bold green]📡 [Monitor] Business Monitor — {agent}[/bold green]'
   ontology:
     agent: ontology-engineer
     doma_mode: express
