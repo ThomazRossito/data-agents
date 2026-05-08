@@ -361,7 +361,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
     """WF-01: Pipeline End-to-End Bronze→Gold."""
     return [
         WorkflowStep(
-            agent="spark-expert",
+            agent="databricks-engineer",
             phase="Bronze Ingestion",
             task=(
                 "Crie a camada Bronze do pipeline Medallion para o seguinte projeto:\n\n{context}\n\n"
@@ -370,7 +370,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
             ),
         ),
         WorkflowStep(
-            agent="spark-expert",
+            agent="databricks-engineer",
             phase="Silver Transformation",
             task=(
                 "Com base na camada Bronze já criada, crie a camada Silver:\n\n{context}\n\n"
@@ -379,7 +379,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
             ),
         ),
         WorkflowStep(
-            agent="spark-expert",
+            agent="databricks-engineer",
             phase="Gold Layer",
             task=(
                 "Com base nas camadas Bronze e Silver, crie a camada Gold:\n\n{context}\n\n"
@@ -407,7 +407,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
             parallel_with=["Data Quality"],
         ),
         WorkflowStep(
-            agent="semantic-modeler",
+            agent="fabric-engineer",
             phase="Semantic Layer",
             task=(
                 "Com base na camada Gold criada, crie o modelo semântico:\n\n{context}\n\n"
@@ -422,7 +422,7 @@ def build_wf02_star_schema() -> list[WorkflowStep]:
     """WF-02: Star Schema na camada Gold."""
     return [
         WorkflowStep(
-            agent="sql-expert",
+            agent="databricks-engineer",
             phase="Schema Discovery",
             task=(
                 "Explore os schemas disponíveis e identifique as tabelas Silver para o Star Schema:\n\n{context}\n\n"
@@ -430,7 +430,7 @@ def build_wf02_star_schema() -> list[WorkflowStep]:
             ),
         ),
         WorkflowStep(
-            agent="spark-expert",
+            agent="databricks-engineer",
             phase="Star Schema Implementation",
             task=(
                 "Com base na descoberta de schema, implemente o Star Schema em PySpark:\n\n{context}\n\n"
@@ -449,7 +449,7 @@ def build_wf02_star_schema() -> list[WorkflowStep]:
             parallel_with=["Semantic Modeling"],
         ),
         WorkflowStep(
-            agent="semantic-modeler",
+            agent="fabric-engineer",
             phase="Semantic Modeling",
             task=(
                 "Com base no Star Schema, crie o modelo semântico:\n\n{context}\n\n"
@@ -464,7 +464,7 @@ def build_wf03_cross_platform() -> list[WorkflowStep]:
     """WF-03: Migração Cross-Platform Databricks ↔ Fabric."""
     return [
         WorkflowStep(
-            agent="pipeline-architect",
+            agent="databricks-engineer",
             phase="Architecture Design",
             task=(
                 "Projete a arquitetura de migração cross-platform:\n\n{context}\n\n"
@@ -472,7 +472,7 @@ def build_wf03_cross_platform() -> list[WorkflowStep]:
             ),
         ),
         WorkflowStep(
-            agent="sql-expert",
+            agent="databricks-engineer",
             phase="SQL Transpilation",
             task=(
                 "Transcreva os objetos SQL para o dialeto do destino:\n\n{context}\n\n"
@@ -481,11 +481,11 @@ def build_wf03_cross_platform() -> list[WorkflowStep]:
             parallel_with=["Spark Migration"],
         ),
         WorkflowStep(
-            agent="spark-expert",
+            agent="fabric-engineer",
             phase="Spark Migration",
             task=(
-                "Migre o código PySpark/DLT para a plataforma destino:\n\n{context}\n\n"
-                "Adapte Auto Loader, Delta Lake e jobs para o equivalente no destino."
+                "Adapte o código para a plataforma Fabric destino:\n\n{context}\n\n"
+                "Converta pipelines DLT/Auto Loader para Data Factory/Fabric equivalentes."
             ),
             parallel_with=["SQL Transpilation"],
         ),
@@ -566,7 +566,7 @@ def build_wf05_relational_migration(
         ),
         # DDL transpilation e pipeline rodam em paralelo
         WorkflowStep(
-            agent="sql-expert",
+            agent="databricks-engineer",
             phase="DDL Transpilation",
             task=(
                 "Transcreva o DDL do banco de origem para o dialeto do destino:\n\n{context}\n\n"
@@ -576,7 +576,7 @@ def build_wf05_relational_migration(
             parallel_with=["Pipeline Generation"],
         ),
         WorkflowStep(
-            agent="spark-expert",
+            agent="databricks-engineer",
             phase="Pipeline Generation",
             task=(
                 "Gere os jobs de ingestão para mover dados da fonte ao destino:\n\n{context}\n\n"
