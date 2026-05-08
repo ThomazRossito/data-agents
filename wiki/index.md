@@ -1,7 +1,7 @@
 # Data Agents — Índice Central
 
 Sistema multi-agente construído sobre o Claude Agent SDK da Anthropic.
-Orquestra 13 agentes especialistas em Engenharia, Qualidade, Governança e Análise de Dados.
+Orquestra 23 agentes especialistas em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
 
 ---
 
@@ -21,17 +21,30 @@ Orquestra 13 agentes especialistas em Engenharia, Qualidade, Governança e Anál
 - [[python-expert]] — Python puro: pacotes, APIs, CLIs, testes
 - [[pipeline-architect]] — ETL/ELT cross-platform
 - [[migration-expert]] — Migração SQL Server/PostgreSQL → Databricks/Fabric
+- [[ai-data-engineer]] — RAG, Vector Search, embeddings, LLMOps, AI Functions
+- [[streaming-engineer]] — Kafka, Flink, Spark Structured Streaming, Fabric RTI
+- [[cdc-specialist]] — Debezium, Kafka Connect, AUTO CDC INTO
 
 ### Tier 2 — Especializados
 - [[dbt-expert]] — dbt Core: models, testes, snapshots
 - [[data-quality-steward]] — Validação, profiling, SLA
-- [[governance-auditor]] — Auditoria, LGPD, linhagem
+- [[governance-auditor]] — Auditoria, LGPD, linhagem, RLS/OLS
 - [[semantic-modeler]] — Modelos semânticos, DAX, Genie
+- [[catalog-intelligence]] — Comentários AI, Data Maturity Score
+- [[ontology-engineer]] — Ontologias OWL 2, triples → Delta
+- [[data-contracts-engineer]] — ODCS, SLA contratual, breaking changes
+- [[schema-designer]] — Star Schema, Data Vault 2.0, SCD
+- [[cost-optimizer]] — DBU/CU, rightsizing, FinOps
+- [[data-mesh-architect]] — Data Mesh, Data Products, governança federada
+- [[spark-diagnostics]] — OOM, skew, shuffle, falhas DLT
+- [[medallion-architect]] — Bronze/Silver/Gold design
 - [[business-monitor]] — Q&A interativo sobre alertas
 
 ### Tier 3 — Conversacionais
 - [[business-analyst]] — Intake de requisitos, /brief
-- [[geral]] — Perguntas conceituais, zero MCP
+
+### Tier 0 — Direto (sem MCP)
+- [[geral]] — Perguntas conceituais, zero MCP (Haiku)
 
 ---
 

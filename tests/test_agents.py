@@ -639,7 +639,14 @@ class TestModelRoutingByTier:
         """Todos os agentes T1 devem declarar tier no frontmatter."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        t1_agents = ["sql-expert", "spark-expert", "pipeline-architect"]
+        t1_agents = [
+            "sql-expert",
+            "spark-expert",
+            "pipeline-architect",
+            "ai-data-engineer",
+            "streaming-engineer",
+            "cdc-specialist",
+        ]
         for name in t1_agents:
             path = AGENTS_REGISTRY_DIR / f"{name}.md"
             content = path.read_text(encoding="utf-8")
@@ -650,7 +657,18 @@ class TestModelRoutingByTier:
         """Todos os agentes T2 devem declarar tier no frontmatter."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        t2_agents = ["data-quality-steward", "governance-auditor", "semantic-modeler", "dbt-expert"]
+        t2_agents = [
+            "data-quality-steward",
+            "governance-auditor",
+            "semantic-modeler",
+            "dbt-expert",
+            "data-contracts-engineer",
+            "schema-designer",
+            "cost-optimizer",
+            "data-mesh-architect",
+            "spark-diagnostics",
+            "medallion-architect",
+        ]
         for name in t2_agents:
             path = AGENTS_REGISTRY_DIR / f"{name}.md"
             content = path.read_text(encoding="utf-8")

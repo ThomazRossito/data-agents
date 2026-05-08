@@ -35,20 +35,29 @@ make health-fabric
 ```
 Usuário → main.py / ui/chainlit_app.py
   └─► Supervisor (claude-sonnet-4-6, sem MCP direto)
-        ├─► business-analyst      [T3] — intake de requisitos, /brief
-        ├─► sql-expert            [T1] — SQL, schemas, catálogos
-        ├─► spark-expert          [T1] — PySpark, DLT, Delta Lake
-        ├─► python-expert        [T1] — Python puro: pacotes, APIs, CLIs, testes
-        ├─► pipeline-architect   [T1] — ETL/ELT cross-platform
-        ├─► migration-expert     [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
-        ├─► dbt-expert         [T2] — dbt Core: models, testes, snapshots
-        ├─► data-quality-steward [T2] — validação, profiling, SLA
-        ├─► governance-auditor   [T2] — auditoria, LGPD, linhagem
-        ├─► semantic-modeler      [T2] — modelos semânticos, DAX, Genie
-        ├─► catalog-intelligence  [T2] — comentários AI, Data Maturity Score, valor de negócio (/catalog)
-        ├─► ontology-engineer     [T2] — ontologias OWL 2, import/export OneLake, rdflib, triples → Delta (/ontology)
-        ├─► business-monitor      [T2] — Q&A interativo sobre alertas (daemon em `scripts/monitor_daemon.py`)
-        └─► geral                [T0] — perguntas conceituais, zero MCP (Haiku)
+        ├─► business-analyst          [T3] — intake de requisitos, /brief
+        ├─► sql-expert                [T1] — SQL, schemas, catálogos
+        ├─► spark-expert              [T1] — PySpark, DLT, Delta Lake
+        ├─► python-expert             [T1] — Python puro: pacotes, APIs, CLIs, testes
+        ├─► pipeline-architect        [T1] — ETL/ELT cross-platform
+        ├─► migration-expert          [T1] — Migração SQL Server/PostgreSQL → Databricks/Fabric
+        ├─► ai-data-engineer          [T1] — RAG, Vector Search, embeddings, LLMOps, AI Functions
+        ├─► streaming-engineer        [T1] — Kafka, Flink, Spark Streaming, Fabric RTI
+        ├─► cdc-specialist            [T1] — Debezium, Kafka Connect, AUTO CDC INTO
+        ├─► dbt-expert                [T2] — dbt Core: models, testes, snapshots
+        ├─► data-quality-steward      [T2] — validação, profiling, SLA
+        ├─► governance-auditor        [T2] — auditoria, LGPD, linhagem, RLS/OLS
+        ├─► semantic-modeler          [T2] — modelos semânticos, DAX, Genie
+        ├─► catalog-intelligence      [T2] — comentários AI, Data Maturity Score (/catalog)
+        ├─► ontology-engineer         [T2] — ontologias OWL 2, triples → Delta (/ontology)
+        ├─► data-contracts-engineer   [T2] — ODCS, SLA contratual, breaking changes (/contract)
+        ├─► schema-designer           [T2] — Star Schema, Data Vault 2.0, SCD (/schema)
+        ├─► cost-optimizer            [T2] — DBU/CU, rightsizing, FinOps (/finops)
+        ├─► data-mesh-architect       [T2] — Data Mesh, Data Products (/mesh)
+        ├─► spark-diagnostics         [T2] — OOM, skew, shuffle, DLT failures (/diagnose)
+        ├─► medallion-architect       [T2] — Bronze/Silver/Gold design (/medallion)
+        ├─► business-monitor          [T2] — Q&A sobre alertas (daemon `scripts/monitor_daemon.py`)
+        └─► geral                     [T0] — perguntas conceituais, zero MCP (Haiku)
 ```
 
 **Regra central:** O Supervisor **nunca** executa código, acessa MCP ou gera SQL/PySpark.
