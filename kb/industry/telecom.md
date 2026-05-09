@@ -2,7 +2,7 @@
 domain: industry
 industry: telecom
 updated_at: 2026-04-30
-agents: [catalog-intelligence, business-analyst, governance-auditor, data-quality-steward]
+agents: [fabric-engineer, business-analyst, governance-auditor, data-quality-steward]
 ---
 
 # Telecom — Knowledge Base de Indústria

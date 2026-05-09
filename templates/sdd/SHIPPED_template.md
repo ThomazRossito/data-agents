@@ -11,7 +11,7 @@
 |-------|-------|
 | **Data de Conclusão** | YYYY-MM-DD |
 | **Tarefa / Projeto** | [nome descritivo] |
-| **Agentes Envolvidos** | [ex: pipeline-architect, sql-expert] |
+| **Agentes Envolvidos** | [ex: databricks-engineer, fabric-engineer] |
 | **Plataforma** | [Databricks / Fabric / ambos] |
 | **Domínio** | [pipeline / migração / modelo semântico / qualidade / governança] |
 | **Duração** | [ex: 3 sessões, ~4h] |

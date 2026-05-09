@@ -419,7 +419,7 @@ print(f"Exportado: {output_path}")
 # )
 ```
 
-> **Escalar para `spark-expert`** se o notebook precisar ser executado no Fabric com
+> **Escalar para `databricks-engineer`** se o notebook precisar ser executado no Fabric com
 > configurações específicas de cluster ou se o volume de triples for > 1M linhas.
 
 ---

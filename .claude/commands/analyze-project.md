@@ -120,17 +120,20 @@ Leia o arquivo completo e extraia:
 - Restrições
 
 Agentes a analisar:
-- `agents/registry/business-analyst.md`
-- `agents/registry/data-quality-steward.md`
-- `agents/registry/dbt-expert.md`
-- `agents/registry/geral.md`
-- `agents/registry/governance-auditor.md`
+- `agents/registry/databricks-engineer.md`
+- `agents/registry/databricks-ai.md`
+- `agents/registry/fabric-engineer.md`
+- `agents/registry/fabric-rti.md`
+- `agents/registry/fabric-ontology.md`
 - `agents/registry/migration-expert.md`
-- `agents/registry/pipeline-architect.md`
 - `agents/registry/python-expert.md`
-- `agents/registry/semantic-modeler.md`
-- `agents/registry/spark-expert.md`
-- `agents/registry/sql-expert.md`
+- `agents/registry/dbt-expert.md`
+- `agents/registry/data-quality-steward.md`
+- `agents/registry/governance-auditor.md`
+- `agents/registry/data-contracts-engineer.md`
+- `agents/registry/data-mesh-architect.md`
+- `agents/registry/business-analyst.md`
+- `agents/registry/geral.md`
 
 ### Fase 5 — Todos os Hooks
 

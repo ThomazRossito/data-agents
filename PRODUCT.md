@@ -35,7 +35,7 @@ O diferencial é simples: o assistente **executa** (via MCPs nativos), respeita 
 | Tarefa | Caminho manual | Com Data Agents |
 |--------|----------------|-----------------|
 | **Análise de impacto de migração SQL Server → Databricks** (100 tabelas, 30 procedures) | 1-2 dias lendo DDLs, mapeando dependências, estimando esforço | ~30 min: `/migrate` extrai DDLs via MCP, classifica complexidade, sugere desenho Medallion |
-| **Criar pipeline Medallion (Bronze → Silver → Gold)** | 2-4h procurando templates, ajustando configs, testando incrementalmente | ~30-60 min: `/pipeline` delega ao `pipeline-architect` com KBs + skills + MCP Databricks/Fabric |
+| **Criar pipeline Medallion (Bronze → Silver → Gold)** | 2-4h procurando templates, ajustando configs, testando incrementalmente | ~30-60 min: `/pipeline` delega ao `databricks-engineer` com KBs + skills + MCP Databricks/Fabric |
 | **Auditoria de acessos e linhagem num workspace Fabric** | 1 dia compilando manualmente de múltiplas UIs | ~1h: `/governance` cruza `fabric_community` lineage + `memory_mcp` knowledge graph |
 | **Revisar um dbt model com 200 linhas** | 30-45 min de review humano | ~5 min: `/dbt` aponta falta de testes, sugere snapshots, checa naming |
 | **"Qual a diferença entre Delta Lake e Iceberg pro meu caso?"** | 1-2h de leitura de docs e blogs | ~2 min: `/party` traz 3 especialistas em paralelo com opiniões independentes |

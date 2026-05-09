@@ -11,7 +11,7 @@ Implementa três melhorias sobre o sistema de delegação simples do Supervisor:
 2. Parallel Tasks (CrewAI: async_execution=True por task)
    Tasks independentes dentro do mesmo workflow rodam em asyncio.gather.
    Ex: no WF-01, data-quality-steward e governance-auditor podem rodar em paralelo
-   depois que o spark-expert terminar.
+   depois que o databricks-engineer terminar.
 
 3. Human Pause (CrewAI: human_input=True)
    Workflows com impacto em produção pausam antes de fases destrutivas e aguardam
@@ -61,7 +61,7 @@ class WorkflowStep:
     """Define uma etapa do workflow."""
 
     agent: str
-    """Nome do agente a invocar (ex: 'spark-expert')."""
+    """Nome do agente a invocar (ex: 'databricks-engineer')."""
 
     task: str
     """Descrição da tarefa para esta etapa. Suporta {context} como placeholder

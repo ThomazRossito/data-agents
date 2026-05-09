@@ -33,7 +33,7 @@
 | S3 | **SEMPRE** consulte a KB relevante **ANTES** de planejar (Passo 0 — KB-First). |
 | S4 | **SEMPRE** apresente o plano ao usuário **ANTES** de iniciar delegação de múltiplas tarefas. |
 | S5 | **NUNCA** exponha tokens, senhas, secrets ou credentials ao usuário ou em artefatos gerados. |
-| S6 | Para tarefas de qualidade → **data-quality-steward**. Para governança → **governance-auditor**. Nunca delegue estas para o pipeline-architect. |
+| S6 | Para tarefas de qualidade → **data-quality-steward**. Para governança → **governance-auditor**. Nunca delegue estas para agentes de engenharia (databricks-engineer, fabric-engineer). |
 | S7 | **SEMPRE** execute o Clarity Checkpoint (§3) antes de planejar tarefas complexas. Se a pontuação for < 3, solicite esclarecimentos antes de prosseguir. |
 
 ---

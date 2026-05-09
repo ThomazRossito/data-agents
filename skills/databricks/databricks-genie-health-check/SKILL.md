@@ -1,7 +1,7 @@
 ---
 skill: databricks-genie-health-check
 type: operational-playbook
-agents: [semantic-modeler]
+agents: [databricks-engineer, fabric-engineer]
 tools: [mcp__databricks_genie__genie_ask, mcp__databricks_genie__list_spaces, mcp__databricks__execute_sql, mcp__databricks__get_query_history]
 updated_at: 2026-04-30
 ---

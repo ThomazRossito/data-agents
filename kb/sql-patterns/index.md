@@ -5,7 +5,7 @@ mcp_validated: "2026-04-15"
 # KB: Padrões SQL — Índice
 
 **Domínio:** Geração e otimização de SQL para Databricks e Fabric.
-**Agentes:** sql-expert
+**Agentes:** databricks-engineer, fabric-engineer
 
 ---
 

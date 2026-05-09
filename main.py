@@ -684,12 +684,20 @@ async def _stream_party(user_input: str, session_id: str | None = None) -> dict[
     # Exibe cada resposta com cabeçalho do agente
     total_cost = 0.0
     agent_icons = {
-        "sql-expert": "🗄️",
-        "spark-expert": "⚡",
-        "pipeline-architect": "🏗️",
+        "databricks-engineer": "🗄️",
+        "databricks-ai": "🤖",
+        "fabric-engineer": "🏗️",
+        "fabric-rti": "⚡",
+        "fabric-ontology": "🧬",
+        "migration-expert": "🔄",
+        "python-expert": "🐍",
+        "dbt-expert": "📦",
         "data-quality-steward": "🔍",
         "governance-auditor": "🔐",
-        "semantic-modeler": "📊",
+        "data-contracts-engineer": "📋",
+        "data-mesh-architect": "🕸️",
+        "business-analyst": "💼",
+        "geral": "💬",
     }
 
     for name, text, cost in results:
