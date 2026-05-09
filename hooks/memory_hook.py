@@ -52,7 +52,7 @@ _session_agent_call_count: dict[str, int] = {}
 # Tempo de início de cada tool_use_id (para slow_op detection)
 _tool_start_times_lesson: dict[str, float] = {}
 # Flag para evitar dupla captura de lesson no mesmo tool_use_id
-_captured_lessons: set[str] = {}
+_captured_lessons: set[str] = set()
 
 # Tools classificadas como HIGH (subconjunto de COST_TIERS em cost_guard_hook)
 _HIGH_COST_TOOLS = {
