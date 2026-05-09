@@ -1079,33 +1079,31 @@ async def _handle_analyze_project(user_input: str) -> None:
     ]
 
     tasks = [_query_single_agent(name, query) for name, query in zip(agent_names, queries)]
-    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Normaliza e fecha Steps
+    # Exibe cada resultado assim que o agente termina (as_completed)
     clean_results: list[tuple[str, str, float]] = []
     total_cost = 0.0
-    for i, result in enumerate(raw_results):
-        name = agent_names[i]
-        step = agent_steps[name]
-        if isinstance(result, Exception):
-            entry = (name, f"_Erro: {result}_", 0.0)
-            step.output = f"❌ Erro: {result}"
-        else:
-            entry = result  # type: ignore[assignment]
-            _, _, cost = entry
-            step.output = f"✅ Concluído (${cost:.5f})"
-        await step.update()
-        clean_results.append(entry)
-        total_cost += entry[2]
-
-    # Exibe resultado de cada agente como mensagem
-    for name, text, cost in clean_results:
-        if not text.strip():
+    for coro in asyncio.as_completed(tasks):
+        try:
+            result: tuple[str, str, float] = await coro
+            name, text, cost = result
+        except Exception as exc:
+            # Não sabemos qual agente falhou — registra sem nome (raro)
+            clean_results.append(("?", f"_Erro: {exc}_", 0.0))
             continue
-        icon = _ANALYZE_ICONS.get(name, "🔬")
-        author_label = f"{icon} {name}"
-        footer = f"\n\n---\n*💰 `${cost:.5f}`*"
-        await cl.Message(content=text.strip() + footer, author=author_label).send()
+
+        step = agent_steps.get(name)
+        if step:
+            step.output = f"✅ Concluído (${cost:.5f})"
+            await step.update()
+
+        clean_results.append(result)
+        total_cost += cost
+
+        if text.strip():
+            icon = _ANALYZE_ICONS.get(name, "🔬")
+            footer = f"\n\n---\n*💰 `${cost:.5f}`*"
+            await cl.Message(content=text.strip() + footer, author=f"{icon} {name}").send()
 
     # Salva relatório e exibe resumo
     report = build_report(clean_results, project_description, agent_names)
@@ -1211,25 +1209,24 @@ async def _handle_party(user_input: str) -> None:
         agent_steps[name] = step
 
     tasks = [_query_single_agent(name, query) for name in agent_names]
-    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
 
-    # Fecha steps e exibe resultados
+    # Exibe cada resultado assim que o agente termina (as_completed)
     total_cost = 0.0
-    for i, result in enumerate(raw_results):
-        name = agent_names[i]
-        step = agent_steps[name]
-        if isinstance(result, Exception):
-            step.output = f"❌ Erro: {result}"
-            await step.update()
-            await cl.Message(
-                content=f"_Erro ao consultar {name}: {result}_",
-                author=f"{_PARTY_ICONS.get(name, '💬')} {name}",
-            ).send()
+    clean: list[tuple[str, str, float]] = []
+    for coro in asyncio.as_completed(tasks):
+        try:
+            result: tuple[str, str, float] = await coro
+            name, text, cost = result
+        except Exception as exc:
+            clean.append(("?", f"_Erro: {exc}_", 0.0))
             continue
 
-        _, text, cost = result
-        step.output = f"✅ Concluído (${cost:.5f})"
-        await step.update()
+        step = agent_steps.get(name)
+        if step:
+            step.output = f"✅ Concluído (${cost:.5f})"
+            await step.update()
+
+        clean.append(result)
         total_cost += cost
 
         if text.strip():
@@ -1246,11 +1243,8 @@ async def _handle_party(user_input: str) -> None:
     from datetime import datetime as _dt
 
     _hist = cl.user_session.get("chat_history") or []
-    clean = [r for r in raw_results if not isinstance(r, Exception)]
     consolidated = "\n\n".join(
-        f"## {name}\n{text.strip()}"
-        for name, text, _ in clean  # type: ignore[misc]
-        if text.strip()
+        f"## {name}\n{text.strip()}" for name, text, _ in clean if text.strip()
     )
     if consolidated:
         _hist.append(
