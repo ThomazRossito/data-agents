@@ -1,8 +1,11 @@
-"""Testes para commands/geral.py — _geral_model() e build_prompt_with_history()."""
+"""Testes para commands/geral.py — _geral_model(), build_prompt_with_history() e run_geral_query()."""
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from contextlib import asynccontextmanager
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 # ── _geral_model ──────────────────────────────────────────────────────────────
@@ -113,3 +116,154 @@ class TestBuildPromptWithHistory:
         ]
         result = build_prompt_with_history("mensagem atual", history)
         assert result.endswith("mensagem atual")
+
+
+# ── run_geral_query ───────────────────────────────────────────────────────────
+
+
+def _make_usage(input_tokens: int = 100, output_tokens: int = 50) -> MagicMock:
+    usage = MagicMock()
+    usage.input_tokens = input_tokens
+    usage.output_tokens = output_tokens
+    return usage
+
+
+class TestRunGeralQuery:
+    @pytest.mark.asyncio
+    async def test_non_streaming_returns_text_and_metrics(self):
+        from commands.geral import run_geral_query
+
+        fake_block = MagicMock()
+        fake_block.text = "Delta Lake is a storage layer."
+        fake_message = MagicMock()
+        fake_message.content = [fake_block]
+        fake_message.usage = _make_usage(input_tokens=80, output_tokens=30)
+
+        with (
+            patch("commands.geral.settings") as mock_settings,
+            patch("commands.geral.anthropic.AsyncAnthropic") as mock_client_cls,
+        ):
+            mock_settings.anthropic_api_key = "test-key"
+            mock_settings.tier_model_map = {}
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(return_value=fake_message)
+            mock_client_cls.return_value = mock_client
+
+            history = [{"role": "user", "content": "O que é Delta Lake?"}]
+            text, metrics = await run_geral_query("O que é Delta Lake?", history)
+
+        assert "Delta Lake" in text
+        assert metrics["cost"] > 0
+        assert metrics["input_tokens"] == 80
+        assert metrics["output_tokens"] == 30
+
+    @pytest.mark.asyncio
+    async def test_streaming_calls_token_callback(self):
+        from commands.geral import run_geral_query
+
+        chunks_received: list[str] = []
+
+        async def token_cb(chunk: str) -> None:
+            chunks_received.append(chunk)
+
+        # Build a mock stream context manager
+        fake_final = MagicMock()
+        fake_final.usage = _make_usage(input_tokens=60, output_tokens=20)
+
+        async def fake_text_stream():
+            for word in ["Hello", " world", "!"]:
+                yield word
+
+        mock_stream = MagicMock()
+        mock_stream.text_stream = fake_text_stream()
+        mock_stream.get_final_message = AsyncMock(return_value=fake_final)
+
+        @asynccontextmanager
+        async def fake_stream_ctx(*args, **kwargs):
+            yield mock_stream
+
+        with (
+            patch("commands.geral.settings") as mock_settings,
+            patch("commands.geral.anthropic.AsyncAnthropic") as mock_client_cls,
+        ):
+            mock_settings.anthropic_api_key = "test-key"
+            mock_settings.tier_model_map = {}
+            mock_client = MagicMock()
+            mock_client.messages.stream = fake_stream_ctx
+            mock_client_cls.return_value = mock_client
+
+            history = [{"role": "user", "content": "hi"}]
+            text, metrics = await run_geral_query("hi", history, token_callback=token_cb)
+
+        assert text == "Hello world!"
+        assert chunks_received == ["Hello", " world", "!"]
+        assert metrics["input_tokens"] == 60
+        assert metrics["output_tokens"] == 20
+
+    @pytest.mark.asyncio
+    async def test_streaming_full_text_accumulated(self):
+        from commands.geral import run_geral_query
+
+        received: list[str] = []
+
+        async def token_cb(chunk: str) -> None:
+            received.append(chunk)
+
+        fake_final = MagicMock()
+        fake_final.usage = _make_usage()
+
+        async def fake_text_stream():
+            for c in ["A", "B", "C"]:
+                yield c
+
+        mock_stream = MagicMock()
+        mock_stream.text_stream = fake_text_stream()
+        mock_stream.get_final_message = AsyncMock(return_value=fake_final)
+
+        @asynccontextmanager
+        async def fake_stream_ctx(*args, **kwargs):
+            yield mock_stream
+
+        with (
+            patch("commands.geral.settings") as mock_settings,
+            patch("commands.geral.anthropic.AsyncAnthropic") as mock_client_cls,
+        ):
+            mock_settings.anthropic_api_key = "test-key"
+            mock_settings.tier_model_map = {}
+            mock_client = MagicMock()
+            mock_client.messages.stream = fake_stream_ctx
+            mock_client_cls.return_value = mock_client
+
+            history = [{"role": "user", "content": "test"}]
+            text, _ = await run_geral_query("test", history, token_callback=token_cb)
+
+        assert text == "ABC"
+        assert received == ["A", "B", "C"]
+
+    @pytest.mark.asyncio
+    async def test_non_streaming_used_when_no_callback(self):
+        from commands.geral import run_geral_query
+
+        fake_block = MagicMock()
+        fake_block.text = "response"
+        fake_message = MagicMock()
+        fake_message.content = [fake_block]
+        fake_message.usage = _make_usage()
+
+        with (
+            patch("commands.geral.settings") as mock_settings,
+            patch("commands.geral.anthropic.AsyncAnthropic") as mock_client_cls,
+        ):
+            mock_settings.anthropic_api_key = "test-key"
+            mock_settings.tier_model_map = {}
+            mock_client = AsyncMock()
+            mock_client.messages.create = AsyncMock(return_value=fake_message)
+            mock_client.messages.stream = MagicMock()
+            mock_client_cls.return_value = mock_client
+
+            history = [{"role": "user", "content": "test"}]
+            text, _ = await run_geral_query("test", history)
+
+        # stream should NOT have been called — only create()
+        mock_client.messages.stream.assert_not_called()
+        assert text == "response"
