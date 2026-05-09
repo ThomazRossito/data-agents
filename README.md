@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.0.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/Version-2.1.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Databricks-MCP-FF3621" alt="Databricks">
   <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4" alt="Fabric">
@@ -457,10 +457,27 @@ Arquitetura multi-camada com custo de retrieval zero (sem chamada LLM).
 
 **Retrieval:** BM25 lexical via FTS5 + rerank por cosine similarity quando `fastembed` instalado. Sem chamada Sonnet lateral — latência < 5ms, custo $0.
 
+### Loop de Aprendizado Autônomo (LESSON_LEARNED)
+
+Além da memória episódica, o sistema captura automaticamente **lições aprendidas** de erros e eventos de baixa performance — formando um loop de aprendizado entre sessões.
+
+**4 triggers de captura (PostToolUse + PreToolUse):**
+
+| Trigger | Condição | Custo |
+|---------|----------|-------|
+| `error` | Qualquer erro em tool MCP | ~$0.001/lesson (Haiku) |
+| `high_cost` | > 5 operações HIGH na sessão | ~$0.001/lesson |
+| `retries` | Mesmo agente chamado > 3× | ~$0.001/lesson |
+| `slow_op` | Tool MCP > 60s de duração | ~$0.001/lesson |
+
+Cada lesson é estruturada em 3 seções (*O que aconteceu / Causa raiz / Padrão para evitar*) e injetada no system prompt dos agentes T1 antes de operações de alto risco. Decay automático de 30 dias. Limite de 50 lessons ativas por agente com deduplicação por sobreposição de summary (>60%).
+
 ```bash
 MEMORY_ENABLED=true
 MEMORY_RETRIEVAL_ENABLED=true
 MEMORY_CAPTURE_ENABLED=true
+# MEMORY_DECAY_LESSON_LEARNED_DAYS=30
+# MEMORY_LESSON_MAX_PER_AGENT=50
 
 # Embeddings semânticos locais (opcional — requer pip install ".[memory]")
 SHORT_TERM_EMBEDDER_ENABLED=false
@@ -519,6 +536,10 @@ make health-fabric
 | `INJECT_KB_INDEX` | true | Injeção automática de KBs nos agentes |
 | `IDLE_TIMEOUT_MINUTES` | 30 | Reset automático por inatividade |
 | `MEMORY_ENABLED` | true | Sistema de memória persistente |
+| `MEMORY_LESSON_MAX_PER_AGENT` | 50 | Máximo de LESSON_LEARNED ativas por agente |
+| `S4_AUTONOMOUS_MODE` | false | Quando true, auto-aprova delegações read-only/single-agent/baixo custo sem confirmação humana |
+| `S4_AUTO_APPROVAL_MIN_CLARITY_SCORE` | 4 | Clarity score mínimo (0–5) para auto-aprovação S4 |
+| `S4_AUTO_APPROVAL_MAX_COST_USD` | 0.10 | Custo estimado máximo (USD) para auto-aprovação S4 |
 | `CONSOLE_LOG_LEVEL` | WARNING | Nível de log no terminal (WARNING oculta logs operacionais) |
 | `SKILL_REFRESH_INTERVAL_DAYS` | 3 | Intervalo de refresh das Skills |
 | `AGENT_PERMISSION_MODE` | `bypassPermissions` | `acceptEdits` para pedir confirmação antes de writes |

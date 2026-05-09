@@ -457,7 +457,8 @@ Os hooks são interceptadores automáticos ativados antes (`PreToolUse`) ou depo
 | `output_compressor_hook.py` | PostToolUse | Trunca outputs verbosos para preservar tokens de contexto |
 | `context_budget_hook.py` | PostToolUse | Alerta a 70%; compacta autonomamente a 80% (summary Haiku + reconexão); ERROR a 95% |
 | `workflow_tracker.py` | PostToolUse | Rastreia delegações, Clarity Checkpoint e cascade PRD→SPEC |
-| `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente |
+| `memory_hook.py` | PreToolUse | Registra t₀ de cada tool call para medir duração real (`slow_op` detection) |
+| `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente; detecta triggers de LESSON_LEARNED |
 | `session_logger.py` | PostToolUse | Registra métricas finais de custo/turns/duração por sessão |
 | `transcript_hook.py` | PostToolUse | Persiste transcript completo por sessão em `logs/sessions/<id>.jsonl` (append-only) — usado pelo `/resume` |
 | `checkpoint.py` | — | Save/restore automático do estado da sessão |
@@ -681,7 +682,7 @@ O sistema possui dois layers de memória complementares:
 
 Captura fatos da sessão automaticamente via `memory_hook.py` e os persiste como arquivos Markdown individuais em `memory/data/{tipo}/{id}.md`. O retrieval é feito localmente via **SQLite FTS5 (BM25)** com reranking semântico opcional por embeddings ONNX — sem custo de API, latência < 5ms.
 
-**7 tipos de memória com políticas de decay diferentes:**
+**8 tipos de memória com políticas de decay diferentes:**
 
 | Tipo | Decay | Descrição |
 |------|-------|-----------|
@@ -692,8 +693,24 @@ Captura fatos da sessão automaticamente via `memory_hook.py` e os persiste como
 | `FEEDBACK` | 90 dias | Correções e orientações recebidas |
 | `PIPELINE_STATUS` | 14 dias | Estado de execução de pipelines e jobs |
 | `PROGRESS` | 7 dias | Tarefas em andamento |
+| `LESSON_LEARNED` | 30 dias | Lições capturadas de erros e baixa performance — loop de aprendizado autônomo |
 
 O retrieval é executado antes de cada query ao Supervisor: o sistema busca memórias relevantes pelo índice FTS5 e as injeta no system prompt, mantendo contexto entre sessões sem custo adicional de LLM.
+
+#### Loop de Aprendizado Autônomo (LESSON_LEARNED)
+
+O tipo `LESSON_LEARNED` alimenta um loop de aprendizado entre sessões: erros e eventos de baixa performance são automaticamente capturados, sumarizados via Haiku (~$0.001) e armazenados como conhecimento estruturado. Na próxima sessão, essas lições são injetadas no system prompt dos agentes T1 antes de operações de alto risco.
+
+**Triggers de captura:**
+
+| Trigger | Condição |
+|---------|----------|
+| `error` | Qualquer erro em tool MCP |
+| `high_cost` | > 5 operações HIGH na sessão |
+| `retries` | Mesmo agente chamado > 3× |
+| `slow_op` | Tool MCP > 60 segundos de duração |
+
+Cada lesson segue o formato *O que aconteceu / Causa raiz / Padrão para evitar*. Limite de 50 lessons por agente (deduplicação automática por sobreposição de summary > 60%).
 
 Controle via `.env`:
 
@@ -762,6 +779,8 @@ pytest tests/ -v --tb=short --cov=agents --cov=config --cov=hooks --cov=commands
 | `test_mcp_configs.py` | Configurações dos MCP servers |
 | `test_mlflow_wrapper.py` | Wrapper MLflow |
 | `test_settings.py` | Leitura e validação das configurações |
+| `test_memory_lesson_learned.py` | LESSON_LEARNED: enum, CRUD, decay, prune, dedup, injeção (22 testes) |
+| `test_s4_relaxation.py` | S4 Autonomous Mode: settings, log_s4_decision, constitution, supervisor prompt |
 
 ---
 
