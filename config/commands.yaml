@@ -89,7 +89,7 @@ commands:
     description: Verifica a conectividade com as plataformas configuradas.
     skills: []
     prompt_template: |-
-      Execute um diagnóstico de conectividade: (1) Verifique quais plataformas MCP estão configuradas e acessíveis. (2) Para Databricks: tente listar catálogos via mcp__databricks__list_catalogs. (3) Para Fabric: tente listar workspaces via mcp__fabric_official__list_workspaces. (4) Para Fabric RTI: tente listar databases via mcp__fabric_rti__kusto_list_databases. (5) Apresente um relatório de status de cada plataforma.
+      Execute exatamente 3 verificações de conectividade, nesta ordem, e NADA MAIS: (1) Databricks: mcp__databricks__list_catalogs. (2) Fabric: mcp__fabric_official__list_workspaces. (3) Fabric RTI: mcp__fabric_rti__kusto_list_databases. Após as 3 chamadas, apresente IMEDIATAMENTE o relatório de status. Não execute nenhuma outra tool call além dessas 3.
     display_template: '[bold cyan]🏥 [Health Check] Verificando conectividade das plataformas...[/bold cyan]'
   status:
     agent: null
