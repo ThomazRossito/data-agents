@@ -535,31 +535,26 @@ if page == "📊 Overview":
 
 # ── KNOWLEDGE GRAPH ──────────────────────────────────────────────────────────
 elif page == "🗺️ Knowledge Graph":
-    st.title("🗺️ Knowledge Graph — Arquitetura do Projeto")
-    st.caption(
-        "Grafo interativo de conhecimento: como o Supervisor, Agentes, MCPs e Slash Commands se relacionam. "
-        "Clique e arraste os nós para explorar."
-    )
-
     try:
         from streamlit_agraph import agraph, Node, Edge, Config
     except ImportError:
+        st.title("🗺️ Knowledge Graph — Arquitetura do Projeto")
         st.error(
-            "**streamlit-agraph** não está instalado.\n\n"
-            "Execute: `pip install streamlit-agraph>=0.0.45`"
+            '**streamlit-agraph** não está instalado.\n\nExecute: `pip install -e ".[monitoring]"`'
         )
         st.stop()
 
-    # ── Controles ────────────────────────────────────────────────────────────
-    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
-    with col_ctrl1:
-        show_mcps = st.toggle("Mostrar MCPs", value=True)
-    with col_ctrl2:
-        show_commands = st.toggle("Mostrar Slash Commands", value=False)
-    with col_ctrl3:
-        show_kb = st.toggle("Mostrar KB Domains", value=False)
+    # ── Controles na sidebar (libera espaço vertical para o grafo) ────────────
+    with st.sidebar:
+        st.divider()
+        st.markdown("**🗺️ Camadas do Grafo**")
+        show_mcps = st.toggle("MCPs", value=True)
+        show_commands = st.toggle("Slash Commands", value=False)
+        show_kb = st.toggle("KB Domains", value=False)
 
-    st.divider()
+    # Cabeçalho compacto
+    st.markdown("### 🗺️ Knowledge Graph — Arquitetura do Projeto")
+    st.caption("Clique e arraste os nós para explorar. Controles de camada na sidebar.")
 
     # ── Paleta de cores ───────────────────────────────────────────────────────
     COLOR = {
@@ -666,7 +661,10 @@ elif page == "🗺️ Knowledge Graph":
                 edges.append(Edge(source=cmd_id, target=target_id, color="#A5F3FC"))
 
     # ── Config do grafo ───────────────────────────────────────────────────────
-    graph_height = 750 if (show_commands or show_kb) else 650
+    # Altura cresce com o número de nós para evitar sobreposição
+    base_h = 850
+    extra_h = max(0, (len(nodes) - 20) * 8)
+    graph_height = min(base_h + extra_h, 1100)
 
     config = Config(
         width="100%",
