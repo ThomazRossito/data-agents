@@ -218,13 +218,14 @@ _ERROR_INDICATORS = ["error", "failed", "exception", "traceback", "unauthorized"
 
 async def pre_track_lesson_timing(
     tool_name: str, tool_input: dict[str, Any], tool_use_id: str | None
-) -> None:
+) -> dict[str, Any]:
     """PreToolUse: registra o instante de início de cada tool call para slow_op detection."""
     global _tool_start_times_lesson
 
     # Normalize to str — SDK may pass non-str types in some runtime versions.
     tid = str(tool_use_id) if tool_use_id is not None else tool_name
     _tool_start_times_lesson[tid] = time.monotonic()
+    return {}
 
 
 def _track_lesson_state(
