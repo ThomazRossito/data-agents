@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any
 
@@ -43,6 +44,40 @@ _fallback_char_count: int = 0
 # Threshold para flush automático (50K chars ≈ ~12K tokens)
 _BUFFER_FLUSH_THRESHOLD = 50_000
 
+# ── Estado para detecção de LESSON_LEARNED triggers ──────────────────────────
+# Contagem de ops HIGH na sessão (mcp__databricks__run_job_now etc.)
+_session_high_op_count: int = 0
+# Contagem de delegações por agente (para detectar retentativas excessivas)
+_session_agent_call_count: dict[str, int] = {}
+# Tempo de início de cada tool_use_id (para slow_op detection)
+_tool_start_times_lesson: dict[str, float] = {}
+# Flag para evitar dupla captura de lesson no mesmo tool_use_id
+_captured_lessons: set[str] = set()
+
+# Tools classificadas como HIGH (subconjunto de COST_TIERS em cost_guard_hook)
+_HIGH_COST_TOOLS = {
+    "mcp__databricks__run_job_now",
+    "mcp__databricks__start_cluster",
+    "mcp__databricks__start_pipeline",
+    "mcp__databricks__cancel_run",
+}
+# Threshold de HIGH ops para disparar o trigger high_cost
+_HIGH_COST_THRESHOLD = 5
+# Threshold de retentativas por agente para disparar trigger retries
+_RETRIES_THRESHOLD = 3
+# Threshold de duração (segundos) para disparar trigger slow_op
+_SLOW_OP_THRESHOLD_S = 60.0
+
+
+def reset_lesson_state() -> None:
+    """Reseta o estado de detecção de lessons (chamado no início de cada sessão)."""
+    global _session_high_op_count, _session_agent_call_count
+    global _tool_start_times_lesson, _captured_lessons
+    _session_high_op_count = 0
+    _session_agent_call_count.clear()
+    _tool_start_times_lesson.clear()
+    _captured_lessons.clear()
+
 
 def init_memory_hook(session_id: str, short_term: "ShortTermMemory") -> None:
     """
@@ -56,6 +91,7 @@ def init_memory_hook(session_id: str, short_term: "ShortTermMemory") -> None:
     _hook_session_id = session_id
     _fallback_buffer = []
     _fallback_char_count = 0
+    reset_lesson_state()
     logger.debug(f"memory_hook inicializado: sessão={session_id!r}, backend=SQLite")
 
 
@@ -68,7 +104,8 @@ async def capture_session_context(
     Hook PostToolUse que captura contexto da sessão para o sistema de memória.
 
     Acumula o contexto no buffer e detecta padrões de captura instantânea.
-    NÃO chama LLM — apenas acumula texto para flush posterior.
+    NÃO chama LLM na path principal — apenas acumula texto para flush posterior.
+    Quando detecta um trigger de lesson, chama Haiku assíncronamente para capturar.
 
     Assinatura alinhada com o SDK: (input_data, tool_use_id, context).
     input_data contém: tool_name, tool_input, tool_output.
@@ -86,6 +123,12 @@ async def capture_session_context(
     tool_output = input_data.get("tool_output")
     if isinstance(tool_output, dict):
         tool_output = str(tool_output)
+
+    # Atualiza start times para slow_op detection (PreToolUse não está disponível aqui,
+    # então usamos o inverso: registramos o tempo de PostToolUse e o duration vem de fora
+    # via tool_use_id tracking. Alternativa: registramos no PostToolUse como "agora - start".
+    # Como não temos PreToolUse neste hook, usamos duração estimada via timestamp do output.)
+    _track_lesson_state(tool_name, tool_input, tool_use_id)
 
     # Ignora tools de infraestrutura (não geram contexto útil)
     skip_tools = {"Glob", "Grep", "Read", "Bash"}
@@ -107,6 +150,15 @@ async def capture_session_context(
     # Captura instantânea de padrões explícitos (sem LLM)
     if tool_output:
         _check_instant_patterns(str(tool_output))
+
+    # Detecção de triggers para LESSON_LEARNED (fire-and-forget assíncrono)
+    await _maybe_capture_lesson(
+        tool_name=tool_name,
+        tool_input=tool_input,
+        tool_output=str(tool_output) if tool_output else "",
+        tool_use_id=tool_use_id or tool_name,
+        input_data=input_data,
+    )
 
     # Aviso de flush automático (threshold baseado no backend ativo)
     char_count = (
@@ -158,6 +210,179 @@ def _format_context_entry(
         parts.append(f"  Output: {output_preview}")
 
     return "\n".join(parts)
+
+
+# ── Lesson Learned trigger detection ─────────────────────────────────────────
+
+_ERROR_INDICATORS = ["error", "failed", "exception", "traceback", "unauthorized", "timeout"]
+
+
+def _track_lesson_state(
+    tool_name: str, tool_input: dict[str, Any], tool_use_id: str | None
+) -> None:
+    """Atualiza contadores de sessão usados para triggers de LESSON_LEARNED."""
+    global _session_high_op_count, _session_agent_call_count, _tool_start_times_lesson
+
+    if tool_name in _HIGH_COST_TOOLS:
+        _session_high_op_count += 1
+
+    if tool_name == "Agent":
+        agent = (
+            tool_input.get("subagent_type")
+            or tool_input.get("agent_name")
+            or tool_input.get("name")
+            or "unknown"
+        )
+        _session_agent_call_count[agent] = _session_agent_call_count.get(agent, 0) + 1
+
+    tid = tool_use_id or tool_name
+    _tool_start_times_lesson[tid] = time.monotonic()
+
+
+def _detect_lesson_triggers(
+    tool_name: str,
+    tool_output: str,
+    tool_error: str,
+    tool_use_id: str,
+) -> list[str]:
+    """
+    Detecta triggers para captura de LESSON_LEARNED.
+
+    Returns: lista de triggers detectados (pode ser vazia ou ter múltiplos).
+    """
+    triggers: list[str] = []
+
+    # Trigger 1: erro em tool MCP
+    if tool_name.startswith("mcp__"):
+        error_text = tool_error or tool_output
+        if error_text and any(kw in error_text.lower() for kw in _ERROR_INDICATORS):
+            triggers.append("error")
+
+    # Trigger 2: acúmulo de HIGH ops na sessão (threshold configurável)
+    if _session_high_op_count >= _HIGH_COST_THRESHOLD and tool_name in _HIGH_COST_TOOLS:
+        triggers.append("high_cost")
+
+    # Trigger 3: retentativas excessivas (mesmo agente chamado N+ vezes)
+    if tool_name == "Agent":
+        for agent, count in _session_agent_call_count.items():
+            if count > _RETRIES_THRESHOLD:
+                triggers.append("retries")
+                break
+
+    # Trigger 4: operação lenta
+    start = _tool_start_times_lesson.get(tool_use_id)
+    if start is not None:
+        duration = time.monotonic() - start
+        if duration >= _SLOW_OP_THRESHOLD_S and tool_name.startswith("mcp__"):
+            triggers.append("slow_op")
+
+    return triggers
+
+
+def _extract_agent_from_tool_input(tool_input: dict[str, Any]) -> str:
+    """Extrai o nome do agente do input do tool Agent."""
+    return (
+        tool_input.get("subagent_type")
+        or tool_input.get("agent_name")
+        or tool_input.get("name")
+        or "unknown"
+    )
+
+
+async def _maybe_capture_lesson(
+    tool_name: str,
+    tool_input: dict[str, Any],
+    tool_output: str,
+    tool_use_id: str,
+    input_data: dict[str, Any],
+) -> None:
+    """
+    Verifica se algum trigger está ativo e captura LESSON_LEARNED diretamente.
+
+    Fire-and-forget: erros são logados mas não propagados para não bloquear a pipeline.
+    Usa Haiku para sumarização (~$0.001 por lesson).
+    """
+    from config.settings import settings
+
+    if not settings.memory_enabled or not settings.memory_capture_enabled:
+        return
+
+    # Evita dupla captura para o mesmo evento
+    if tool_use_id in _captured_lessons:
+        return
+
+    tool_error = str(input_data.get("tool_error", "") or "")
+    triggers = _detect_lesson_triggers(tool_name, tool_output, tool_error, tool_use_id)
+
+    if not triggers:
+        return
+
+    trigger = triggers[0]  # captura o trigger mais prioritário
+    _captured_lessons.add(tool_use_id)
+
+    # Determina o agente envolvido
+    if tool_name == "Agent":
+        agent = _extract_agent_from_tool_input(tool_input)
+    else:
+        # Tenta inferir do nome da tool (ex: mcp__databricks__run_job → databricks-engineer)
+        if "databricks" in tool_name:
+            agent = "databricks-engineer"
+        elif "fabric_rti" in tool_name:
+            agent = "fabric-rti"
+        elif "fabric" in tool_name:
+            agent = "fabric-engineer"
+        else:
+            agent = "unknown"
+
+    error_text = tool_error or tool_output[:300]
+    context_snippet = get_session_buffer()[:400] if trigger != "error" else ""
+
+    try:
+        from utils.summarizer import summarize_lesson
+        from memory.store import MemoryStore
+        from memory.types import Memory, MemoryType
+
+        result = await summarize_lesson(
+            agent=agent,
+            trigger=trigger,
+            tool_name=tool_name,
+            error_text=error_text,
+            context_snippet=context_snippet,
+        )
+
+        store = MemoryStore()
+
+        # Extrair task_type do nome da tool (ex: run_job_now → run_job)
+        task_type = tool_name.split("__")[-1] if "__" in tool_name else tool_name
+
+        lesson = Memory(
+            type=MemoryType.LESSON_LEARNED,
+            content=result["content"],
+            summary=result["summary"],
+            tags=[agent, trigger, task_type, "lesson_learned"],
+            confidence=1.0,
+            source_session=_hook_session_id,
+            metadata={
+                "agent": agent,
+                "trigger": trigger,
+                "task_type": task_type,
+                "tool_name": tool_name,
+                "platform": tool_name.split("__")[1] if tool_name.startswith("mcp__") else "local",
+                "cost_usd": result.get("cost_usd", 0.0),
+            },
+        )
+        store.save(lesson)
+
+        # Poda se exceder o limite por agente
+        store.prune_lessons_by_agent(agent_name=agent)
+
+        logger.info(
+            f"LESSON_LEARNED capturada: agent={agent} trigger={trigger} "
+            f"tool={tool_name} id={lesson.id}"
+        )
+
+    except Exception as e:
+        logger.warning(f"Falha ao capturar LESSON_LEARNED (ignorado): {e}")
 
 
 # Padrões default de captura instantânea

@@ -1,7 +1,7 @@
 """
 Memory Types — Definição dos tipos de memória e dataclass Memory.
 
-Taxonomia fechada com 7 tipos, cada um com regras de decay diferentes:
+Taxonomia fechada com 8 tipos, cada um com regras de decay diferentes:
   Tipos genéricos (originais):
     - USER: nunca decai (confidence fixa em 1.0)
     - FEEDBACK: decay lento (90 dias para chegar a 0.1)
@@ -12,6 +12,9 @@ Taxonomia fechada com 7 tipos, cada um com regras de decay diferentes:
     - DATA_ASSET: nunca decai — tabelas, schemas, datasets e suas características
     - PLATFORM_DECISION: nunca decai — decisões sobre tecnologias, plataformas, integrações
     - PIPELINE_STATUS: decay médio (14 dias) — estado de execução de pipelines e jobs
+
+  Tipo de aprendizado autônomo:
+    - LESSON_LEARNED: decay médio (30 dias) — erros, low performance, padrões a evitar
 """
 
 from __future__ import annotations
@@ -71,6 +74,15 @@ class MemoryType(str, Enum):
     Decay médio (14 dias via settings) — status muda com frequência.
     """
 
+    LESSON_LEARNED = "lesson_learned"
+    """
+    Lições aprendidas de erros, baixa performance ou anti-padrões detectados.
+    Capturadas automaticamente por 4 triggers: erro em tool MCP, custo HIGH acumulado,
+    retentativas excessivas, operação lenta (>60s).
+    Estrutura: O que aconteceu / Causa raiz / Padrão para evitar.
+    Decay médio (30 dias via settings) — lições tendem a se tornar obsoletas com evolução.
+    """
+
 
 # Configuração de decay por tipo (em dias para atingir confidence 0.1).
 # LEGADO: mantido para compatibilidade com store.py e código existente que importa DECAY_CONFIG.
@@ -84,6 +96,7 @@ DECAY_CONFIG: dict[MemoryType, float | None] = {
     MemoryType.DATA_ASSET: None,  # Nunca decai
     MemoryType.PLATFORM_DECISION: None,  # Nunca decai
     MemoryType.PIPELINE_STATUS: 14.0,  # 14 dias (padrão; override: MEMORY_DECAY_PIPELINE_STATUS_DAYS)
+    MemoryType.LESSON_LEARNED: 30.0,  # 30 dias (padrão; override: MEMORY_DECAY_LESSON_LEARNED_DAYS)
 }
 
 
@@ -150,6 +163,8 @@ class Memory:
 
     def to_frontmatter(self) -> str:
         """Serializa para frontmatter YAML (para salvar em arquivo .md)."""
+        import json as _json
+
         lines = [
             "---",
             f'id: "{self.id}"',
@@ -165,6 +180,10 @@ class Memory:
             lines.append(f"related_ids: [{', '.join(self.related_ids)}]")
         if self.superseded_by:
             lines.append(f'superseded_by: "{self.superseded_by}"')
+        if self.metadata:
+            # Serializa metadata como JSON inline para sobreviver ao round-trip
+            meta_json = _json.dumps(self.metadata, ensure_ascii=False)
+            lines.append(f"metadata_json: '{meta_json}'")
         lines.append("---")
         return "\n".join(lines)
 
@@ -175,12 +194,24 @@ class Memory:
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Memory:
         """Cria uma Memory a partir de um dicionário (parse de frontmatter)."""
+        import json as _json
+
         mem_type = data.get("type", "progress")
         if isinstance(mem_type, str):
             mem_type = MemoryType(mem_type)
 
         created = data.get("created_at", "")
         updated = data.get("updated_at", "")
+
+        # metadata_json sobrescreve metadata (suporte a LESSON_LEARNED e futuros tipos)
+        metadata = data.get("metadata", {})
+        if not metadata:
+            raw_json = data.get("metadata_json", "")
+            if raw_json and isinstance(raw_json, str):
+                try:
+                    metadata = _json.loads(raw_json)
+                except (ValueError, TypeError):
+                    metadata = {}
 
         return cls(
             id=data.get("id", uuid.uuid4().hex[:12]),
@@ -194,5 +225,5 @@ class Memory:
             source_session=data.get("source_session", ""),
             related_ids=data.get("related_ids", []),
             superseded_by=data.get("superseded_by"),
-            metadata=data.get("metadata", {}),
+            metadata=metadata,
         )

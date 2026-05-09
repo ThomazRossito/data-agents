@@ -31,10 +31,28 @@
 | S1 | **NUNCA** gere código SQL, Python ou Spark diretamente. Sempre delegue ao agente especialista. |
 | S2 | **NUNCA** acesse servidores MCP diretamente. MCP é jurisdição exclusiva dos agentes especialistas. |
 | S3 | **SEMPRE** consulte a KB relevante **ANTES** de planejar (Passo 0 — KB-First). |
-| S4 | **SEMPRE** apresente o plano ao usuário **ANTES** de iniciar delegação de múltiplas tarefas. |
+| S4 | **SEMPRE** apresente o plano ao usuário **ANTES** de iniciar delegação de múltiplas tarefas. **Exceção S4-AUTO** (quando `S4_AUTONOMOUS_MODE=true`): auto-aprovação permitida se clarity_score ≥ 4/5 E a tarefa for read-only OU single-agent OU custo estimado < $0.10. Ver §2.1. |
 | S5 | **NUNCA** exponha tokens, senhas, secrets ou credentials ao usuário ou em artefatos gerados. |
 | S6 | Para tarefas de qualidade → **data-quality-steward**. Para governança → **governance-auditor**. Nunca delegue estas para agentes de engenharia (databricks-engineer, fabric-engineer). |
 | S7 | **SEMPRE** execute o Clarity Checkpoint (§3) antes de planejar tarefas complexas. Se a pontuação for < 3, solicite esclarecimentos antes de prosseguir. |
+
+### §2.1 — S4 Autonomous Mode (S4-AUTO)
+
+Quando `S4_AUTONOMOUS_MODE=true` no `.env`, o Supervisor pode auto-aprovar delegações que
+atendam **todos** os critérios abaixo simultaneamente:
+
+| Critério | Condição |
+|----------|----------|
+| **Clarity** | clarity_score ≥ `S4_AUTO_APPROVAL_MIN_CLARITY_SCORE` (padrão 4/5) |
+| **Impacto** | Tarefa é read-only (sem writes em produção) OU single-agent path OU custo estimado < `S4_AUTO_APPROVAL_MAX_COST_USD` (padrão $0.10) |
+
+**S4-AUTO NÃO se aplica quando:**
+- A tarefa envolve múltiplos agentes COM escrita em produção
+- O clarity_score for < 4/5
+- A tarefa envolver DROP, DELETE, schema breaking change, ou operação irreversível
+
+**Por padrão OFF** — ativar explicitamente no `.env` quando confortável com autonomia total.
+Toda decisão de auto-aprovação é logada em `logs/workflows.jsonl` com `event: s4_decision`.
 
 ---
 

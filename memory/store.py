@@ -269,6 +269,51 @@ class MemoryStore:
 
         return stale
 
+    def prune_lessons_by_agent(
+        self,
+        agent_name: str,
+        max_entries: int | None = None,
+    ) -> int:
+        """
+        Remove as LESSON_LEARNED mais antigas (menor confidence decaída) para o agente
+        se o total exceder o limite configurado.
+
+        Args:
+            agent_name: Nome do agente (campo metadata.agent).
+            max_entries: Máximo de lessons ativas. None = usa settings.
+
+        Returns:
+            Número de lessons removidas.
+        """
+        if max_entries is None:
+            from config.settings import settings
+
+            max_entries = settings.memory_lesson_max_per_agent
+
+        from memory.types import MemoryType
+
+        lessons = [
+            m
+            for m in self.list_all(memory_type=MemoryType.LESSON_LEARNED, active_only=True)
+            if m.metadata.get("agent") == agent_name
+        ]
+
+        if len(lessons) <= max_entries:
+            return 0
+
+        # Ordena por confidence crescente (as mais decaídas primeiro)
+        lessons.sort(key=lambda m: m.confidence)
+        to_remove = lessons[: len(lessons) - max_entries]
+
+        for mem in to_remove:
+            self.delete(mem.id, MemoryType.LESSON_LEARNED)
+            logger.info(f"Lesson pruned: {mem.id} (agent={agent_name}, conf={mem.confidence:.3f})")
+
+        if to_remove:
+            logger.info(f"Poda de lessons: {len(to_remove)} removidas para agente '{agent_name}'")
+
+        return len(to_remove)
+
     def get_stats(self) -> dict[str, Any]:
         """Retorna estatísticas do store."""
         stats: dict[str, Any] = {"total": 0, "by_type": {}, "active": 0, "superseded": 0}

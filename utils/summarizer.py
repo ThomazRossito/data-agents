@@ -94,6 +94,123 @@ def _estimate_cost_usd(input_tokens: int, output_tokens: int) -> float:
     return round(cost_in + cost_out, 6)
 
 
+_LESSON_SYSTEM_PROMPT = """Você é o Lesson Extractor do projeto data-agents.
+Dado um evento de baixa performance ou erro em um agente de dados, gere uma lição
+estruturada em 3 seções curtas para evitar a repetição do problema.
+
+## Formato obrigatório (Markdown)
+
+## O que aconteceu
+<uma frase descrevendo o evento: qual tool, qual agente, qual erro/lentidão>
+
+## Causa raiz
+<uma frase com a causa técnica identificável>
+
+## Padrão para evitar
+<regra prática e acionável: "Sempre X antes de Y", "Nunca Z em tabelas > N rows">
+
+## Regras rígidas
+- Seja específico: mencione nomes de tools, parâmetros, plataformas quando presentes.
+- Se a causa raiz não for clara, escreva "Causa raiz indeterminada — monitorar reincidência."
+- Bullets curtos. Máx 2 linhas por seção.
+- Output: apenas as 3 seções. Sem preâmbulo.
+"""
+
+
+async def summarize_lesson(
+    agent: str,
+    trigger: str,
+    tool_name: str,
+    error_text: str,
+    context_snippet: str = "",
+    model: str = _DEFAULT_MODEL,
+    api_key: str | None = None,
+) -> dict[str, Any]:
+    """
+    Sumariza um evento de erro/baixa performance em uma LESSON_LEARNED via Haiku.
+
+    Args:
+        agent: Nome do agente que gerou o evento (ex: "databricks-engineer").
+        trigger: Tipo do trigger: "error" | "high_cost" | "retries" | "slow_op".
+        tool_name: Tool que gerou o evento (ex: "mcp__databricks__run_job_now").
+        error_text: Texto do erro ou contexto do evento (truncado internamente).
+        context_snippet: Trecho adicional de contexto da sessão (opcional).
+        model: Modelo Anthropic. Padrão: Claude Haiku 4.5.
+        api_key: ANTHROPIC_API_KEY. Se None, usa settings.
+
+    Returns:
+        Dict com:
+          - content (str): Markdown das 3 seções
+          - summary (str): resumo de uma linha (agente + tool + trigger)
+          - cost_usd (float)
+    """
+    from anthropic import AsyncAnthropic
+    from config.settings import settings
+
+    key = api_key or settings.anthropic_api_key
+    if not key:
+        raise RuntimeError("ANTHROPIC_API_KEY ausente.")
+
+    trigger_labels = {
+        "error": "Erro em tool MCP",
+        "high_cost": "Custo acumulado alto (>5 ops HIGH)",
+        "retries": "Retentativas excessivas (>3 sem progresso)",
+        "slow_op": "Operação lenta (>60s)",
+    }
+
+    user_message = (
+        f"## Evento detectado\n"
+        f"- **Agente:** {agent}\n"
+        f"- **Trigger:** {trigger_labels.get(trigger, trigger)}\n"
+        f"- **Tool:** {tool_name}\n"
+        f"- **Detalhes:** {error_text[:600]}\n"
+    )
+    if context_snippet:
+        user_message += f"\n## Contexto da sessão\n{context_snippet[:400]}\n"
+
+    user_message += "\nGere a lição estruturada nos 3 campos definidos no system prompt."
+
+    client = AsyncAnthropic(api_key=key)
+    try:
+        response = await client.messages.create(
+            model=model,
+            max_tokens=512,
+            system=_LESSON_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    except Exception as e:
+        logger.error(f"summarize_lesson falhou: {e}")
+        raise RuntimeError(f"summarize_lesson falhou: {e}") from e
+
+    content_parts: list[str] = []
+    for block in response.content:
+        text = getattr(block, "text", None)
+        if text:
+            content_parts.append(text)
+    content = "\n".join(content_parts).strip()
+
+    input_tokens = int(getattr(response.usage, "input_tokens", 0) or 0)
+    output_tokens = int(getattr(response.usage, "output_tokens", 0) or 0)
+    cost = _estimate_cost_usd(input_tokens, output_tokens)
+
+    # Resumo de uma linha: "agent: trigger — tool_name"
+    summary = f"{agent}: {trigger} — {tool_name}"
+
+    logger.info(
+        f"Lesson summarized: agent={agent} trigger={trigger} "
+        f"tool={tool_name} (${cost:.5f}, {input_tokens}/{output_tokens} tokens)"
+    )
+
+    return {
+        "content": content,
+        "summary": summary,
+        "cost_usd": cost,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "model": model,
+    }
+
+
 def should_summarize(context_used_ratio: float, threshold: float = 0.80) -> bool:
     """
     Decide se é hora de rodar o sumarizador.

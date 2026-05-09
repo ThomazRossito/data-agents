@@ -20,8 +20,8 @@ from memory.types import Memory, MemoryType, DECAY_CONFIG
 class TestMemoryType:
     def test_four_types_exist(self):
         types = list(MemoryType)
-        # 4 tipos originais + 3 tipos de domínio de dados = 7
-        assert len(types) == 7
+        # 4 tipos originais + 3 tipos de domínio de dados + 1 lesson_learned = 8
+        assert len(types) == 8
 
     def test_type_values(self):
         assert MemoryType.USER.value == "user"

@@ -162,3 +162,13 @@ KB: kb/<domínio>/<arquivo>.md | Confiança: ALTA (0.92) | MCP: confirmado
 3. NUNCA recomendar `outputMode("complete")` para streams de alta cardinalidade — risco de OOM
 4. Checkpoints DEVEM ser declarados em streams de produção
 5. AI Functions devem ser validadas com amostra antes de aplicar em tabelas inteiras
+
+---
+
+## Lições Aprendidas — Consulta Obrigatória
+
+**Antes de executar operações de risco alto** (deploy de model serving endpoints, pipelines
+de streaming em produção, Vector Search index creation, AI Functions em tabelas grandes),
+verifique se há LESSON_LEARNED relevante no contexto. As lessons são injetadas automaticamente —
+procure pela seção `⚠️ Lições Aprendidas` e aplique os padrões preventivos antes de prosseguir.
+Se uma lesson relevante existir, mencione-a na sua resposta.
