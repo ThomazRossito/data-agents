@@ -507,37 +507,68 @@ elif page == "🗺️ Knowledge Graph":
         )
         st.stop()
 
-    # Cabeçalho compacto
+    # ── Cabeçalho compacto ────────────────────────────────────────────────────
     st.markdown("### 🗺️ Knowledge Graph — Arquitetura do Projeto")
-    st.caption("Clique e arraste os nós para explorar.")
+    st.caption("Clique num nó para ver detalhes. Arraste para explorar.")
 
     # ── Controles inline ──────────────────────────────────────────────────────
-    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+    col_ctrl1, col_ctrl2, col_ctrl3, col_ctrl4 = st.columns(4)
     with col_ctrl1:
         show_mcps = st.toggle("Mostrar MCPs", value=True)
     with col_ctrl2:
         show_commands = st.toggle("Mostrar Slash Commands", value=False)
     with col_ctrl3:
         show_kb = st.toggle("Mostrar KB Domains", value=False)
+    with col_ctrl4:
+        hierarchical = st.toggle("Layout Hierárquico", value=False)
+
+    # ── Lookup de ferramentas por MCP (para painel de detalhes) ───────────────
+    @st.cache_data(ttl=60)
+    def _load_mcp_tools() -> dict[str, list[str]]:
+        try:
+            from agents.loader import MCP_TOOL_SETS
+
+            mcp_map: dict[str, list[str]] = {}
+            for alias, tools in MCP_TOOL_SETS.items():
+                if not alias.endswith("_all"):
+                    continue
+                mcp_key = alias[: -len("_all")]
+                mcp_map[mcp_key] = [t.split("__")[-1] for t in tools]
+            return mcp_map
+        except Exception:
+            return {}
+
+    mcp_tools_map = _load_mcp_tools()
+
+    # ── Slash commands indexados por agente (para painel de detalhes) ─────────
+    import yaml as _yaml
+
+    commands_yaml_path = ROOT / "config" / "commands.yaml"
+    cmd_agent_map: dict[str, str] = {}
+    agent_commands_map: dict[str, list[str]] = {}
+    if commands_yaml_path.exists():
+        try:
+            raw_cmds = _yaml.safe_load(commands_yaml_path.read_text(encoding="utf-8"))
+            for cmd_name, cfg in (raw_cmds or {}).get("commands", {}).items():
+                agent_target = cfg.get("agent") or ""
+                if agent_target:
+                    cmd_agent_map[cmd_name] = agent_target
+                    agent_commands_map.setdefault(agent_target, []).append(f"/{cmd_name}")
+        except Exception:
+            pass
 
     # ── Paleta de cores ───────────────────────────────────────────────────────
     COLOR = {
-        "supervisor": "#7C3AED",  # roxo
-        "T0": "#6B7280",  # cinza
-        "T1": "#F59E0B",  # âmbar
-        "T2": "#F97316",  # laranja
-        "T3": "#3B82F6",  # azul
-        "mcp": "#10B981",  # verde
-        "command": "#06B6D4",  # ciano
-        "kb": "#8B5CF6",  # violeta claro
+        "supervisor": "#7C3AED",
+        "T0": "#6B7280",
+        "T1": "#F59E0B",
+        "T2": "#F97316",
+        "T3": "#3B82F6",
+        "mcp": "#10B981",
+        "command": "#06B6D4",
+        "kb": "#8B5CF6",
     }
-    SIZE = {
-        "supervisor": 40,
-        "agent": 25,
-        "mcp": 18,
-        "command": 14,
-        "kb": 14,
-    }
+    SIZE = {"supervisor": 40, "agent": 25, "mcp": 18, "command": 14, "kb": 14}
 
     nodes: list[Node] = []
     edges: list[Edge] = []
@@ -557,66 +588,52 @@ elif page == "🗺️ Knowledge Graph":
             )
             node_ids.add(nid)
 
-    # ── Nó Supervisor ────────────────────────────────────────────────────────
+    # ── Supervisor ────────────────────────────────────────────────────────────
     _add_node(
         "supervisor",
         "Supervisor",
         COLOR["supervisor"],
         SIZE["supervisor"],
-        "Supervisor — orquestra todos os agentes\nModelo: claude-sonnet-4-6\nRegras: S1–S7",
+        "Supervisor — orquestra todos os agentes\nModelo: claude-sonnet-4-6\nRegras S1–S7",
     )
 
-    # ── Carregar slash commands de commands.yaml ──────────────────────────────
-    import yaml as _yaml
-
-    commands_yaml_path = ROOT / "config" / "commands.yaml"
-    cmd_agent_map: dict[str, str] = {}
-    if commands_yaml_path.exists():
-        try:
-            raw_cmds = _yaml.safe_load(commands_yaml_path.read_text(encoding="utf-8"))
-            for cmd_name, cfg in (raw_cmds or {}).get("commands", {}).items():
-                agent_target = cfg.get("agent") or ""
-                if agent_target:
-                    cmd_agent_map[cmd_name] = agent_target
-        except Exception:
-            pass
-
-    # ── Nós de Agentes ───────────────────────────────────────────────────────
-    mcp_seen: set[str] = set()
-    kb_seen: set[str] = set()
-
-    tier_labels = {"T0": "T0", "T1": "T1", "T2": "T2", "T3": "T3"}
+    # ── Agentes ───────────────────────────────────────────────────────────────
+    agent_meta_map: dict[str, dict] = {}
+    mcp_seen: set[tuple[str, str]] = set()
+    kb_seen: set[tuple[str, str]] = set()
 
     for ag in agents:
         name = ag.get("name", "")
         if not name:
             continue
+        agent_meta_map[name] = ag
         tier = ag.get("tier", "T2")
         model = ag.get("model", "")
         desc = (ag.get("description") or "")[:120]
         ag_color = COLOR.get(tier, COLOR["T2"])
         tooltip = f"{name} [{tier}]\nModelo: {model}\n{desc}"
-        short = name.replace("-", "\n")
-        _add_node(f"agent:{name}", short, ag_color, SIZE["agent"], tooltip)
+        _add_node(f"agent:{name}", name.replace("-", "\n"), ag_color, SIZE["agent"], tooltip)
         edges.append(Edge(source="supervisor", target=f"agent:{name}", color="#CBD5E1"))
 
-        # MCPs
         if show_mcps:
             for mcp in ag.get("mcp_servers") or []:
                 mcp_id = f"mcp:{mcp}"
-                _add_node(mcp_id, mcp, COLOR["mcp"], SIZE["mcp"], f"MCP: {mcp}")
+                tool_count = len(mcp_tools_map.get(mcp, []))
+                mcp_label = f"{mcp}\n({tool_count})" if tool_count else mcp
+                _add_node(
+                    mcp_id, mcp_label, COLOR["mcp"], SIZE["mcp"], f"MCP: {mcp} · {tool_count} tools"
+                )
                 if (name, mcp) not in mcp_seen:
                     edges.append(Edge(source=f"agent:{name}", target=mcp_id, color="#6EE7B7"))
-                    mcp_seen.add((name, mcp))  # type: ignore[arg-type]
+                    mcp_seen.add((name, mcp))
 
-        # KB Domains
         if show_kb:
             for kb in ag.get("kb_domains") or []:
                 kb_id = f"kb:{kb}"
                 _add_node(kb_id, kb, COLOR["kb"], SIZE["kb"], f"KB: {kb}")
                 if (name, kb) not in kb_seen:
                     edges.append(Edge(source=f"agent:{name}", target=kb_id, color="#C4B5FD"))
-                    kb_seen.add((name, kb))  # type: ignore[arg-type]
+                    kb_seen.add((name, kb))
 
     # ── Slash Commands ────────────────────────────────────────────────────────
     if show_commands:
@@ -634,7 +651,6 @@ elif page == "🗺️ Knowledge Graph":
                 edges.append(Edge(source=cmd_id, target=target_id, color="#A5F3FC"))
 
     # ── Config do grafo ───────────────────────────────────────────────────────
-    # Altura cresce com o número de nós para evitar sobreposição
     base_h = 850
     extra_h = max(0, (len(nodes) - 20) * 8)
     graph_height = min(base_h + extra_h, 1100)
@@ -643,8 +659,8 @@ elif page == "🗺️ Knowledge Graph":
         width="100%",
         height=graph_height,
         directed=True,
-        physics=True,
-        hierarchical=False,
+        physics=not hierarchical,
+        hierarchical=hierarchical,
         nodeHighlightBehavior=True,
         highlightColor="#F472B6",
         collapsible=False,
@@ -652,33 +668,98 @@ elif page == "🗺️ Knowledge Graph":
         link={"renderLabel": False},
     )
 
-    agraph(nodes=nodes, edges=edges, config=config)
+    selected_node = agraph(nodes=nodes, edges=edges, config=config)
+
+    # ── Painel de detalhes (clique num nó) ────────────────────────────────────
+    if selected_node:
+        st.divider()
+        if selected_node == "supervisor":
+            st.markdown("#### 🟣 Supervisor")
+            c1, c2 = st.columns(2)
+            with c1:
+                st.markdown("**Modelo:** `claude-sonnet-4-6`")
+                st.markdown(f"**Agentes gerenciados:** {len(agent_meta_map)}")
+            with c2:
+                st.markdown("**Regras:** S1 – S7 (`kb/constitution.md`)")
+                st.markdown("**Modo:** Orquestração pura — nunca executa MCP diretamente")
+
+        elif selected_node.startswith("agent:"):
+            name = selected_node[len("agent:") :]
+            ag = agent_meta_map.get(name, {})
+            tier = ag.get("tier", "—")
+            model = ag.get("model", "—")
+            desc = ag.get("description") or "—"
+            mcps = ag.get("mcp_servers") or []
+            kbs = ag.get("kb_domains") or []
+            cmds = agent_commands_map.get(name, [])
+            tier_colors = {"T1": "🟡", "T2": "🟠", "T3": "🔵", "T0": "⚫"}
+            icon = tier_colors.get(tier, "🤖")
+            st.markdown(f"#### {icon} {name}")
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.markdown(f"**Tier:** {tier}")
+                st.markdown(f"**Modelo:** `{model}`")
+            with c2:
+                st.markdown(f"**MCPs:** {len(mcps)}")
+                if mcps:
+                    st.markdown("  \n".join(f"· `{m}`" for m in mcps))
+            with c3:
+                st.markdown(f"**Slash Commands:** {len(cmds)}")
+                if cmds:
+                    st.markdown("  \n".join(f"· `{c}`" for c in cmds))
+            if desc and desc != "—":
+                st.markdown(f"**Descrição:** {desc}")
+            if kbs:
+                st.markdown(f"**KB Domains:** {', '.join(f'`{k}`' for k in kbs)}")
+
+        elif selected_node.startswith("mcp:"):
+            mcp_name = selected_node[len("mcp:") :]
+            tools = mcp_tools_map.get(mcp_name, [])
+            st.markdown(f"#### 🟢 MCP: `{mcp_name}`")
+            st.markdown(f"**{len(tools)} tools disponíveis**")
+            if tools:
+                # Exibe em 3 colunas
+                cols = st.columns(3)
+                for i, tool in enumerate(sorted(tools)):
+                    cols[i % 3].markdown(f"· `{tool}`")
+
+        elif selected_node.startswith("cmd:"):
+            cmd = selected_node[len("cmd:") :]
+            agent_target = cmd_agent_map.get(cmd.lstrip("/"), "—")
+            st.markdown(f"#### 🩵 Slash Command: `{cmd}`")
+            st.markdown(f"**Agente alvo:** `{agent_target}`")
+
+        elif selected_node.startswith("kb:"):
+            kb_name = selected_node[len("kb:") :]
+            st.markdown(f"#### 💜 KB Domain: `{kb_name}`")
+            kb_path = ROOT / "kb" / kb_name / "index.md"
+            if kb_path.exists():
+                st.markdown(f"**Arquivo:** `kb/{kb_name}/index.md`")
+            else:
+                st.caption("Arquivo de índice não encontrado.")
 
     # ── Legenda ───────────────────────────────────────────────────────────────
     st.divider()
-    st.markdown("**Legenda**")
     legend_cols = st.columns(7)
     legend = [
-        ("🟣", "Supervisor", COLOR["supervisor"]),
-        ("🟡", "T1 — Core", COLOR["T1"]),
-        ("🟠", "T2 — Especialistas", COLOR["T2"]),
-        ("🔵", "T3 — Conversacional", COLOR["T3"]),
-        ("⚫", "T0 — Geral (Haiku)", COLOR["T0"]),
-        ("🟢", "MCPs", COLOR["mcp"]),
-        ("🩵", "Slash Commands", COLOR["command"]),
+        ("🟣", "Supervisor"),
+        ("🟡", "T1 — Core"),
+        ("🟠", "T2 — Especialistas"),
+        ("🔵", "T3 — Conversacional"),
+        ("⚫", "T0 — Haiku"),
+        ("🟢", "MCPs"),
+        ("🩵", "Slash Commands"),
     ]
-    for col, (icon, label, _) in zip(legend_cols, legend):
+    for col, (icon, label) in zip(legend_cols, legend):
         col.markdown(f"{icon} **{label}**")
 
-    st.divider()
     agent_count = len([n for n in nodes if n.id.startswith("agent:")])
     mcp_count = len([n for n in nodes if n.id.startswith("mcp:")])
     cmd_count = len([n for n in nodes if n.id.startswith("cmd:")])
     kb_count = len([n for n in nodes if n.id.startswith("kb:")])
     st.caption(
-        f"Nós: **{len(nodes)}** total — "
-        f"1 Supervisor · {agent_count} Agentes · {mcp_count} MCPs · "
-        f"{cmd_count} Slash Commands · {kb_count} KB Domains · "
+        f"Nós: **{len(nodes)}** — 1 Supervisor · {agent_count} Agentes · "
+        f"{mcp_count} MCPs · {cmd_count} Slash Commands · {kb_count} KB Domains · "
         f"**{len(edges)}** arestas"
     )
 
