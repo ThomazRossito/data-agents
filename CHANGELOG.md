@@ -7,6 +7,43 @@
 
 ## [Unreleased]
 
+## [2.2.0] — 2026-05-09
+
+### Added — Chainlit UI parity + Lições Aprendidas dashboard
+
+- **`/analyze-project` como comando real** (`commands/analyze.py`): 5 grupos de agentes
+  (default, quality, arch, databricks, fabric), prompts por agente com 5 seções estruturadas,
+  relatório consolidado em `output/analyze-project/`. Antes existia apenas como comando
+  Claude Code, causando alucinação no Supervisor.
+- **Anti-alucinação no Supervisor** (`agents/prompts/supervisor_prompt.py`): seção
+  `SLASH COMMANDS REFERENCE` com tabela de comandos reais e instrução explícita de nunca
+  inventar comandos fora da lista.
+- **`/analyze-project` na Chainlit UI** (`ui/chainlit_app.py`): `_handle_analyze_project()`
+  intercepta o comando antes do Supervisor, roda agentes em paralelo via `asyncio.gather`,
+  exibe um `cl.Step` por agente durante a execução e resultados como `cl.Message` individuais.
+- **`/party` na Chainlit UI** (`ui/chainlit_app.py`): `_handle_party()` implementado com o
+  mesmo padrão — suporta todos os flags (`--quality`, `--arch`, `--full`, `--engineering`,
+  `--migration`) e listas explícitas de agentes. Antes caía no Supervisor com `doma_prompt`
+  truncado.
+- **`/geral` direct dispatch na Chainlit UI** (`ui/chainlit_app.py`): `_handle_geral()`
+  chama `run_geral_query()` diretamente via `anthropic.AsyncAnthropic` com Haiku (T0) —
+  sem Supervisor, sem Agent tool, ~95% mais barato. Mantém histórico de conversa
+  (`_geral_history`) para follow-ups na sessão.
+- **Página "🧠 Lições Aprendidas"** no Streamlit (`monitoring/app.py`): `load_lessons()`
+  lê `memory/data/lesson_learned/*.md` via frontmatter. Exibe métricas (total ativas/expiradas,
+  avg confidence, agentes com lições), distribuição por trigger e agente, lista filtrável com
+  agente + trigger + show-expired, detalhe expandível por lição com conteúdo e tags.
+- **`/party` e `/analyze-project` no `COMMAND_GROUPS`** (`ui/ui_config.py`): grupo
+  `"🎉 Multi-Agente"` adicionado para aparecer no texto de boas-vindas do Chainlit.
+- **26 novos testes** (`tests/test_analyze_command.py`): parser, grupos, prompts e
+  consolidador de relatório.
+
+### Fixed
+
+- **Monitoring Observability**: `"analyze"` adicionado ao `_SUPERVISOR_LIKE` set para
+  sessions do tipo `/analyze-project` aparecerem corretamente no dashboard.
+- **Escape sequences**: `\|` em tabelas Markdown no `supervisor_prompt.py` corrigido para `|`.
+
 ## [2.1.0] — 2026-05-09
 
 ### Added — Autonomous Learning System + S4 Selective Relaxation
