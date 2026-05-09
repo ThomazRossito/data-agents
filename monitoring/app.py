@@ -582,7 +582,16 @@ elif page == "🗺️ Knowledge Graph":
 
     def _add_node(nid: str, label: str, color: str, size: int, title: str = "") -> None:
         if nid not in node_ids:
-            nodes.append(Node(id=nid, label=label, size=size, color=color, title=title or label))
+            nodes.append(
+                Node(
+                    id=nid,
+                    label=label,
+                    size=size,
+                    color=color,
+                    title=title or label,
+                    font={"color": "#FFFFFF", "size": 14},
+                )
+            )
             node_ids.add(nid)
 
     # ── Nó Supervisor ────────────────────────────────────────────────────────
