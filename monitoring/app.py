@@ -535,22 +535,20 @@ if page == "📊 Overview":
 
 # ── KNOWLEDGE GRAPH ──────────────────────────────────────────────────────────
 elif page == "🗺️ Knowledge Graph":
-    st.title("🗺️ Knowledge Graph — Arquitetura do Projeto")
-    st.caption(
-        "Grafo interativo de conhecimento: como o Supervisor, Agentes, MCPs e Slash Commands se relacionam. "
-        "Clique e arraste os nós para explorar."
-    )
-
     try:
         from streamlit_agraph import agraph, Node, Edge, Config
     except ImportError:
+        st.title("🗺️ Knowledge Graph — Arquitetura do Projeto")
         st.error(
-            "**streamlit-agraph** não está instalado.\n\n"
-            "Execute: `pip install streamlit-agraph>=0.0.45`"
+            '**streamlit-agraph** não está instalado.\n\nExecute: `pip install -e ".[monitoring]"`'
         )
         st.stop()
 
-    # ── Controles ────────────────────────────────────────────────────────────
+    # Cabeçalho compacto
+    st.markdown("### 🗺️ Knowledge Graph — Arquitetura do Projeto")
+    st.caption("Clique e arraste os nós para explorar.")
+
+    # ── Controles inline ──────────────────────────────────────────────────────
     col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
     with col_ctrl1:
         show_mcps = st.toggle("Mostrar MCPs", value=True)
@@ -558,8 +556,6 @@ elif page == "🗺️ Knowledge Graph":
         show_commands = st.toggle("Mostrar Slash Commands", value=False)
     with col_ctrl3:
         show_kb = st.toggle("Mostrar KB Domains", value=False)
-
-    st.divider()
 
     # ── Paleta de cores ───────────────────────────────────────────────────────
     COLOR = {
@@ -586,7 +582,16 @@ elif page == "🗺️ Knowledge Graph":
 
     def _add_node(nid: str, label: str, color: str, size: int, title: str = "") -> None:
         if nid not in node_ids:
-            nodes.append(Node(id=nid, label=label, size=size, color=color, title=title or label))
+            nodes.append(
+                Node(
+                    id=nid,
+                    label=label,
+                    size=size,
+                    color=color,
+                    title=title or label,
+                    font={"color": "#FFFFFF", "size": 14},
+                )
+            )
             node_ids.add(nid)
 
     # ── Nó Supervisor ────────────────────────────────────────────────────────
@@ -666,7 +671,10 @@ elif page == "🗺️ Knowledge Graph":
                 edges.append(Edge(source=cmd_id, target=target_id, color="#A5F3FC"))
 
     # ── Config do grafo ───────────────────────────────────────────────────────
-    graph_height = 750 if (show_commands or show_kb) else 650
+    # Altura cresce com o número de nós para evitar sobreposição
+    base_h = 850
+    extra_h = max(0, (len(nodes) - 20) * 8)
+    graph_height = min(base_h + extra_h, 1100)
 
     config = Config(
         width="100%",
