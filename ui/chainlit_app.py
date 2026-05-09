@@ -1889,6 +1889,14 @@ async def on_message(message: cl.Message) -> None:
         await cl.Message(content=md, author="Sistema").send()
         return
 
+    # Comando global /health — status das plataformas (sem Supervisor)
+    if user_input.lower().startswith("/health"):
+        from commands.health import handle_health_command_chainlit
+
+        md = handle_health_command_chainlit()
+        await cl.Message(content=md, author="Sistema").send()
+        return
+
     # Comando global /memory — gerenciamento local de memória (sem Supervisor)
     if user_input.lower().startswith("/memory"):
         from memory.store import MemoryStore

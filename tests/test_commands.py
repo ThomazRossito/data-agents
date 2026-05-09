@@ -80,6 +80,8 @@ class TestParseCommand:
         assert result is not None
         assert result.command == "/health"
         assert result.doma_mode == "internal"
+        # /health é tratado localmente — doma_prompt vazio é esperado
+        assert result.agent is None
 
     def test_status_command(self):
         result = parse_command("/status")
@@ -130,7 +132,8 @@ class TestParseCommand:
         assert result is None
 
     def test_command_without_args(self):
-        result = parse_command("/health")
+        # /status não requer args e ainda produz doma_prompt (vai ao Supervisor)
+        result = parse_command("/status")
         assert result is not None
         assert result.doma_prompt  # Deve ter prompt mesmo sem args
 
