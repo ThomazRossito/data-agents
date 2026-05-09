@@ -544,17 +544,18 @@ elif page == "🗺️ Knowledge Graph":
         )
         st.stop()
 
-    # ── Controles na sidebar (libera espaço vertical para o grafo) ────────────
-    with st.sidebar:
-        st.divider()
-        st.markdown("**🗺️ Camadas do Grafo**")
-        show_mcps = st.toggle("MCPs", value=True)
-        show_commands = st.toggle("Slash Commands", value=False)
-        show_kb = st.toggle("KB Domains", value=False)
-
     # Cabeçalho compacto
     st.markdown("### 🗺️ Knowledge Graph — Arquitetura do Projeto")
-    st.caption("Clique e arraste os nós para explorar. Controles de camada na sidebar.")
+    st.caption("Clique e arraste os nós para explorar.")
+
+    # ── Controles inline ──────────────────────────────────────────────────────
+    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+    with col_ctrl1:
+        show_mcps = st.toggle("Mostrar MCPs", value=True)
+    with col_ctrl2:
+        show_commands = st.toggle("Mostrar Slash Commands", value=False)
+    with col_ctrl3:
+        show_kb = st.toggle("Mostrar KB Domains", value=False)
 
     # ── Paleta de cores ───────────────────────────────────────────────────────
     COLOR = {
