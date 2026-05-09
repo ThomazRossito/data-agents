@@ -66,6 +66,34 @@ def test_decay_get_decay_days_lesson_learned() -> None:
     assert days == 30.0
 
 
+def test_error_trigger_matches_combined_text() -> None:
+    """tool_error sem keyword + tool_output com 'exception' deve disparar o trigger."""
+    from hooks.memory_hook import _detect_lesson_triggers, reset_lesson_state
+
+    reset_lesson_state()
+    triggers = _detect_lesson_triggers(
+        tool_name="mcp__databricks__execute_sql",
+        tool_output="AnalysisException: Table or view not found: silver.tbl",
+        tool_error="Table or view not found: silver.tbl",  # sem keyword sozinho
+        tool_use_id="test_combined_001",
+    )
+    assert "error" in triggers
+
+
+def test_error_trigger_fires_on_tool_error_keyword() -> None:
+    """tool_error com 'failed' deve disparar o trigger mesmo sem tool_output."""
+    from hooks.memory_hook import _detect_lesson_triggers, reset_lesson_state
+
+    reset_lesson_state()
+    triggers = _detect_lesson_triggers(
+        tool_name="mcp__databricks__run_job_now",
+        tool_output="",
+        tool_error="Job failed: OOM after 120s",
+        tool_use_id="test_error_kw_001",
+    )
+    assert "error" in triggers
+
+
 # ── Phase 1: Memory CRUD ──────────────────────────────────────────────────────
 
 
