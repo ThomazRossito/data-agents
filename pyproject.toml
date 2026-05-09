@@ -85,6 +85,7 @@ monitoring = [
     "streamlit>=1.35",
     "pandas>=2.0",
     "pyyaml>=6.0",
+    "streamlit-agraph>=0.0.45",
 ]
 ui = [
     "chainlit>=2.0",

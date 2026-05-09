@@ -251,6 +251,7 @@ with st.sidebar:
         "Navegação",
         [
             "📊 Overview",
+            "🗺️ Knowledge Graph",
             "🤖 Agentes",
             "🔄 Workflows",
             "⚡ Execuções",
@@ -494,6 +495,184 @@ if page == "📊 Overview":
             else:
                 st.warning(f"`{ts}` {msg}")
 
+
+# ── KNOWLEDGE GRAPH ──────────────────────────────────────────────────────────
+elif page == "🗺️ Knowledge Graph":
+    st.title("🗺️ Knowledge Graph — Arquitetura do Projeto")
+    st.caption(
+        "Grafo interativo de conhecimento: como o Supervisor, Agentes, MCPs e Slash Commands se relacionam. "
+        "Clique e arraste os nós para explorar."
+    )
+
+    try:
+        from streamlit_agraph import agraph, Node, Edge, Config
+    except ImportError:
+        st.error(
+            "**streamlit-agraph** não está instalado.\n\n"
+            "Execute: `pip install streamlit-agraph>=0.0.45`"
+        )
+        st.stop()
+
+    # ── Controles ────────────────────────────────────────────────────────────
+    col_ctrl1, col_ctrl2, col_ctrl3 = st.columns(3)
+    with col_ctrl1:
+        show_mcps = st.toggle("Mostrar MCPs", value=True)
+    with col_ctrl2:
+        show_commands = st.toggle("Mostrar Slash Commands", value=False)
+    with col_ctrl3:
+        show_kb = st.toggle("Mostrar KB Domains", value=False)
+
+    st.divider()
+
+    # ── Paleta de cores ───────────────────────────────────────────────────────
+    COLOR = {
+        "supervisor": "#7C3AED",  # roxo
+        "T0": "#6B7280",  # cinza
+        "T1": "#F59E0B",  # âmbar
+        "T2": "#F97316",  # laranja
+        "T3": "#3B82F6",  # azul
+        "mcp": "#10B981",  # verde
+        "command": "#06B6D4",  # ciano
+        "kb": "#8B5CF6",  # violeta claro
+    }
+    SIZE = {
+        "supervisor": 40,
+        "agent": 25,
+        "mcp": 18,
+        "command": 14,
+        "kb": 14,
+    }
+
+    nodes: list[Node] = []
+    edges: list[Edge] = []
+    node_ids: set[str] = set()
+
+    def _add_node(nid: str, label: str, color: str, size: int, title: str = "") -> None:
+        if nid not in node_ids:
+            nodes.append(Node(id=nid, label=label, size=size, color=color, title=title or label))
+            node_ids.add(nid)
+
+    # ── Nó Supervisor ────────────────────────────────────────────────────────
+    _add_node(
+        "supervisor",
+        "Supervisor",
+        COLOR["supervisor"],
+        SIZE["supervisor"],
+        "Supervisor — orquestra todos os agentes\nModelo: claude-sonnet-4-6\nRegras: S1–S7",
+    )
+
+    # ── Carregar slash commands de commands.yaml ──────────────────────────────
+    import yaml as _yaml
+
+    commands_yaml_path = ROOT / "config" / "commands.yaml"
+    cmd_agent_map: dict[str, str] = {}
+    if commands_yaml_path.exists():
+        try:
+            raw_cmds = _yaml.safe_load(commands_yaml_path.read_text(encoding="utf-8"))
+            for cmd_name, cfg in (raw_cmds or {}).get("commands", {}).items():
+                agent_target = cfg.get("agent") or ""
+                if agent_target:
+                    cmd_agent_map[cmd_name] = agent_target
+        except Exception:
+            pass
+
+    # ── Nós de Agentes ───────────────────────────────────────────────────────
+    mcp_seen: set[str] = set()
+    kb_seen: set[str] = set()
+
+    tier_labels = {"T0": "T0", "T1": "T1", "T2": "T2", "T3": "T3"}
+
+    for ag in agents:
+        name = ag.get("name", "")
+        if not name:
+            continue
+        tier = ag.get("tier", "T2")
+        model = ag.get("model", "")
+        desc = (ag.get("description") or "")[:120]
+        ag_color = COLOR.get(tier, COLOR["T2"])
+        tooltip = f"{name} [{tier}]\nModelo: {model}\n{desc}"
+        short = name.replace("-", "\n")
+        _add_node(f"agent:{name}", short, ag_color, SIZE["agent"], tooltip)
+        edges.append(Edge(source="supervisor", target=f"agent:{name}", color="#CBD5E1"))
+
+        # MCPs
+        if show_mcps:
+            for mcp in ag.get("mcp_servers") or []:
+                mcp_id = f"mcp:{mcp}"
+                _add_node(mcp_id, mcp, COLOR["mcp"], SIZE["mcp"], f"MCP: {mcp}")
+                if (name, mcp) not in mcp_seen:
+                    edges.append(Edge(source=f"agent:{name}", target=mcp_id, color="#6EE7B7"))
+                    mcp_seen.add((name, mcp))  # type: ignore[arg-type]
+
+        # KB Domains
+        if show_kb:
+            for kb in ag.get("kb_domains") or []:
+                kb_id = f"kb:{kb}"
+                _add_node(kb_id, kb, COLOR["kb"], SIZE["kb"], f"KB: {kb}")
+                if (name, kb) not in kb_seen:
+                    edges.append(Edge(source=f"agent:{name}", target=kb_id, color="#C4B5FD"))
+                    kb_seen.add((name, kb))  # type: ignore[arg-type]
+
+    # ── Slash Commands ────────────────────────────────────────────────────────
+    if show_commands:
+        for cmd_name, agent_target in cmd_agent_map.items():
+            cmd_id = f"cmd:/{cmd_name}"
+            _add_node(
+                cmd_id,
+                f"/{cmd_name}",
+                COLOR["command"],
+                SIZE["command"],
+                f"/{cmd_name} → {agent_target}",
+            )
+            target_id = f"agent:{agent_target}"
+            if target_id in node_ids:
+                edges.append(Edge(source=cmd_id, target=target_id, color="#A5F3FC"))
+
+    # ── Config do grafo ───────────────────────────────────────────────────────
+    graph_height = 750 if (show_commands or show_kb) else 650
+
+    config = Config(
+        width="100%",
+        height=graph_height,
+        directed=True,
+        physics=True,
+        hierarchical=False,
+        nodeHighlightBehavior=True,
+        highlightColor="#F472B6",
+        collapsible=False,
+        node={"labelProperty": "label"},
+        link={"renderLabel": False},
+    )
+
+    agraph(nodes=nodes, edges=edges, config=config)
+
+    # ── Legenda ───────────────────────────────────────────────────────────────
+    st.divider()
+    st.markdown("**Legenda**")
+    legend_cols = st.columns(7)
+    legend = [
+        ("🟣", "Supervisor", COLOR["supervisor"]),
+        ("🟡", "T1 — Core", COLOR["T1"]),
+        ("🟠", "T2 — Especialistas", COLOR["T2"]),
+        ("🔵", "T3 — Conversacional", COLOR["T3"]),
+        ("⚫", "T0 — Geral (Haiku)", COLOR["T0"]),
+        ("🟢", "MCPs", COLOR["mcp"]),
+        ("🩵", "Slash Commands", COLOR["command"]),
+    ]
+    for col, (icon, label, _) in zip(legend_cols, legend):
+        col.markdown(f"{icon} **{label}**")
+
+    st.divider()
+    agent_count = len([n for n in nodes if n.id.startswith("agent:")])
+    mcp_count = len([n for n in nodes if n.id.startswith("mcp:")])
+    cmd_count = len([n for n in nodes if n.id.startswith("cmd:")])
+    kb_count = len([n for n in nodes if n.id.startswith("kb:")])
+    st.caption(
+        f"Nós: **{len(nodes)}** total — "
+        f"1 Supervisor · {agent_count} Agentes · {mcp_count} MCPs · "
+        f"{cmd_count} Slash Commands · {kb_count} KB Domains · "
+        f"**{len(edges)}** arestas"
+    )
 
 # ── AGENTES ───────────────────────────────────────────────────────────────────
 elif page == "🤖 Agentes":
