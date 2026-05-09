@@ -260,8 +260,10 @@ def _detect_lesson_triggers(
     triggers: list[str] = []
 
     # Trigger 1: erro em tool MCP
+    # Combina tool_error + tool_output: "Table not found" está no tool_error
+    # mas "AnalysisException" pode estar só no tool_output — verificar ambos.
     if tool_name.startswith("mcp__"):
-        error_text = tool_error or tool_output
+        error_text = " ".join(filter(None, [tool_error, tool_output]))
         if error_text and any(kw in error_text.lower() for kw in _ERROR_INDICATORS):
             triggers.append("error")
 
