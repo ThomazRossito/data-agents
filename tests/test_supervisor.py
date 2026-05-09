@@ -138,7 +138,9 @@ class TestBuildSupervisorOptions:
                 assert (
                     len(hooks["PostToolUse"]) == 6
                 )  # audit + cost guard + workflow tracker + memory capture + context budget + output compressor
-                assert len(hooks["PreToolUse"]) == 3  # security + sql cost check + progress tracker
+                assert (
+                    len(hooks["PreToolUse"]) == 4
+                )  # security + sql cost check + progress tracker + lesson timing
 
     def test_build_includes_partial_messages(self):
         """Verifica que include_partial_messages está ativo para feedback visual."""

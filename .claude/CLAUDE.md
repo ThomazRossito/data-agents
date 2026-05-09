@@ -554,7 +554,9 @@ Cada subdiretório: `__init__.py` + `server_config.py` (+ `server.py` para MCPs 
 | `test_memory_decay.py` | Temporal decay de memórias |
 | `test_memory_extractor.py` | Extração de fatos do transcript |
 | `test_memory_compiler.py` | Consolidação e deduplicação |
+| `test_memory_lesson_learned.py` | LESSON_LEARNED: enum, CRUD, decay, prune, dedup, injeção |
 | `test_memory_lint.py` | Validação de integridade |
+| `test_s4_relaxation.py` | S4 Autonomous Mode: settings, log_s4_decision, constitution, supervisor prompt |
 | `test_commands.py` | Parser e handlers de slash commands |
 | `test_workflow.py` | DAG, executor, tracker |
 | `test_functional.py` | Integração end-to-end (smoke tests) |

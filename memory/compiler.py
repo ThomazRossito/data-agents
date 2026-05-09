@@ -84,6 +84,7 @@ def compile_daily_logs(
         "skipped_dupes": 0,
         "contradiction_checks": 0,
         "cleaned_logs": 0,
+        "lessons_deduped": 0,
     }
 
     # 1. Listar daily logs não processados
@@ -143,10 +144,14 @@ def compile_daily_logs(
         all_memories = store.list_all(active_only=False)
         apply_decay(all_memories, save_fn=store.save)
 
-    # 5. Regenerar index
+    # 5. Deduplicar LESSON_LEARNED (merge de lessons similares por agente)
+    dedup_metrics = deduplicate_lessons(store)
+    metrics["lessons_deduped"] = dedup_metrics.get("merged", 0)
+
+    # 6. Regenerar index
     store.build_index()
 
-    # 6. Limpeza de daily logs compilados antigos (se habilitado via settings)
+    # 7. Limpeza de daily logs compilados antigos (se habilitado via settings)
     cleaned = _cleanup_compiled_logs(store)
     if cleaned:
         metrics["cleaned_logs"] = cleaned
