@@ -7,6 +7,37 @@
 
 ## [Unreleased]
 
+## [2.3.0] — 2026-05-09
+
+### Added — Chainlit UI completeness: /workflow, /geral streaming, /sessions, /resume
+
+- **`/workflow` na Chainlit UI** (`ui/chainlit_app.py`): `_handle_workflow()` executa
+  workflows WF-01 a WF-05 com feedback em tempo real — um `cl.Step` por fase via novo
+  `step_callback` no `WorkflowRunner`. Fases com `require_human_approval=True` pausam e
+  exibem botões `cl.Action` (Aprovar/Abortar) resolvidos via `asyncio.Future` com timeout
+  de 5 min. Action callbacks `wf_approve` / `wf_abort` registrados.
+- **`StepCallback` em `WorkflowRunner`** (`commands/workflow.py`): novo parâmetro opcional
+  `step_callback: StepCallback | None` chamado com status `"start"` / `"done"` / `"error"`
+  por fase. Backward-compatible (default `None`). Tipo `StepCallback` exportado.
+- **`/geral` streaming de tokens** (`commands/geral.py`, `ui/chainlit_app.py`): parâmetro
+  `token_callback` em `run_geral_query()` — quando fornecido, usa `client.messages.stream()`
+  e chama o callback com cada chunk de texto. Chainlit passa `response_msg.stream_token` como
+  callback, exibindo tokens à medida que chegam. CLI sem callback continua usando
+  `messages.create()` (backward-compatible).
+- **`/sessions` na Chainlit UI** (`ui/chainlit_app.py`): `_handle_sessions()` formata lista
+  de sessões como tabela Markdown. Suporta `/sessions`, `/sessions all` e `/sessions <id>`
+  para ver transcript completo. Não requer modo Supervisor.
+- **`/resume` na Chainlit UI** (`ui/chainlit_app.py`): `_handle_resume()` constrói prompt
+  de retomada via `build_resume_prompt_for_session()` e envia ao Supervisor. Suporta
+  `/resume last` (sessão mais recente) e `/resume <session-id>`. Ativa modo Supervisor
+  automaticamente se necessário.
+- **`/workflow`, `/sessions`, `/resume` no `COMMAND_GROUPS`** (`ui/ui_config.py`): grupos
+  `"🎉 Multi-Agente"` e `"📂 Sessões"` atualizados para aparecer na tela de boas-vindas.
+- **13 novos testes** (`tests/test_geral_command.py`): `TestRunGeralQuery` cobre path
+  non-streaming, streaming com callback, acumulação de chunks e isolação do `messages.stream`.
+- **5 novos testes** (`tests/test_workflow.py`): `StepCallback` start/done/error, None sem
+  exceção, type annotation.
+
 ## [2.2.0] — 2026-05-09
 
 ### Added — Chainlit UI parity + Lições Aprendidas dashboard
