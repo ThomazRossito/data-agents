@@ -207,10 +207,18 @@ class Settings(BaseSettings):
     # PROGRESS: tarefas em andamento ficam obsoletas rapidamente (padrão 7 dias).
     # FEEDBACK: orientações do usuário persistem mais (padrão 90 dias).
     # PIPELINE_STATUS: status de pipelines de dados (padrão 14 dias).
+    # LESSON_LEARNED: lições de erros/performance (padrão 30 dias).
     # Override via .env: MEMORY_DECAY_PROGRESS_DAYS=14
     memory_decay_progress_days: float = 7.0
     memory_decay_feedback_days: float = 90.0
     memory_decay_pipeline_status_days: float = 14.0
+    memory_decay_lesson_learned_days: float = 30.0
+
+    # --- Lesson Learned Limits ---
+    # Máximo de LESSON_LEARNED ativas por agente. Ao atingir o limite, a lesson
+    # com menor confidence (mais decaída) é removida para dar lugar à nova.
+    # Override via .env: MEMORY_LESSON_MAX_PER_AGENT=50
+    memory_lesson_max_per_agent: int = 50
 
     # --- Skill Auto-Refresh ---
     # Se True, habilita a atualização automática das Skills via scripts/refresh_skills.py.
@@ -345,6 +353,22 @@ class Settings(BaseSettings):
     # Limiar para disparar compactação autônoma: gera summary via Haiku, reconecta
     # o cliente com o summary injetado no system prompt — transparente ao usuário.
     context_budget_summarize_threshold: float = 0.80
+
+    # --- S4 Autonomous Mode ---
+    # Se True, o Supervisor auto-aprova delegações que atendem critérios de baixo risco:
+    #   - read-only (sem writes em produção), OU
+    #   - single-agent path (delegação a um único especialista), OU
+    #   - custo estimado < s4_auto_approval_max_cost_usd
+    # AND clarity_score >= s4_auto_approval_min_clarity_score
+    # Por padrão OFF — ativar explicitamente quando confortável com autonomia total.
+    # Override via .env: S4_AUTONOMOUS_MODE=true
+    s4_autonomous_mode: bool = False
+    # Score mínimo do Clarity Checkpoint para auto-aprovação (padrão: 4/5 = alta confiança).
+    # Override via .env: S4_AUTO_APPROVAL_MIN_CLARITY_SCORE=4
+    s4_auto_approval_min_clarity_score: int = 4
+    # Custo máximo estimado (USD) para auto-aprovação. Acima disso, sempre pede confirmação.
+    # Override via .env: S4_AUTO_APPROVAL_MAX_COST_USD=0.10
+    s4_auto_approval_max_cost_usd: float = 0.10
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 

@@ -482,6 +482,80 @@ def _cleanup_compiled_logs(store: MemoryStore) -> int:
     return removed
 
 
+def deduplicate_lessons(store: MemoryStore) -> dict[str, int]:
+    """
+    Deduplicação de LESSON_LEARNED por chave composta (agent + task_type + erro similar).
+
+    Para cada par de lessons com a mesma chave (agent + task_type) e summary com
+    sobreposição > 60%, consolida em uma única: incrementa confidence da mais recente
+    e marca a mais antiga como superseded.
+
+    Returns:
+        Dict com métricas: {"merged": N, "unchanged": M}
+    """
+    from memory.types import MemoryType
+
+    metrics = {"merged": 0, "unchanged": 0}
+
+    lessons = store.list_all(memory_type=MemoryType.LESSON_LEARNED, active_only=True)
+    if len(lessons) < 2:
+        return metrics
+
+    # Agrupa por (agent, task_type)
+    groups: dict[tuple[str, str], list] = {}
+    for lesson in lessons:
+        agent = lesson.metadata.get("agent", "")
+        task_type = lesson.metadata.get("task_type", "")
+        key = (agent, task_type)
+        groups.setdefault(key, []).append(lesson)
+
+    # Dentro de cada grupo, merge de lessons similares
+    for (agent, task_type), group in groups.items():
+        if len(group) < 2:
+            continue
+
+        # Ordena por created_at: mais recente primeiro
+        group.sort(key=lambda m: m.created_at, reverse=True)
+        canonical = group[0]  # a mais recente é a canonical
+
+        for other in group[1:]:
+            if other.superseded_by is not None:
+                continue
+            overlap = _summary_overlap(canonical.summary, other.summary)
+            if overlap >= 0.6:
+                # Merge: incrementa confidence do canonical (capped em 1.0)
+                canonical.confidence = min(1.0, canonical.confidence + 0.1)
+                if other.id not in canonical.related_ids:
+                    canonical.related_ids.append(other.id)
+                store.supersede(other.id, MemoryType.LESSON_LEARNED, canonical)
+                metrics["merged"] += 1
+                logger.info(
+                    f"Lessons merged: {other.id[:8]} → {canonical.id[:8]} "
+                    f"(agent={agent}, task_type={task_type}, overlap={overlap:.2f})"
+                )
+            else:
+                metrics["unchanged"] += 1
+
+    if metrics["merged"]:
+        logger.info(
+            f"Dedup lessons: {metrics['merged']} consolidadas, {metrics['unchanged']} mantidas"
+        )
+
+    return metrics
+
+
+def _summary_overlap(s1: str, s2: str) -> float:
+    """Calcula a sobreposição de palavras-chave entre dois summaries (0.0 a 1.0)."""
+    stopwords = {"o", "a", "e", "de", "do", "da", "em", "para", "com", "que", "the", "in", "at"}
+    w1 = {w for w in s1.lower().split() if len(w) > 3 and w not in stopwords}
+    w2 = {w for w in s2.lower().split() if len(w) > 3 and w not in stopwords}
+    if not w1 or not w2:
+        return 0.0
+    intersection = w1 & w2
+    min_len = min(len(w1), len(w2))
+    return len(intersection) / min_len
+
+
 def _mark_as_compiled(log_path: Path) -> None:
     """Marca um daily log como compilado adicionando marcador no final."""
     try:

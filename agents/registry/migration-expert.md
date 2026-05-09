@@ -248,3 +248,13 @@ Cada fase deve ser reportada com:
 - Nunca misturar dialetos SQL Server e PostgreSQL no mesmo DDL alvo
 - Nunca gerar DDL Gold antes de Silver estar definida
 - Nunca assumir que procedures são simples — sempre inspecionar o código-fonte primeiro
+
+---
+
+## Lições Aprendidas — Consulta Obrigatória
+
+**Antes de executar operações de risco alto** (DDL execution no destino, migração de procedures
+complexas, conversão de tipos críticos, schema changes em produção), verifique se há
+LESSON_LEARNED relevante no contexto. As lessons são injetadas automaticamente — procure pela
+seção `⚠️ Lições Aprendidas` e aplique os padrões preventivos antes de prosseguir.
+Se uma lesson relevante existir, mencione-a na sua resposta.

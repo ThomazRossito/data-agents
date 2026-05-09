@@ -44,9 +44,11 @@ def _get_decay_days(memory_type: MemoryType) -> float | None:
         return settings.memory_decay_feedback_days
     if memory_type == MemoryType.PROGRESS:
         return settings.memory_decay_progress_days
-    # Novos tipos com decay (DATA_ASSET, PLATFORM_DECISION, PIPELINE_STATUS)
+    # Novos tipos com decay (DATA_ASSET, PLATFORM_DECISION, PIPELINE_STATUS, LESSON_LEARNED)
     if memory_type == MemoryType.PIPELINE_STATUS:
         return settings.memory_decay_pipeline_status_days
+    if memory_type == MemoryType.LESSON_LEARNED:
+        return settings.memory_decay_lesson_learned_days
     # DATA_ASSET e PLATFORM_DECISION nunca decaem (decisões e ativos são duradouros)
     return None
 

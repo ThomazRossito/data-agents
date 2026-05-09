@@ -103,6 +103,16 @@ Skip if the request begins with `IGNORE PLANEJAMENTO E PASSE ISSO DIRETAMENTE:`.
 
 Show the user a summary of the plan and ask whether the architecture makes sense.
 
+**S4-AUTO exception** (when `S4_AUTONOMOUS_MODE=true` in `.env`):
+Skip user approval and proceed directly to Step 3 IF ALL of the following are true:
+  1. clarity_score ≥ `S4_AUTO_APPROVAL_MIN_CLARITY_SCORE` (default 4/5)
+  2. Task is read-only (no production writes) OR single-agent path OR estimated cost < `S4_AUTO_APPROVAL_MAX_COST_USD` (default $0.10)
+
+When auto-approving: log a `s4_decision` event via the workflow tracker with fields
+`mode=autonomous`, `score=<clarity_score>`, `approved=true`, and the reason (read-only/single-agent/low-cost).
+Never auto-approve tasks involving DROP, DELETE, irreversible schema changes, or multi-agent writes to production.
+See `kb/constitution.md` §2.1 for the full ruleset.
+
 ## Step 3 — Delegation
 
 For each approved subtask, invoke the agent via the `Agent` tool with references to

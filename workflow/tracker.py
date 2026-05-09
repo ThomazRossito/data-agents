@@ -11,6 +11,7 @@ Eventos persistidos:
   - `spec_generated`   — quando um spec-first é gerado
   - `prd_modified`     — PRD modificado; dispara `spec_needs_review` nas specs relacionadas
   - `clarity_clarification_requested` — AskUserQuestion relacionado a Clarity
+  - `s4_decision`      — decisão S4 auto-aprovada ou requerida (S4_AUTONOMOUS_MODE)
 
 Callbacks de progresso (síncronos, não fazem I/O):
   - `agent_start` / `tool_call` (PreToolUse)
@@ -73,6 +74,40 @@ def unregister_progress_callback(callback: Callable[[str, dict[str, Any]], None]
 def clear_progress_callbacks() -> None:
     """Remove todos os callbacks registrados."""
     _progress_callbacks.clear()
+
+
+def log_s4_decision(
+    mode: str,
+    clarity_score: int,
+    approved: bool,
+    reason: str,
+    agents: list[str] | None = None,
+) -> None:
+    """
+    Loga uma decisão S4 no workflows.jsonl para auditoria de autonomia.
+
+    Args:
+        mode: "autonomous" | "required" (requereu aprovação humana)
+        clarity_score: Score do Clarity Checkpoint (0-5)
+        approved: True = auto-aprovado, False = bloqueado/requer aprovação
+        reason: "read_only" | "single_agent" | "low_cost" | "multi_agent_write" | "low_clarity"
+        agents: Lista de agentes envolvidos na delegação
+    """
+    from config.settings import settings
+
+    _write_event(
+        {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "event": "s4_decision",
+            "mode": mode,
+            "clarity_score": clarity_score,
+            "max_score": 5,
+            "approved": approved,
+            "reason": reason,
+            "agents": agents or [],
+            "s4_autonomous_mode": settings.s4_autonomous_mode,
+        }
+    )
 
 
 def _emit_progress(event_name: str, data: dict[str, Any]) -> None:
