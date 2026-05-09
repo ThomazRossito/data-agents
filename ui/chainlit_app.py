@@ -1266,7 +1266,8 @@ async def _handle_geral(user_input: str) -> None:
     Executa /geral diretamente via Haiku (anthropic.AsyncAnthropic), sem Supervisor.
 
     ~95% mais barato que roteamento pelo Supervisor. Mantém histórico de conversa
-    na sessão Chainlit para suporte a follow-ups.
+    na sessão Chainlit para suporte a follow-ups. Tokens são exibidos progressivamente
+    via streaming (token_callback → response_msg.stream_token).
     """
     from commands.geral import run_geral_query
 
@@ -1287,7 +1288,13 @@ async def _handle_geral(user_input: str) -> None:
     await response_msg.send()
 
     try:
-        text, metrics = await run_geral_query(query, geral_history, session_type="geral")
+
+        async def _token_cb(chunk: str) -> None:
+            await response_msg.stream_token(chunk)
+
+        text, metrics = await run_geral_query(
+            query, geral_history, session_type="geral", token_callback=_token_cb
+        )
     except Exception as exc:
         await response_msg.stream_token(f"❌ **Erro:** `{exc}`")
         await response_msg.update()
@@ -1299,7 +1306,10 @@ async def _handle_geral(user_input: str) -> None:
     duration = metrics.get("duration", 0.0)
     footer = f"\n\n---\n*💰 `${cost:.5f}` · ⏱️ `{duration:.1f}s` · Haiku (T0, zero MCP)*"
 
-    await response_msg.stream_token((text or "_Sem resposta._") + footer)
+    # Text already streamed via callback — only append footer and empty-response fallback
+    if not text.strip():
+        await response_msg.stream_token("_Sem resposta._")
+    await response_msg.stream_token(footer)
     await response_msg.update()
 
     if text:
