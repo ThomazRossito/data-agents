@@ -217,11 +217,21 @@ def _format_context_entry(
 _ERROR_INDICATORS = ["error", "failed", "exception", "traceback", "unauthorized", "timeout"]
 
 
+def pre_track_lesson_timing(
+    tool_name: str, tool_input: dict[str, Any], tool_use_id: str | None
+) -> None:
+    """PreToolUse: registra o instante de início de cada tool call para slow_op detection."""
+    global _tool_start_times_lesson
+
+    tid = tool_use_id or tool_name
+    _tool_start_times_lesson[tid] = time.monotonic()
+
+
 def _track_lesson_state(
     tool_name: str, tool_input: dict[str, Any], tool_use_id: str | None
 ) -> None:
     """Atualiza contadores de sessão usados para triggers de LESSON_LEARNED."""
-    global _session_high_op_count, _session_agent_call_count, _tool_start_times_lesson
+    global _session_high_op_count, _session_agent_call_count
 
     if tool_name in _HIGH_COST_TOOLS:
         _session_high_op_count += 1
@@ -234,9 +244,6 @@ def _track_lesson_state(
             or "unknown"
         )
         _session_agent_call_count[agent] = _session_agent_call_count.get(agent, 0) + 1
-
-    tid = tool_use_id or tool_name
-    _tool_start_times_lesson[tid] = time.monotonic()
 
 
 def _detect_lesson_triggers(

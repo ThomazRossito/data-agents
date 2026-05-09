@@ -36,7 +36,7 @@ from config.settings import settings
 from hooks.audit_hook import audit_tool_usage
 from hooks.context_budget_hook import track_context_budget
 from hooks.cost_guard_hook import log_cost_generating_operations
-from hooks.memory_hook import capture_session_context
+from hooks.memory_hook import capture_session_context, pre_track_lesson_timing
 from hooks.output_compressor_hook import compress_tool_output
 from hooks.security_hook import block_destructive_commands, check_sql_cost
 from hooks.workflow_tracker import pre_track_workflow_events, track_workflow_events
@@ -221,6 +221,11 @@ def build_supervisor_options(
                 # registrados pelo CLI e UI — feedback visual em tempo real.
                 HookMatcher(
                     hooks=[pre_track_workflow_events],  # type: ignore[list-item]
+                ),
+                # pre_track_lesson_timing: registra t0 de cada tool call para slow_op detection.
+                # Deve ser PreToolUse — PostToolUse seria sempre ~0s (tool já terminou).
+                HookMatcher(
+                    hooks=[pre_track_lesson_timing],  # type: ignore[list-item]
                 ),
             ],
         },
