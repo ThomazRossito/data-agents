@@ -1140,6 +1140,130 @@ async def _handle_analyze_project(user_input: str) -> None:
         cl.user_session.set("chat_history", _hist)
 
 
+# ── /party — perspectivas independentes multi-agente ─────────────────────────
+
+_PARTY_ICONS: dict[str, str] = {
+    "databricks-engineer": "🗄️",
+    "databricks-ai": "🤖",
+    "fabric-engineer": "🏗️",
+    "fabric-rti": "⚡",
+    "fabric-ontology": "🕸️",
+    "data-quality-steward": "🔍",
+    "governance-auditor": "🔐",
+    "data-contracts-engineer": "📋",
+    "data-mesh-architect": "🌐",
+    "python-expert": "🐍",
+    "migration-expert": "🔀",
+}
+
+
+async def _handle_party(user_input: str) -> None:
+    """
+    Executa /party na UI Chainlit.
+
+    Spawna agentes em paralelo, cada um respondendo com sua perspectiva de
+    domínio independente. Exibe resultados como cl.Message por agente.
+    """
+    from commands.party import _query_single_agent, parse_party_args
+
+    agent_names, query = parse_party_args(user_input)
+
+    if not query.strip():
+        await cl.Message(
+            content="⚠️ `/party` requer uma query. Exemplo: `/party como processar dados incrementais?`",
+            author="Sistema",
+        ).send()
+        return
+
+    flag_map = {
+        "--quality": "quality",
+        "--arch": "arch",
+        "--full": "full",
+        "--engineering": "engineering",
+        "--migration": "migration",
+    }
+    group_label = next(
+        (
+            name
+            for flag, name in flag_map.items()
+            if user_input.split(maxsplit=1)[-1].startswith(flag)
+        ),
+        "default",
+    )
+    agents_label = ", ".join(f"`{a}`" for a in agent_names)
+    query_preview = query[:100] + ("..." if len(query) > 100 else "")
+
+    await cl.Message(
+        content=(
+            f"🎉 **Party Mode** `[{group_label}]` — {len(agent_names)} agentes em paralelo\n\n"
+            f"> {query_preview}\n\n"
+            f"Agentes: {agents_label}"
+        ),
+        author="Sistema",
+    ).send()
+
+    # Step por agente como indicador de progresso
+    agent_steps: dict[str, cl.Step] = {}
+    for name in agent_names:
+        icon = _PARTY_ICONS.get(name, "💬")
+        step = cl.Step(name=f"{icon} {name} — respondendo...", type="run")
+        await step.send()
+        agent_steps[name] = step
+
+    tasks = [_query_single_agent(name, query) for name in agent_names]
+    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Fecha steps e exibe resultados
+    total_cost = 0.0
+    for i, result in enumerate(raw_results):
+        name = agent_names[i]
+        step = agent_steps[name]
+        if isinstance(result, Exception):
+            step.output = f"❌ Erro: {result}"
+            await step.update()
+            await cl.Message(
+                content=f"_Erro ao consultar {name}: {result}_",
+                author=f"{_PARTY_ICONS.get(name, '💬')} {name}",
+            ).send()
+            continue
+
+        _, text, cost = result
+        step.output = f"✅ Concluído (${cost:.5f})"
+        await step.update()
+        total_cost += cost
+
+        if text.strip():
+            icon = _PARTY_ICONS.get(name, "💬")
+            footer = f"\n\n---\n*💰 `${cost:.5f}`*"
+            await cl.Message(content=text.strip() + footer, author=f"{icon} {name}").send()
+
+    await cl.Message(
+        content=f"✅ **Party concluído** — {len(agent_names)} perspectivas · Custo total: `${total_cost:.5f}`",
+        author="Sistema",
+    ).send()
+
+    # Tracking para export
+    from datetime import datetime as _dt
+
+    _hist = cl.user_session.get("chat_history") or []
+    clean = [r for r in raw_results if not isinstance(r, Exception)]
+    consolidated = "\n\n".join(
+        f"## {name}\n{text.strip()}"
+        for name, text, _ in clean  # type: ignore[misc]
+        if text.strip()
+    )
+    if consolidated:
+        _hist.append(
+            {
+                "role": "assistant",
+                "author": "Party",
+                "content": consolidated,
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        cl.user_session.set("chat_history", _hist)
+
+
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
 
 
@@ -1359,6 +1483,11 @@ async def on_message(message: cl.Message) -> None:
     # Comando /analyze-project — análise multi-perspectiva paralela (sem Supervisor)
     if user_input.lower().startswith("/analyze-project"):
         await _handle_analyze_project(user_input)
+        return
+
+    # Comando /party — perspectivas independentes multi-agente (sem Supervisor)
+    if user_input.lower().startswith("/party"):
+        await _handle_party(user_input)
         return
 
     mode: str | None = cl.user_session.get("mode")
