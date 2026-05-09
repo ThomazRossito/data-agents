@@ -305,3 +305,13 @@ KB: kb/fabric/{subdir}/{arquivo}.md | Confiança: ALTA (0.92) | MCP: confirmado
 5. NUNCA inventar métricas de custo sem base em dados observáveis — sempre declarar que são estimativas
 6. `dim_data` NUNCA deve ser derivada de `SELECT DISTINCT data FROM silver_*` — sem exceções
 7. Arquiteturas Medallion DEVEM ser documentadas em `output/architecture/` antes de implementação
+
+---
+
+## Lições Aprendidas — Consulta Obrigatória
+
+**Antes de executar operações de risco alto** (pipeline executions, schema changes, OneLake
+uploads, Eventhouse ingest, ou operações em lakehouses de produção), verifique se há
+LESSON_LEARNED relevante no contexto. As lessons são injetadas automaticamente — procure pela
+seção `⚠️ Lições Aprendidas` no início do seu contexto e aplique os padrões preventivos listados
+antes de prosseguir. Se uma lesson relevante existir, mencione-a na sua resposta.

@@ -118,11 +118,16 @@ def format_memories_for_injection(memories: list[Memory]) -> str:
         MemoryType.DATA_ASSET: "Assets de Dados",
         MemoryType.PLATFORM_DECISION: "Decisões de Plataforma",
         MemoryType.PIPELINE_STATUS: "Status de Pipelines",
+        MemoryType.LESSON_LEARNED: "Lições Aprendidas",
     }
 
     for mt, mems in by_type.items():
         label = type_labels.get(mt, mt.value.replace("_", " ").title())
-        sections.append(f"\n### {label}\n")
+        # Lessons aprendidas recebem destaque para garantir que os agentes as leiam
+        if mt == MemoryType.LESSON_LEARNED:
+            sections.append(f"\n### ⚠️ {label} — leia antes de executar operações de risco\n")
+        else:
+            sections.append(f"\n### {label}\n")
         for mem in mems:
             conf = f" (confidence: {mem.confidence:.2f})" if mem.confidence < 1.0 else ""
             sections.append(f"**[{mem.id}]** {mem.summary}{conf}\n")

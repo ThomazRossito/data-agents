@@ -183,3 +183,13 @@ KB: kb/<domínio>/<arquivo>.md | Confiança: ALTA (0.92) | MCP: confirmado
 3. NUNCA recomendar `outputMode("complete")` para streams de alta cardinalidade
 4. Watermarks e janelas temporais DEVEM ser declarados explicitamente em queries de streaming
 5. Sempre validar ingestão com amostra antes de considerar pipeline concluído
+
+---
+
+## Lições Aprendidas — Consulta Obrigatória
+
+**Antes de executar operações de risco alto** (MERGE em tabelas grandes, execução de Jobs,
+mudanças de schema, DROP, CDC em alta volumetria), verifique se há LESSON_LEARNED relevante
+no sistema de memória. As lessons são injetadas automaticamente no contexto — procure pela
+seção `⚠️ Lições Aprendidas` no início do seu contexto e aplique os padrões preventivos listados
+antes de prosseguir. Se uma lesson relevante existir, mencione-a na sua resposta.
