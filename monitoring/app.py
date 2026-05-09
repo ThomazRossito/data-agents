@@ -1505,6 +1505,7 @@ elif page == "🔭 Observabilidade":
         "ui",
         "plan",
         "party",
+        "analyze",
         "workflow",
         "review",
         "dev-assistant",
