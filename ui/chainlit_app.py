@@ -1002,18 +1002,20 @@ async def _handle_export() -> None:
     try:
         title = f"Data Agents — {len(history)} mensagens"
 
-        from ui.exporter import export_html
+        from ui.exporter import export_html, export_markdown
 
         html_path = export_html(history, title=title)
+        md_path = export_markdown(history, title=title)
 
         elements = [
             cl.File(name="conversa.html", path=html_path, mime="text/html"),
+            cl.File(name="conversa.md", path=md_path, mime="text/markdown"),
         ]
         await cl.Message(
             content=(
                 f"✅ **Export concluído** — {len(history)} mensagens exportadas.\n\n"
-                "📄 Baixe o arquivo HTML abaixo.\n"
-                "💡 **Para PDF:** abra no browser e use **Cmd+P → Salvar como PDF**."
+                "📄 **HTML** — abra no browser e use **Cmd+P → Salvar como PDF**.\n"
+                "📝 **Markdown** — cole no Notion, Confluence ou qualquer editor Markdown."
             ),
             elements=elements,
             author="Sistema",
@@ -1695,6 +1697,37 @@ async def _handle_resume(user_input: str) -> None:
 
 
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
+
+
+@cl.set_starters
+async def set_starters() -> list[cl.Starter]:
+    return [
+        cl.Starter(
+            label="Perguntar algo rápido",
+            message="/geral Qual a diferença entre Delta Lake e Iceberg?",
+            icon="/public/icons/chat.svg",
+        ),
+        cl.Starter(
+            label="Painel de especialistas",
+            message="/party Qual a melhor estratégia de particionamento para uma tabela de eventos com 1B+ linhas?",
+            icon="/public/icons/users.svg",
+        ),
+        cl.Starter(
+            label="Workflow end-to-end",
+            message="/workflow WF-01 Criar pipeline Medallion para tabela de pedidos",
+            icon="/public/icons/pipeline.svg",
+        ),
+        cl.Starter(
+            label="Análise do projeto",
+            message="/analyze-project --arch Revisar arquitetura atual do projeto de dados",
+            icon="/public/icons/search.svg",
+        ),
+        cl.Starter(
+            label="Ver sessões anteriores",
+            message="/sessions",
+            icon="/public/icons/history.svg",
+        ),
+    ]
 
 
 @cl.on_chat_start
