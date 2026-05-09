@@ -6,6 +6,7 @@ import pytest
 
 from commands.workflow import (
     WORKFLOW_REGISTRY,
+    StepCallback,
     StepResult,
     WorkflowResult,
     WorkflowState,
@@ -300,3 +301,69 @@ class TestWorkflowRunner:
 
         assert result.aborted is True
         assert result.success is False
+
+    @pytest.mark.asyncio
+    async def test_step_callback_called_on_start_and_done(self):
+        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa", phase="P1")]
+        events: list[tuple[str, str, str, str]] = []
+
+        async def step_cb(wf_id: str, phase: str, agent: str, status: str) -> None:
+            events.append((wf_id, phase, agent, status))
+
+        async def mock_query(prompt, options):
+            class FakeResult:
+                total_cost_usd = 0.01
+
+            yield FakeResult()
+
+        runner = WorkflowRunner(wf_id="WF-TEST", steps=steps, step_callback=step_cb)
+        with patch("commands.workflow.sdk_query", side_effect=mock_query):
+            result = await runner.run("query")
+
+        assert ("WF-TEST", "P1", "databricks-engineer", "start") in events
+        assert ("WF-TEST", "P1", "databricks-engineer", "done") in events
+        assert result.success is True
+
+    @pytest.mark.asyncio
+    async def test_step_callback_called_on_error(self):
+        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa", phase="P1")]
+        events: list[tuple[str, str, str, str]] = []
+
+        async def step_cb(wf_id: str, phase: str, agent: str, status: str) -> None:
+            events.append((wf_id, phase, agent, status))
+
+        async def mock_query_raise(prompt, options):
+            raise RuntimeError("SDK error")
+            yield  # make it a generator
+
+        runner = WorkflowRunner(wf_id="WF-TEST", steps=steps, step_callback=step_cb)
+        with patch("commands.workflow.sdk_query", side_effect=mock_query_raise):
+            result = await runner.run("query")
+
+        assert ("WF-TEST", "P1", "databricks-engineer", "start") in events
+        assert ("WF-TEST", "P1", "databricks-engineer", "error") in events
+        assert result.success is False
+
+    @pytest.mark.asyncio
+    async def test_step_callback_none_does_not_raise(self):
+        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa", phase="P1")]
+
+        async def mock_query(prompt, options):
+            class FakeResult:
+                total_cost_usd = 0.005
+
+            yield FakeResult()
+
+        runner = WorkflowRunner(wf_id="WF-TEST", steps=steps, step_callback=None)
+        with patch("commands.workflow.sdk_query", side_effect=mock_query):
+            result = await runner.run("query")
+
+        assert result.success is True
+
+    def test_step_callback_type_is_callable(self):
+        # StepCallback is a type alias — verify it can be used as annotation
+        async def my_cb(wf_id: str, phase: str, agent: str, status: str) -> None:
+            pass
+
+        cb: StepCallback = my_cb
+        assert callable(cb)

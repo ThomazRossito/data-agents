@@ -52,6 +52,10 @@ logger = logging.getLogger("data_agents.workflow")
 # recebe (wf_id, phase_name, context_so_far) → True para continuar, False para abortar
 HumanPauseCallback = Callable[[str, str, str], Awaitable[bool]]
 
+# Tipo do callback de progresso de etapa:
+# recebe (wf_id, phase, agent, status) onde status é "start" | "done" | "error"
+StepCallback = Callable[[str, str, str, str], Awaitable[None]]
+
 
 # ── Definições de dados ───────────────────────────────────────────────────────
 
@@ -211,6 +215,9 @@ class WorkflowRunner:
     human_pause_callback : HumanPauseCallback | None
         Chamado quando require_human_approval=True.
         Se None, usa aprovação automática (útil em testes).
+    step_callback : StepCallback | None
+        Chamado no início ("start"), fim ("done") e erro ("error") de cada etapa.
+        Útil para atualizar UI em tempo real (ex: Chainlit cl.Step).
     """
 
     def __init__(
@@ -218,10 +225,12 @@ class WorkflowRunner:
         wf_id: str,
         steps: list[WorkflowStep],
         human_pause_callback: HumanPauseCallback | None = None,
+        step_callback: StepCallback | None = None,
     ):
         self.wf_id = wf_id
         self.steps = steps
         self._human_pause = human_pause_callback or _default_human_pause
+        self._step_callback = step_callback
 
     async def run(self, query: str) -> WorkflowResult:
         """Executa o workflow completo."""
@@ -313,6 +322,9 @@ class WorkflowRunner:
         phase_label = step.phase or step.agent
         logger.info(f"[{self.wf_id}] Iniciando etapa: {phase_label}")
 
+        if self._step_callback:
+            await self._step_callback(self.wf_id, phase_label, step.agent, "start")
+
         # Injeta contexto acumulado no prompt da task
         enriched_task = state.inject_context(step.task, step)
 
@@ -334,6 +346,10 @@ class WorkflowRunner:
             logger.info(
                 f"[{self.wf_id}] Etapa '{phase_label}' concluída em {duration:.1f}s (${cost:.4f})"
             )
+
+            if self._step_callback:
+                await self._step_callback(self.wf_id, phase_label, step.agent, "done")
+
             return StepResult(
                 step=step,
                 output=output_text,
@@ -344,6 +360,10 @@ class WorkflowRunner:
         except Exception as e:
             duration = time.monotonic() - t0
             logger.error(f"[{self.wf_id}] Etapa '{phase_label}' falhou: {e}", exc_info=True)
+
+            if self._step_callback:
+                await self._step_callback(self.wf_id, phase_label, step.agent, "error")
+
             return StepResult(
                 step=step,
                 output="",

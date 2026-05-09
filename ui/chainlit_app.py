@@ -1322,6 +1322,232 @@ async def _handle_geral(user_input: str) -> None:
         cl.user_session.set("chat_history", _hist)
 
 
+# ── /workflow — execução de workflows colaborativos pré-definidos ─────────────
+
+_WORKFLOW_ICONS: dict[str, str] = {
+    "databricks-engineer": "🗄️",
+    "fabric-engineer": "🏗️",
+    "data-quality-steward": "🔍",
+    "governance-auditor": "🔐",
+    "migration-expert": "🔀",
+    "data-contracts-engineer": "📋",
+    "data-mesh-architect": "🌐",
+    "python-expert": "🐍",
+    "dbt-expert": "🌱",
+}
+
+
+def _workflow_list_markdown() -> str:
+    """Retorna lista formatada dos workflows disponíveis para exibição na UI."""
+    from commands.workflow import WORKFLOW_REGISTRY
+
+    lines = ["### Workflows disponíveis\n"]
+    for wf_id, meta in WORKFLOW_REGISTRY.items():
+        lines.append(f"**`{wf_id}` — {meta['name']}**")
+        lines.append(f"{meta['description']}")
+        lines.append(f"*Use quando:* {meta['when']}")
+        lines.append("")
+    lines.append("**Uso:** `/workflow WF-01 <descrição do projeto>`")
+    return "\n".join(lines)
+
+
+async def _handle_workflow(user_input: str) -> None:
+    """
+    Executa /workflow na UI Chainlit.
+
+    Cria um WorkflowRunner com:
+    - step_callback → atualiza cl.Step por etapa em tempo real
+    - human_pause_callback → exibe cl.Action (Aprovar/Abortar) e aguarda resposta
+
+    Formato: /workflow <WF-ID> <query>
+    Exemplos:
+      /workflow WF-01 pipeline vendas Bronze→Gold
+      /workflow WF-05 migrar SQL Server com 80 tabelas
+    """
+    from commands.workflow import WORKFLOW_REGISTRY, WorkflowRunner
+
+    parts = user_input.strip().split(maxsplit=2)
+    # parts[0] = "/workflow"
+
+    if len(parts) < 2:
+        await cl.Message(content=_workflow_list_markdown(), author="Sistema").send()
+        return
+
+    wf_id = parts[1].upper()
+    query = parts[2].strip() if len(parts) > 2 else ""
+
+    wf_meta = WORKFLOW_REGISTRY.get(wf_id)
+    if wf_meta is None:
+        await cl.Message(
+            content=(f"❌ Workflow `{wf_id}` não encontrado.\n\n{_workflow_list_markdown()}"),
+            author="Sistema",
+        ).send()
+        return
+
+    if not query:
+        icon = wf_meta.get("icon", "⚙️")
+        await cl.Message(
+            content=(
+                f"{icon} **{wf_id}: {wf_meta['name']}**\n\n"
+                f"{wf_meta['description']}\n\n"
+                f"*Use quando:* {wf_meta['when']}\n\n"
+                f"Forneça uma descrição do projeto:\n"
+                f"`/workflow {wf_id} <descrição do projeto>`"
+            ),
+            author="Sistema",
+        ).send()
+        return
+
+    icon = wf_meta.get("icon", "⚙️")
+    builder = wf_meta["builder"]
+    steps = builder()
+
+    # Header do workflow
+    await cl.Message(
+        content=(
+            f"{icon} **Iniciando {wf_id}: {wf_meta['name']}**\n\n"
+            f"> {query[:200]}\n\n"
+            f"**{len(steps)} etapas** | {wf_meta['description']}"
+        ),
+        author="Sistema",
+    ).send()
+
+    # Mapa de cl.Step por fase — abertos em step_callback e fechados ao final
+    phase_steps: dict[str, cl.Step] = {}
+    phase_costs: dict[str, float] = {}
+
+    async def step_callback(wf_id_: str, phase: str, agent: str, status: str) -> None:
+        agent_icon = _WORKFLOW_ICONS.get(agent, "⚙️")
+        if status == "start":
+            cl_step = cl.Step(name=f"{agent_icon} {phase} ({agent})", type="run")
+            await cl_step.send()
+            phase_steps[phase] = cl_step
+        elif status == "done":
+            cl_step = phase_steps.get(phase)
+            if cl_step:
+                cost = phase_costs.get(phase, 0.0)
+                cost_str = f" · ${cost:.5f}" if cost > 0 else ""
+                cl_step.output = f"✅ Concluído{cost_str}"
+                await cl_step.update()
+        elif status == "error":
+            cl_step = phase_steps.get(phase)
+            if cl_step:
+                cl_step.output = "❌ Falhou"
+                await cl_step.update()
+
+    async def human_pause_callback(wf_id_: str, phase: str, context_preview: str) -> bool:
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[bool] = loop.create_future()
+        cl.user_session.set("_workflow_pause_future", future)
+
+        preview = context_preview[:400] + ("..." if len(context_preview) > 400 else "")
+        actions = [
+            cl.Action(
+                name="wf_approve",
+                label="✅ Aprovar e continuar",
+                payload={"phase": phase},
+            ),
+            cl.Action(
+                name="wf_abort",
+                label="❌ Abortar workflow",
+                payload={"phase": phase},
+            ),
+        ]
+        await cl.Message(
+            content=(
+                f"⏸️ **Pausa humana** — `{wf_id_}` · Fase: **{phase}**\n\n"
+                f"```\n{preview}\n```\n\n"
+                "Deseja continuar para esta etapa?"
+            ),
+            actions=actions,
+            author="Sistema",
+        ).send()
+
+        try:
+            return await asyncio.wait_for(future, timeout=300)
+        except asyncio.TimeoutError:
+            await cl.Message(
+                content="⏱️ Timeout de 5 min — workflow abortado por inatividade.",
+                author="Sistema",
+            ).send()
+            return False
+
+    runner = WorkflowRunner(
+        wf_id=wf_id,
+        steps=steps,
+        human_pause_callback=human_pause_callback,
+        step_callback=step_callback,
+    )
+
+    try:
+        result = await runner.run(query=query)
+    except Exception as exc:
+        await cl.Message(
+            content=f"❌ **Erro ao executar workflow:** `{exc}`",
+            author="Sistema",
+        ).send()
+        return
+
+    # Resultado final
+    status_icon = "✅" if result.success else ("🚫" if result.aborted else "❌")
+    summary = result.summary()
+    await cl.Message(content=summary, author=f"{icon} {wf_id}").send()
+
+    # Sumário compacto
+    status_label = "Concluído" if result.success else ("Abortado" if result.aborted else "Falhou")
+    await cl.Message(
+        content=(
+            f"{status_icon} **{wf_id} — {status_label}**\n\n"
+            f"- Etapas: {len(result.steps_completed)} concluídas"
+            + (f", {len(result.steps_failed)} falhas" if result.steps_failed else "")
+            + f"\n- Custo total: `${result.total_cost_usd:.4f}`"
+            + f"\n- Duração: `{result.total_duration_seconds:.1f}s`"
+        ),
+        author="Sistema",
+    ).send()
+
+    # Tracking para export
+    from datetime import datetime as _dt
+
+    _hist = cl.user_session.get("chat_history") or []
+    if summary:
+        _hist.append(
+            {
+                "role": "assistant",
+                "author": f"{wf_id} Workflow",
+                "content": summary,
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        cl.user_session.set("chat_history", _hist)
+
+
+@cl.action_callback("wf_approve")
+async def on_wf_approved(action: cl.Action) -> None:
+    """Resolve o future de pausa humana com True (continuar)."""
+    await action.remove()
+    future = cl.user_session.get("_workflow_pause_future")
+    if future is not None and not future.done():
+        future.set_result(True)
+    cl.user_session.set("_workflow_pause_future", None)
+    phase = action.payload.get("phase", "")
+    await cl.Message(
+        content=f"✅ Aprovado — continuando para **{phase}**...",
+        author="Sistema",
+    ).send()
+
+
+@cl.action_callback("wf_abort")
+async def on_wf_aborted(action: cl.Action) -> None:
+    """Resolve o future de pausa humana com False (abortar)."""
+    await action.remove()
+    future = cl.user_session.get("_workflow_pause_future")
+    if future is not None and not future.done():
+        future.set_result(False)
+    cl.user_session.set("_workflow_pause_future", None)
+    await cl.Message(content="❌ Workflow abortado pelo usuário.", author="Sistema").send()
+
+
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
 
 
@@ -1551,6 +1777,11 @@ async def on_message(message: cl.Message) -> None:
     # Comando /geral — resposta direta via Haiku sem Supervisor (~95% mais barato)
     if user_input.lower().startswith("/geral"):
         await _handle_geral(user_input)
+        return
+
+    # Comando /workflow — executa workflow colaborativo pré-definido (WF-01 a WF-05)
+    if user_input.lower().startswith("/workflow"):
+        await _handle_workflow(user_input)
         return
 
     mode: str | None = cl.user_session.get("mode")
