@@ -74,6 +74,13 @@ from memory.manager import MemoryManager
 from config.agent_meta import get_agent_tiers as _get_agent_tiers
 from commands.geral import run_geral_query
 from commands.party import run_party_query, parse_party_args
+from commands.analyze import (
+    ANALYZE_PROMPTS,
+    _DEFAULT_ANALYZE_PROMPT,
+    build_report,
+    parse_analyze_args,
+    save_report,
+)
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
@@ -735,6 +742,115 @@ async def _stream_party(user_input: str, session_id: str | None = None) -> dict[
     return {"cost": total_cost}
 
 
+async def _stream_analyze(user_input: str, session_id: str | None = None) -> dict[str, float]:
+    """
+    /analyze-project — análise completa do projeto a partir de múltiplas perspectivas.
+
+    Spawna agentes especializados em paralelo, cada um analisando seu domínio,
+    consolida os resultados e salva relatório em output/analyze-project/.
+    """
+    agent_names, project_description = parse_analyze_args(user_input)
+
+    if session_id:
+        _append_transcript_turn(
+            session_id=session_id,
+            role="user",
+            content=user_input,
+            metadata={
+                "session_type": "analyze",
+                "command": "/analyze-project",
+                "agents": agent_names,
+            },
+        )
+
+    console.print(
+        f"[bold green]🔬 [Analyze][/bold green] Agentes: [yellow]{', '.join(agent_names)}[/yellow]"
+    )
+    if project_description:
+        console.print(
+            f"[dim]Projeto: {project_description[:120]}"
+            f"{'...' if len(project_description) > 120 else ''}[/dim]\n"
+        )
+    else:
+        console.print("[dim]Sem descrição — análise por template padrão de cada domínio.[/dim]\n")
+
+    # Monta queries específicas por agente
+    queries = [
+        ANALYZE_PROMPTS.get(name, _DEFAULT_ANALYZE_PROMPT).format(
+            task=project_description or "(no description provided)"
+        )
+        for name in agent_names
+    ]
+
+    spinner = Spinner("dots", text=Text("Analisando projeto em paralelo...", style="dim"))
+    live = Live(spinner, console=console, refresh_per_second=10, transient=True)
+    live.start()
+    try:
+        import asyncio as _asyncio
+
+        from commands.party import _query_single_agent
+
+        tasks = [_query_single_agent(name, query) for name, query in zip(agent_names, queries)]
+        results = await _asyncio.gather(*tasks, return_exceptions=True)
+    finally:
+        if live.is_started:
+            live.stop()
+
+    # Normaliza resultados
+    clean_results: list[tuple[str, str, float]] = []
+    total_cost = 0.0
+    for i, result in enumerate(results):
+        name = agent_names[i]
+        if isinstance(result, Exception):
+            clean_results.append((name, f"_Erro: {result}_", 0.0))
+        else:
+            clean_results.append(result)  # type: ignore[arg-type]
+            total_cost += clean_results[-1][2]
+
+    # Exibe resultados
+    agent_icons = {
+        "databricks-engineer": "🗄️",
+        "fabric-engineer": "🏗️",
+        "data-quality-steward": "🔍",
+        "governance-auditor": "🔐",
+        "data-contracts-engineer": "📋",
+        "data-mesh-architect": "🕸️",
+    }
+    for name, text, _ in clean_results:
+        icon = agent_icons.get(name, "🔬")
+        console.print(f"[bold green]{icon} {name}:[/bold green]")
+        if text.strip():
+            console.print(Markdown(text))
+        console.print()
+
+    # Salva relatório consolidado
+    report = build_report(clean_results, project_description, agent_names)
+    report_path = save_report(report)
+    console.print(f"[dim]📄 Relatório salvo em: {report_path}[/dim]")
+    console.print(
+        f"[dim]💰 Analyze — {len(clean_results)} agentes | Custo total: ${total_cost:.5f}[/dim]\n"
+    )
+
+    if session_id and clean_results:
+        consolidated = "\n\n".join(
+            f"## {name}\n{text.strip()}" for name, text, _ in clean_results if text.strip()
+        )
+        if consolidated:
+            _append_transcript_turn(
+                session_id=session_id,
+                role="assistant",
+                content=consolidated,
+                cost_usd=total_cost,
+                metadata={
+                    "session_type": "analyze",
+                    "command": "/analyze-project",
+                    "agents": [name for name, _, _ in clean_results],
+                },
+            )
+
+    return {"cost": total_cost}
+
+
 async def run_interactive() -> None:
     """Loop interativo com histórico de sessão mantido entre mensagens."""
 
@@ -1105,6 +1221,13 @@ async def run_interactive() -> None:
                     # --- /party → DOMA Party Mode: múltiplos agentes em paralelo ---
                     if command_result and command_result.command == "/party":
                         result_metrics = await _stream_party(user_input, session_id=_session_id)
+                        _session_state["last_prompt"] = user_input
+                        _session_state["total_cost"] += result_metrics.get("cost", 0)
+                        continue
+
+                    # --- /analyze-project → análise multi-perspectiva do projeto ---
+                    if command_result and command_result.command == "/analyze-project":
+                        result_metrics = await _stream_analyze(user_input, session_id=_session_id)
                         _session_state["last_prompt"] = user_input
                         _session_state["total_cost"] += result_metrics.get("cost", 0)
                         continue

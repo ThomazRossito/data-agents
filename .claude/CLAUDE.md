@@ -329,6 +329,7 @@ MEMORY_CAPTURE_ENABLED=true
 | `/sessions [all\|<id>]` | — | Lista sessões registradas (transcript + checkpoint) |
 | `/resume [last\|<id>]` | — | Retoma sessão anterior reconstruindo contexto do transcript |
 | `/party <query>` | — | Multi-agente paralelo: perspectivas independentes (flags: --quality, --arch, --engineering, --migration, --full) |
+| `/analyze-project [--quality\|--arch\|--databricks\|--fabric] [descrição]` | — | Análise completa do projeto de dados: 4 especialistas em paralelo, relatório em `output/analyze-project/` |
 | `/workflow <wf-id> <query>` | — | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
 | `/geral <pergunta>` | geral | Resposta direta sem Supervisor (zero MCP, ~95% mais barato) |
 | `/streaming <tarefa>` | databricks-ai | Kafka, Flink, Spark Structured Streaming direto |

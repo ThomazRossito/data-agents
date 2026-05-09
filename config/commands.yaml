@@ -185,6 +185,14 @@ commands:
     prompt_template: |-
       [DOMA EXPRESS — DASHBOARD] Delegue IMEDIATAMENTE para databricks-engineer. Não crie PRD, não peça aprovação. O agente deve usar as ferramentas Databricks AI/BI Dashboard (mcp__databricks__create_or_update_dashboard) para criar ou publicar o dashboard conforme solicitado. Instrua o agente a ler `kb/semantic-modeling/index.md` antes de executar. Tarefa: {task}
     display_template: '[bold yellow]📈 [DOMA Express] Criando Dashboard com: {agent}[/bold yellow]'
+  analyze-project:
+    agent: null
+    doma_mode: internal
+    description: |-
+      Análise completa do projeto de dados a partir de 4 perspectivas especializadas em paralelo: engenharia (Databricks + Fabric), qualidade e governança. Salva relatório consolidado em output/analyze-project/. Flags: --quality | --arch | --databricks | --fabric.
+    skills: []
+    prompt_template: '{task}'
+    display_template: '[bold green]🔬 [Analyze] Iniciando análise completa do projeto...[/bold green]'
   party:
     agent: null
     doma_mode: internal
