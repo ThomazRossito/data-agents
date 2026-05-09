@@ -1558,6 +1558,142 @@ async def on_wf_aborted(action: cl.Action) -> None:
     await cl.Message(content="❌ Workflow abortado pelo usuário.", author="Sistema").send()
 
 
+# ── /sessions + /resume — histórico e retomada de sessões ───────────────────
+
+
+def _sessions_markdown(limit: int = 15) -> str:
+    """Formata lista de sessões recentes como Markdown para o Chainlit."""
+    from commands.sessions import list_all_sessions
+
+    sessions = list_all_sessions()
+    if not sessions:
+        return (
+            "Nenhuma sessão registrada ainda.\n\n"
+            "As sessões são registradas automaticamente após o primeiro turno no modo Data Agents."
+        )
+
+    display = sessions[:limit]
+    lines = [f"### Sessões registradas ({len(display)}/{len(sessions)})\n"]
+    lines.append("| ID | Início | Turns | Custo | Status | Último prompt |")
+    lines.append("|---|---|---|---|---|---|")
+    for s in display:
+        sid = s["session_id"]
+        start = (s["first_timestamp"] or "")[:16]
+        turns = str(s["turn_count"]) if s["turn_count"] else "—"
+        cost = f"${s['total_cost_usd']:.4f}"
+        badges: list[str] = []
+        if s["has_transcript"]:
+            badges.append("📝")
+        if s["has_checkpoint"]:
+            badges.append(f"💾 {s['reason']}" if s["reason"] else "💾")
+        status = " ".join(badges) or "—"
+        prompt = (s["last_user_prompt"] or "").replace("|", "\\|")[:60]
+        lines.append(f"| `{sid}` | {start} | {turns} | {cost} | {status} | {prompt} |")
+
+    if len(sessions) > limit:
+        lines.append(
+            f"\n*...e mais {len(sessions) - limit} sessões. Use `/sessions all` para ver todas.*"
+        )
+
+    lines.append("\n**Para retomar:** `/resume last` ou `/resume <session-id>`")
+    return "\n".join(lines)
+
+
+def _session_detail_markdown(session_id: str) -> str:
+    """Formata o transcript de uma sessão como Markdown."""
+    from hooks.transcript_hook import load_transcript
+
+    entries = load_transcript(session_id)
+    if not entries:
+        return f"Sessão `{session_id}` não encontrada (ou sem transcript)."
+
+    lines = [f"### Transcript — `{session_id}` ({len(entries)} entradas)\n"]
+    for entry in entries[:30]:  # limit to last 30 to avoid huge messages
+        role = entry.get("role", "?")
+        ts = (entry.get("timestamp") or "")[:16]
+        content = entry.get("content") or ""
+        cost = entry.get("cost_usd")
+
+        badge = "👤 **User**" if role == "user" else "🤖 **Assistant**"
+        cost_str = f" · `${cost:.4f}`" if cost is not None else ""
+        lines.append(f"{badge} `{ts}`{cost_str}")
+        preview = content[:500] + ("…" if len(content) > 500 else "")
+        lines.append(f"\n{preview}\n")
+
+    if len(entries) > 30:
+        lines.append(f"*...{len(entries) - 30} entradas anteriores omitidas.*")
+    return "\n".join(lines)
+
+
+async def _handle_sessions(user_input: str) -> None:
+    """
+    Exibe lista de sessões ou detalhes de uma sessão específica.
+
+    Formatos:
+      /sessions          → últimas 15 sessões
+      /sessions all      → todas as sessões
+      /sessions <id>     → transcript completo de uma sessão
+    """
+    parts = user_input.strip().split(maxsplit=1)
+    arg = parts[1].strip() if len(parts) > 1 else ""
+
+    if not arg:
+        md = _sessions_markdown(limit=15)
+    elif arg.lower() == "all":
+        md = _sessions_markdown(limit=0)
+    else:
+        md = _session_detail_markdown(arg)
+
+    await cl.Message(content=md, author="Sistema").send()
+
+
+async def _handle_resume(user_input: str) -> None:
+    """
+    Retoma uma sessão anterior reconstruindo o contexto do transcript.
+
+    Formatos:
+      /resume last    → retoma a sessão mais recente
+      /resume <id>    → retoma a sessão com o ID especificado
+    """
+    from commands.sessions import build_resume_prompt_for_session, find_last_session_id
+
+    parts = user_input.strip().split(maxsplit=1)
+    arg = parts[1].strip() if len(parts) > 1 else "last"
+
+    if arg.lower() in ("last", "último", "ultima"):
+        session_id = find_last_session_id()
+        if not session_id:
+            await cl.Message(
+                content="⚠️ Nenhuma sessão anterior encontrada para retomar.",
+                author="Sistema",
+            ).send()
+            return
+    else:
+        session_id = arg
+
+    resume_prompt = build_resume_prompt_for_session(session_id)
+    if not resume_prompt:
+        await cl.Message(
+            content=(
+                f"⚠️ Sessão `{session_id}` não encontrada ou sem dados suficientes.\n\n"
+                "Use `/sessions` para listar sessões disponíveis."
+            ),
+            author="Sistema",
+        ).send()
+        return
+
+    # Se o modo não é Supervisor, ativa primeiro
+    mode: str | None = cl.user_session.get("mode")
+    if mode != MODE_SUPERVISOR:
+        await _activate_supervisor()
+
+    await cl.Message(
+        content=f"🔄 **Retomando sessão `{session_id}`...**",
+        author="Sistema",
+    ).send()
+    await _handle_supervisor(resume_prompt)
+
+
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
 
 
@@ -1792,6 +1928,16 @@ async def on_message(message: cl.Message) -> None:
     # Comando /workflow — executa workflow colaborativo pré-definido (WF-01 a WF-05)
     if user_input.lower().startswith("/workflow"):
         await _handle_workflow(user_input)
+        return
+
+    # Comando /sessions — lista ou inspeciona sessões anteriores (sem Supervisor)
+    if user_input.lower().startswith("/sessions"):
+        await _handle_sessions(user_input)
+        return
+
+    # Comando /resume — retoma sessão anterior reconstruindo contexto do transcript
+    if user_input.lower().startswith("/resume"):
+        await _handle_resume(user_input)
         return
 
     mode: str | None = cl.user_session.get("mode")

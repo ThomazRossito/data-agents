@@ -150,6 +150,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
     "🎉 Multi-Agente": ["/party", "/analyze-project", "/workflow"],
     "🧠 Memória": ["/memory"],
     "💬 Conversacional": ["/geral"],
+    "📂 Sessões": ["/sessions", "/resume"],
 }
 
 
