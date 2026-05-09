@@ -1160,6 +1160,13 @@ async def run_interactive() -> None:
                         handle_mcp_command(user_input, console)
                         continue
 
+                    # --- /health → Status das plataformas (local, sem Supervisor) ---
+                    if command_result and command_result.command == "/health":
+                        from commands.health import handle_health_command
+
+                        handle_health_command(console)
+                        continue
+
                     # --- /sessions → Lista sessões registradas (local, sem Supervisor) ---
                     if command_result and command_result.command == "/sessions":
                         from commands.sessions import handle_sessions_command

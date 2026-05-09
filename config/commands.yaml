@@ -86,10 +86,9 @@ commands:
   health:
     agent: null
     doma_mode: internal
-    description: Verifica a conectividade com as plataformas configuradas.
+    description: Verifica a conectividade com as plataformas configuradas. Executado localmente sem LLM.
     skills: []
-    prompt_template: |-
-      Execute exatamente 3 verificações de conectividade, nesta ordem, e NADA MAIS: (1) Databricks: mcp__databricks__list_catalogs. (2) Fabric: mcp__fabric_official__list_workspaces. (3) Fabric RTI: mcp__fabric_rti__kusto_list_databases. Após as 3 chamadas, apresente IMEDIATAMENTE o relatório de status. Não execute nenhuma outra tool call além dessas 3.
+    prompt_template: '{task}'
     display_template: '[bold cyan]🏥 [Health Check] Verificando conectividade das plataformas...[/bold cyan]'
   status:
     agent: null
