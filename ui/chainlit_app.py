@@ -1026,6 +1026,120 @@ async def _handle_export() -> None:
         ).send()
 
 
+# ── /analyze-project — análise multi-perspectiva paralela ────────────────────
+
+_ANALYZE_ICONS: dict[str, str] = {
+    "databricks-engineer": "🗄️",
+    "fabric-engineer": "🏗️",
+    "data-quality-steward": "🔍",
+    "governance-auditor": "🔐",
+    "data-contracts-engineer": "📋",
+    "data-mesh-architect": "🕸️",
+}
+
+
+async def _handle_analyze_project(user_input: str) -> None:
+    """
+    Executa /analyze-project na UI Chainlit.
+
+    Spawna agentes especializados em paralelo, exibe cada resultado como
+    cl.Message individual e salva relatório consolidado em output/analyze-project/.
+    """
+    from commands.analyze import (
+        ANALYZE_PROMPTS,
+        _DEFAULT_ANALYZE_PROMPT,
+        build_report,
+        parse_analyze_args,
+        save_report,
+    )
+    from commands.party import _query_single_agent
+
+    agent_names, project_description = parse_analyze_args(user_input)
+
+    agents_label = ", ".join(f"`{a}`" for a in agent_names)
+    desc_line = f"\n> Projeto: _{project_description[:100]}_" if project_description else ""
+    await cl.Message(
+        content=f"🔬 **Analyze** — {len(agent_names)} agentes em paralelo: {agents_label}{desc_line}",
+        author="Sistema",
+    ).send()
+
+    # Abre um Step por agente para feedback visual durante a execução
+    agent_steps: dict[str, cl.Step] = {}
+    for name in agent_names:
+        icon = _ANALYZE_ICONS.get(name, "🔬")
+        step = cl.Step(name=f"{icon} {name} — analisando...", type="run")
+        await step.send()
+        agent_steps[name] = step
+
+    queries = [
+        ANALYZE_PROMPTS.get(name, _DEFAULT_ANALYZE_PROMPT).format(
+            task=project_description or "(no description provided)"
+        )
+        for name in agent_names
+    ]
+
+    tasks = [_query_single_agent(name, query) for name, query in zip(agent_names, queries)]
+    raw_results = await asyncio.gather(*tasks, return_exceptions=True)
+
+    # Normaliza e fecha Steps
+    clean_results: list[tuple[str, str, float]] = []
+    total_cost = 0.0
+    for i, result in enumerate(raw_results):
+        name = agent_names[i]
+        step = agent_steps[name]
+        if isinstance(result, Exception):
+            entry = (name, f"_Erro: {result}_", 0.0)
+            step.output = f"❌ Erro: {result}"
+        else:
+            entry = result  # type: ignore[assignment]
+            _, _, cost = entry
+            step.output = f"✅ Concluído (${cost:.5f})"
+        await step.update()
+        clean_results.append(entry)
+        total_cost += entry[2]
+
+    # Exibe resultado de cada agente como mensagem
+    for name, text, cost in clean_results:
+        if not text.strip():
+            continue
+        icon = _ANALYZE_ICONS.get(name, "🔬")
+        author_label = f"{icon} {name}"
+        footer = f"\n\n---\n*💰 `${cost:.5f}`*"
+        await cl.Message(content=text.strip() + footer, author=author_label).send()
+
+    # Salva relatório e exibe resumo
+    report = build_report(clean_results, project_description, agent_names)
+    report_path = save_report(report)
+
+    await cl.Message(
+        content=(
+            f"✅ **Análise concluída**\n\n"
+            f"- Agentes: {len(clean_results)}\n"
+            f"- Custo total: `${total_cost:.5f}`\n"
+            f"- Relatório: `{report_path}`"
+        ),
+        author="Sistema",
+    ).send()
+
+    # Tracking para export
+    from datetime import datetime as _dt
+
+    _hist = cl.user_session.get("chat_history") or []
+    consolidated = "\n\n".join(
+        f"## {name}\n{text.strip()}" for name, text, _ in clean_results if text.strip()
+    )
+    if consolidated:
+        _hist.append(
+            {
+                "role": "assistant",
+                "author": "Analyze",
+                "content": consolidated,
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        cl.user_session.set("chat_history", _hist)
+
+
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
 
 
@@ -1240,6 +1354,11 @@ async def on_message(message: cl.Message) -> None:
                 content="Subcomandos disponíveis: `status`, `clear`, `clear all`, `clear full`",
                 author="Sistema",
             ).send()
+        return
+
+    # Comando /analyze-project — análise multi-perspectiva paralela (sem Supervisor)
+    if user_input.lower().startswith("/analyze-project"):
+        await _handle_analyze_project(user_input)
         return
 
     mode: str | None = cl.user_session.get("mode")
