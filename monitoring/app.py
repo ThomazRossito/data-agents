@@ -48,6 +48,7 @@ SESSIONS_LOG = ROOT / "logs" / "sessions.jsonl"
 COMPRESSION_LOG = ROOT / "logs" / "compression.jsonl"
 WORKFLOWS_LOG = ROOT / "logs" / "workflows.jsonl"
 REGISTRY = ROOT / "agents" / "registry"
+LESSONS_DIR = ROOT / "memory" / "data" / "lesson_learned"
 
 
 # ── Leitura dos logs ──────────────────────────────────────────────────────────
@@ -92,6 +93,41 @@ def load_agents() -> list[dict]:
         except Exception:
             continue
     return agents
+
+
+@st.cache_data(ttl=30)
+def load_lessons() -> list[dict]:
+    """Carrega todas as LESSON_LEARNED de memory/data/lesson_learned/*.md."""
+    if not LESSONS_DIR.exists():
+        return []
+    lessons: list[dict] = []
+    try:
+        import yaml
+    except ImportError:
+        return []
+    for f in sorted(LESSONS_DIR.glob("*.md"), reverse=True):
+        content = f.read_text(encoding="utf-8")
+        if not content.startswith("---"):
+            continue
+        try:
+            end = content.index("---", 3)
+            meta = yaml.safe_load(content[3:end]) or {}
+            body = content[end + 3 :].strip()
+            meta["content"] = body
+            meta["file"] = f.name
+            # normaliza metadata_json → dict
+            import json as _json
+
+            raw_json = meta.pop("metadata_json", None)
+            if raw_json and isinstance(raw_json, str) and "metadata" not in meta:
+                try:
+                    meta["metadata"] = _json.loads(raw_json)
+                except (ValueError, TypeError):
+                    meta["metadata"] = {}
+            lessons.append(meta)
+        except Exception:
+            continue
+    return lessons
 
 
 # ── Análise ───────────────────────────────────────────────────────────────────
@@ -259,6 +295,7 @@ with st.sidebar:
             "⚙️ Configurações",
             "💰 Custo & Tokens",
             "🔭 Observabilidade",
+            "🧠 Lições Aprendidas",
             "ℹ️ Sobre",
         ],
         label_visibility="collapsed",
@@ -1810,6 +1847,156 @@ elif page == "🔭 Observabilidade":
                     ),
                 },
             )
+
+
+# ── LIÇÕES APRENDIDAS ────────────────────────────────────────────────────────
+elif page == "🧠 Lições Aprendidas":
+    st.title("🧠 Lições Aprendidas")
+    st.caption(
+        "Lições capturadas automaticamente pelo loop de aprendizado autônomo (v2.1.0). "
+        "Triggers: `error` · `high_cost` · `retries` · `slow_op`. "
+        "Decay: 30 dias. Dados lidos de `memory/data/lesson_learned/`."
+    )
+    st.divider()
+
+    lessons = load_lessons()
+
+    if not lessons:
+        st.info(
+            "Nenhuma lição aprendida registrada ainda.\n\n"
+            "As lições são capturadas automaticamente quando o sistema detecta erros em MCPs, "
+            "operações com alto custo, retentativas excessivas ou operações lentas (>60s).\n\n"
+            "Execute algumas queries via `python main.py` para gerar lições."
+        )
+    else:
+        # ── Métricas resumo ───────────────────────────────────────────────────
+        active = [lesson for lesson in lessons if float(lesson.get("confidence", 1.0)) >= 0.1]
+        inactive = len(lessons) - len(active)
+
+        # Agrupa por agente e trigger
+        by_agent: dict[str, int] = defaultdict(int)
+        by_trigger: dict[str, int] = defaultdict(int)
+        confidences: list[float] = []
+        for lesson in active:
+            meta = lesson.get("metadata") or {}
+            agent = meta.get("agent") or lesson.get("agent", "unknown")
+            trigger = meta.get("trigger") or lesson.get("trigger", "unknown")
+            by_agent[agent] += 1
+            by_trigger[trigger] += 1
+            confidences.append(float(lesson.get("confidence", 1.0)))
+
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Total Ativas", len(active))
+        c2.metric("Expiradas", inactive)
+        c3.metric("Avg Confidence", f"{avg_conf:.2f}")
+        c4.metric("Agentes com lições", len(by_agent))
+
+        st.divider()
+
+        # ── Distribuição por trigger e agente ─────────────────────────────────
+        col_trig, col_agent = st.columns(2)
+
+        with col_trig:
+            st.subheader("Por Trigger")
+            _TRIGGER_ICONS = {
+                "error": "❌",
+                "high_cost": "💰",
+                "retries": "🔁",
+                "slow_op": "⏱️",
+            }
+            for trigger, count in sorted(by_trigger.items(), key=lambda x: -x[1]):
+                icon = _TRIGGER_ICONS.get(trigger, "⚠️")
+                pct = count / len(active) * 100
+                st.markdown(f"`{icon} {trigger}` — **{count}** ({pct:.0f}%)")
+                st.progress(count / max(by_trigger.values()))
+
+        with col_agent:
+            st.subheader("Por Agente")
+            for agent, count in sorted(by_agent.items(), key=lambda x: -x[1]):
+                pct = count / len(active) * 100
+                st.markdown(f"`{agent}` — **{count}** ({pct:.0f}%)")
+                st.progress(count / max(by_agent.values()))
+
+        st.divider()
+
+        # ── Filtros ───────────────────────────────────────────────────────────
+        st.subheader("🔎 Lições")
+
+        filter_col1, filter_col2, filter_col3 = st.columns(3)
+        with filter_col1:
+            all_agents = sorted(by_agent.keys())
+            agent_filter = st.selectbox(
+                "Agente", ["(todos)"] + all_agents, key="lesson_agent_filter"
+            )
+        with filter_col2:
+            all_triggers = sorted(by_trigger.keys())
+            trigger_filter = st.selectbox(
+                "Trigger", ["(todos)"] + all_triggers, key="lesson_trigger_filter"
+            )
+        with filter_col3:
+            show_inactive = st.checkbox("Mostrar expiradas", value=False)
+
+        # Aplica filtros
+        filtered = lessons if show_inactive else active
+        if agent_filter != "(todos)":
+            filtered = [
+                rec
+                for rec in filtered
+                if (rec.get("metadata") or {}).get("agent") == agent_filter
+                or rec.get("agent") == agent_filter
+            ]
+        if trigger_filter != "(todos)":
+            filtered = [
+                rec
+                for rec in filtered
+                if (rec.get("metadata") or {}).get("trigger") == trigger_filter
+                or rec.get("trigger") == trigger_filter
+            ]
+
+        st.caption(f"{len(filtered)} lição(ões) encontrada(s)")
+
+        # ── Lista de lições ───────────────────────────────────────────────────
+        for i, lesson in enumerate(filtered):
+            meta = lesson.get("metadata") or {}
+            agent = meta.get("agent") or lesson.get("agent", "—")
+            trigger = meta.get("trigger") or lesson.get("trigger", "—")
+            task_type = meta.get("task_type") or lesson.get("task_type", "—")
+            platform = meta.get("platform") or lesson.get("platform", "—")
+            conf = float(lesson.get("confidence", 1.0))
+            summary = lesson.get("summary", lesson.get("file", f"Lição #{i + 1}"))
+            created = to_sp(str(lesson.get("created_at", "")))
+
+            _TRIGGER_ICONS = {"error": "❌", "high_cost": "💰", "retries": "🔁", "slow_op": "⏱️"}
+            icon = _TRIGGER_ICONS.get(trigger, "⚠️")
+            conf_color = "🟢" if conf >= 0.7 else "🟡" if conf >= 0.4 else "🔴"
+
+            with st.expander(
+                f"{icon} `{agent}` · {trigger} · {conf_color} {conf:.2f} · _{summary[:80]}_"
+            ):
+                detail_cols = st.columns(4)
+                detail_cols[0].metric("Agente", agent)
+                detail_cols[1].metric("Trigger", trigger)
+                detail_cols[2].metric("Confidence", f"{conf:.3f}")
+                detail_cols[3].metric("Criada em", created[:10])
+
+                if task_type != "—":
+                    st.markdown(
+                        f"**Task Type:** `{task_type}` &nbsp;|&nbsp; **Platform:** `{platform}`"
+                    )
+
+                tags = lesson.get("tags", [])
+                if tags:
+                    tags_str = " ".join(f"`{t}`" for t in (tags if isinstance(tags, list) else []))
+                    st.markdown(f"**Tags:** {tags_str}")
+
+                content = lesson.get("content", "").strip()
+                if content:
+                    st.divider()
+                    st.markdown(content)
+                else:
+                    st.caption("_(sem conteúdo registrado)_")
 
 
 # ── SOBRE ─────────────────────────────────────────────────────────────────────

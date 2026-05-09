@@ -147,6 +147,7 @@ COMMAND_GROUPS: dict[str, list[str]] = {
     "🔍 Qualidade & Gov.": ["/quality", "/governance", "/contract"],
     "💰 FinOps & Diagnóstico": ["/finops", "/diagnose"],
     "🔧 Sistema": ["/health", "/skill"],
+    "🎉 Multi-Agente": ["/party", "/analyze-project"],
     "🧠 Memória": ["/memory"],
     "💬 Conversacional": ["/geral"],
 }
