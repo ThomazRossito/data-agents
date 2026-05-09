@@ -216,7 +216,7 @@ def _format_context_entry(
 _ERROR_INDICATORS = ["error", "failed", "exception", "traceback", "unauthorized", "timeout"]
 
 
-def pre_track_lesson_timing(
+async def pre_track_lesson_timing(
     tool_name: str, tool_input: dict[str, Any], tool_use_id: str | None
 ) -> None:
     """PreToolUse: registra o instante de início de cada tool call para slow_op detection."""
