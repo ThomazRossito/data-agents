@@ -226,6 +226,7 @@ O comando `/party` convoca múltiplos agentes simultaneamente para a mesma pergu
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
 | `/review <artefato>` | Review de código ou pipeline |
 | `/party <query>` | Multi-agente paralelo (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
+| `/analyze-project [--quality\|--arch\|--databricks\|--fabric] [descrição]` | Análise completa do projeto: 4 especialistas em paralelo, relatório salvo em `output/analyze-project/` |
 | `/workflow <wf-id> <query>` | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
 | `/health` | Status das plataformas configuradas |
 | `/status` | Estado da sessão atual |

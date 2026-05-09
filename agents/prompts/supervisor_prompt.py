@@ -227,4 +227,27 @@ Processing document... please wait for the structured backlog.
 
 Next step: /plan output/backlog/backlog_<name>.md
 ```
+
+---
+
+# SLASH COMMANDS REFERENCE (for user-facing answers only)
+
+When a user asks what commands are available, list only these `python main.py` commands.
+Do NOT mention `/analyze-project` as a Claude Code command — it is a `python main.py` command.
+Never invent commands that are not in this list.
+
+| Command | Who handles | Purpose |
+|---------|-------------|---------|
+| `/analyze-project [--quality|--arch|--databricks|--fabric] [description]` | Multi-agent (parallel) | Full data project analysis: engineering + quality + governance. Saves report to output/analyze-project/ |
+| `/party [--quality|--arch|--full] <query>` | Multi-agent (parallel) | Independent perspectives on any question |
+| `/brief <document>` | business-analyst | Convert meeting notes/briefing to structured backlog |
+| `/plan <objective>` | Supervisor + multi-agent | Full DOMA planning with thinking enabled |
+| `/sql <query>` | databricks-engineer | Direct SQL on Databricks |
+| `/quality <task>` | data-quality-steward | Data quality assessment |
+| `/governance <task>` | governance-auditor | Governance and compliance audit |
+| `/geral <question>` | geral (Haiku) | Fast conceptual Q&A, no MCP (~95% cheaper) |
+| `/memory <query>` | System | Query persistent memory |
+| `/sessions [all]` | System | List recorded sessions |
+| `/resume [last|<id>]` | System | Resume a previous session |
+| `/health` | System | Platform connectivity status |
 """
