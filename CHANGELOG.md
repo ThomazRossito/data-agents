@@ -7,6 +7,33 @@
 
 ## [Unreleased]
 
+## [2.1.0] — 2026-05-09
+
+### Added — Autonomous Learning System + S4 Selective Relaxation
+
+- **LESSON_LEARNED memory type** (`memory/types.py`): 8º tipo de memória com decay de 30 dias.
+  Captura erros, operações de alto custo, retentativas e ops lentas como conhecimento estruturado.
+- **Lesson capture pipeline** (`hooks/memory_hook.py`): detecção de 4 triggers (error, high_cost,
+  retries, slow_op) via PostToolUse + PreToolUse. Sumarização via Haiku (~$0.001/lesson).
+- **`pre_track_lesson_timing()`**: hook PreToolUse que registra t₀ de cada tool call para medir
+  duração real (slow_op detection). Registrado em `supervisor.py`.
+- **Anti-bloat**: `store.prune_lessons_by_agent()` limita a 50 lessons ativas por agente.
+  `compiler.deduplicate_lessons()` consolida lessons com >60% de overlap por agente+task_type.
+  `deduplicate_lessons()` agora é chamado automaticamente em `compile_daily_logs()`.
+- **Lesson injection** (`memory/retrieval.py`): seção `### Lições Aprendidas ⚠️` no bloco
+  injetado no system prompt no início de cada sessão.
+- **Agent instructions**: `databricks-engineer`, `fabric-engineer`, `databricks-ai`,
+  `migration-expert` — cada um recebeu instrução de consultar lessons antes de ops HIGH-risk.
+- **S4 Autonomous Mode** (`config/settings.py`): 3 novos campos — `s4_autonomous_mode`,
+  `s4_auto_approval_min_clarity_score`, `s4_auto_approval_max_cost_usd`. Default OFF.
+- **`tracker.log_s4_decision()`** (`workflow/tracker.py`): loga evento `s4_decision` em
+  `logs/workflows.jsonl` com mode, clarity_score, approved, reason e agents.
+- **S4 constitution clause** (`kb/constitution.md`): §2.1 documenta critérios de auto-aprovação.
+- **S4 supervisor prompt** (`agents/prompts/supervisor_prompt.py`): Step 2 atualizado com
+  lógica condicional S4-AUTO.
+- **22 novos testes**: `test_memory_lesson_learned.py` (14 testes, Fases 1–4) e
+  `test_s4_relaxation.py` (8 testes, Fase 5).
+
 ### Gated (aguardando telemetria)
 
 - **T1.7** — Decidir Caminho A vs B da memória (`logs/memory_usage.jsonl` 24-72h).
