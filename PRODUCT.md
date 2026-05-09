@@ -69,12 +69,14 @@ A meta não é magia — é **remover o atrito entre intenção e execução** q
 
 ---
 
-## Estado atual (2026-05-09) — v2.1.0
+## Estado atual (2026-05-09) — v2.2.0
 
-- **14 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1218+ testes** ✅.
+- **14 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1318+ testes** ✅.
 - Modelos: Supervisor e especialistas em Sonnet 4.6; `geral` em Haiku 4.5 (T0).
-- **Loop de aprendizado autônomo** ✅: `LESSON_LEARNED` captura erros e eventos de baixa performance entre sessões; injetado no system prompt antes de operações de alto risco.
+- **Loop de aprendizado autônomo** ✅: `LESSON_LEARNED` captura erros e eventos de baixa performance entre sessões; injetado no system prompt antes de operações de alto risco. Dashboard "🧠 Lições Aprendidas" no Streamlit.
 - **S4 Autonomous Mode** ✅: auto-aprovação configurável de delegações read-only/single-agent/baixo custo (`S4_AUTONOMOUS_MODE=false` por padrão).
+- **Chainlit UI parity** ✅: `/analyze-project`, `/party`, `/geral` com dispatch direto na UI — sem overhead do Supervisor; resultados streamados via `as_completed`.
+- **`/analyze-project`** ✅: comando real em `python main.py` (era alucinação do Supervisor); 5 grupos de agentes, prompts estruturados por domínio, relatório em `output/analyze-project/`.
 - T6.2 ✅: evals automáticos com regression detection vs run anterior (`make evals`).
 - T6.3 ✅: `make bootstrap` com wizard de credenciais + checagem de deps de sistema.
 - T6.4 ✅: skills `async-patterns` e `cli-patterns` adicionadas ao python-expert.
