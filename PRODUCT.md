@@ -71,7 +71,7 @@ A meta não é magia — é **remover o atrito entre intenção e execução** q
 
 ## Estado atual (2026-05-07)
 
-- **23 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1260+ testes** ✅.
+- **14 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1268+ testes** ✅.
 - Modelos: Supervisor e especialistas em Sonnet 4.6; `geral` em Haiku 4.5 (T0).
 - T6.2 ✅: evals automáticos com regression detection vs run anterior (`make evals`).
 - T6.3 ✅: `make bootstrap` com wizard de credenciais + checagem de deps de sistema.

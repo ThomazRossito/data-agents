@@ -5,41 +5,36 @@
 
 # Changelog
 
-## [1.3.0] — 2026-05-07
-
-### Added
-
-- **9 novos agentes especialistas** no registry (`agents/registry/`):
-  - `ai-data-engineer` (T1) — RAG pipelines, Vector Search, embeddings, chunking, LLMOps, AI Functions, feature stores
-  - `streaming-engineer` (T1) — Kafka, Apache Flink, Spark Structured Streaming, Fabric RTI, CDC com Debezium
-  - `cdc-specialist` (T1) — Change Data Capture: Debezium, Kafka Connect, AUTO CDC INTO, transactional outbox, CQRS
-  - `data-contracts-engineer` (T2) — ODCS v3 authoring, SLA de qualidade, schema evolution, breaking change management, knowledge graph de contratos
-  - `schema-designer` (T2) — Star Schema, Snowflake Schema, Data Vault 2.0, SCD tipos 1–6, grain definition, modelagem dimensional
-  - `cost-optimizer` (T2) — Análise DBU/CU via system tables, rightsizing de clusters, otimização Delta Storage, budget forecasting
-  - `data-mesh-architect` (T2) — mapeamento de domínios, Data Products, self-serve platform, governança federada, maturity assessment
-  - `spark-diagnostics` (T2) — diagnóstico de jobs Spark: OOM, data skew, shuffle/spill, hangs, análise Spark UI, AQE tuning, falhas DLT
-  - `medallion-architect` (T2) — design Bronze/Silver/Gold, seleção de artefatos (STREAMING TABLE vs MATERIALIZED VIEW), anti-pattern detection
-
-- **9 novos slash commands** em `config/commands.yaml`:
-  `/streaming`, `/ai`, `/cdc`, `/schema`, `/finops`, `/mesh`, `/diagnose`, `/medallion`, `/contract`
-
-- **`governance-auditor` expandido** com capacidades de auditoria de segurança:
-  - Auditoria de RLS (Row-Level Security) via `information_schema.row_filters`
-  - Auditoria de Column Masking/OLS via `information_schema.column_masks`
-  - Auditoria de Sensitivity Labels no Fabric e Microsoft Purview
-  - Verificação de Workspace Roles e privilégios de tabela
-  - 4 novos tipos de tarefa no Mapa KB+Skills
-
-### Changed
-
-- `agents/prompts/supervisor_prompt.py`: atualizado para 23 agentes com seções de roteamento para todos os novos especialistas
-- `tests/test_agents.py`: lista de agentes esperados atualizada de 14 para 23
-- `README.md`: badges, tabela de agentes e tabela de comandos atualizados para v1.3.0 com todos os 23 agentes e 38 slash commands
-- `.claude/CLAUDE.md`: seções "MCPs por Agente", "Slash Commands", cabeçalho e lista de agentes no registry atualizados
-
 ## [Unreleased]
 
-### Removed
+### Gated (aguardando telemetria)
+
+- **T1.7** — Decidir Caminho A vs B da memória (`logs/memory_usage.jsonl` 24-72h).
+- **T2.5** — Dashboard de cache hit rate (`logs/audit.jsonl` acumulado).
+- **T4.5** — Decisão final Caminho A da memória (6 semanas de métricas).
+
+### Backlog
+
+- ~~**T0.2.1**~~ — Issue aberta em
+  [`anthropics/claude-agent-sdk-python#845`](https://github.com/anthropics/claude-agent-sdk-python/issues/845)
+  pedindo passthrough de `extra_headers` para opt-in em `anthropic-beta: token-efficient-tools-2025-02-19`.
+- **T5.1** — Prompt caching explícito no Supervisor. Confirmado bloqueado em SDK 0.1.63.
+
+---
+
+## [2.0.0] — 2026-05-09
+
+### Removed — Consolidação 23 → 14 agentes (Phases 1–5)
+
+- **12 agentes Fabric consolidados em 3** (Phase 1):
+  - `semantic-modeler`, `catalog-intelligence`, `schema-designer`, `cost-optimizer`,
+    `medallion-architect` → absorvidos por `fabric-engineer`
+  - `ontology-engineer` → renomeado para `fabric-ontology`
+
+- **7 agentes Databricks consolidados em 2** (Phase 2):
+  - `sql-expert`, `spark-expert`, `pipeline-architect`, `cdc-specialist`,
+    `spark-diagnostics` → consolidados em `databricks-engineer`
+  - `ai-data-engineer`, `streaming-engineer` → consolidados em `databricks-ai`
 
 - **Interface Streamlit de chat** (T5.4): `ui/chat.py` (964 LOC) removido.
   Chainlit (`ui/chainlit_app.py`) é agora a única UI de chat, ativada por
@@ -158,23 +153,39 @@
   deploy exclusivamente via `workflow_dispatch` manual. Evita falhas de CD
   por secrets intencionalmente não configurados.
 
-### Gated (aguardando telemetria)
+---
 
-- **T1.7** — Decidir Caminho A vs B da memória (`logs/memory_usage.jsonl` 24-72h).
-- **T2.5** — Dashboard de cache hit rate (`logs/audit.jsonl` acumulado).
-- **T4.5** — Decisão final Caminho A da memória (6 semanas de métricas).
+## [1.3.0] — 2026-05-07
 
-### Backlog
+### Added
 
-- ~~**T0.2.1**~~ — Issue aberta em
-  [`anthropics/claude-agent-sdk-python#845`](https://github.com/anthropics/claude-agent-sdk-python/issues/845)
-  pedindo passthrough de `extra_headers` (ou relaxar `SdkBeta`) para
-  opt-in em `anthropic-beta: token-efficient-tools-2025-02-19` (~10-14%
-  menos output tokens em workloads de tool use).
-- **T5.1** — Prompt caching explícito no Supervisor. **Confirmado bloqueado em
-  SDK 0.1.63**: `SdkBeta` aceita apenas `context-1m-2025-08-07`, sem campo
-  `cache_control` nem `extra_headers`. Issue #626 (upstream) segue aberta.
-  Caching implícito via `agents/cache_prefix.md` byte-idêntico continua ativo.
+- **9 novos agentes especialistas** no registry (`agents/registry/`):
+  - `ai-data-engineer` (T1) — RAG pipelines, Vector Search, embeddings, chunking, LLMOps, AI Functions, feature stores
+  - `streaming-engineer` (T1) — Kafka, Apache Flink, Spark Structured Streaming, Fabric RTI, CDC com Debezium
+  - `cdc-specialist` (T1) — Change Data Capture: Debezium, Kafka Connect, AUTO CDC INTO, transactional outbox, CQRS
+  - `data-contracts-engineer` (T2) — ODCS v3 authoring, SLA de qualidade, schema evolution, breaking change management, knowledge graph de contratos
+  - `schema-designer` (T2) — Star Schema, Snowflake Schema, Data Vault 2.0, SCD tipos 1–6, grain definition, modelagem dimensional
+  - `cost-optimizer` (T2) — Análise DBU/CU via system tables, rightsizing de clusters, otimização Delta Storage, budget forecasting
+  - `data-mesh-architect` (T2) — mapeamento de domínios, Data Products, self-serve platform, governança federada, maturity assessment
+  - `spark-diagnostics` (T2) — diagnóstico de jobs Spark: OOM, data skew, shuffle/spill, hangs, análise Spark UI, AQE tuning, falhas DLT
+  - `medallion-architect` (T2) — design Bronze/Silver/Gold, seleção de artefatos (STREAMING TABLE vs MATERIALIZED VIEW), anti-pattern detection
+
+- **9 novos slash commands** em `config/commands.yaml`:
+  `/streaming`, `/ai`, `/cdc`, `/schema`, `/finops`, `/mesh`, `/diagnose`, `/medallion`, `/contract`
+
+- **`governance-auditor` expandido** com capacidades de auditoria de segurança:
+  - Auditoria de RLS (Row-Level Security) via `information_schema.row_filters`
+  - Auditoria de Column Masking/OLS via `information_schema.column_masks`
+  - Auditoria de Sensitivity Labels no Fabric e Microsoft Purview
+  - Verificação de Workspace Roles e privilégios de tabela
+  - 4 novos tipos de tarefa no Mapa KB+Skills
+
+### Changed
+
+- `agents/prompts/supervisor_prompt.py`: atualizado para 23 agentes com seções de roteamento para todos os novos especialistas
+- `tests/test_agents.py`: lista de agentes esperados atualizada de 14 para 23
+- `README.md`: badges, tabela de agentes e tabela de comandos atualizados para v1.3.0 com todos os 23 agentes e 38 slash commands
+- `.claude/CLAUDE.md`: seções "MCPs por Agente", "Slash Commands", cabeçalho e lista de agentes no registry atualizados
 
 ---
 

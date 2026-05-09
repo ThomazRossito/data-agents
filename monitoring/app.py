@@ -1965,17 +1965,14 @@ elif page == "ℹ️ Sobre":
     st.markdown(
         """
         O **Data Agents** é um sistema multi-agente que segue a arquitetura **DOMA**
-        (Data Orchestration Method for Agents), com 23 agentes especialistas:
+        (Data Orchestration Method for Agents), com 14 agentes especialistas:
 
-        **Tier 1 — Core:**
-        SQL Expert · Spark Expert · Pipeline Architect · Python Expert · Migration Expert ·
-        AI Data Engineer · Streaming Engineer · CDC Specialist
+        **Tier 1 — Engineering Core:**
+        Databricks Engineer · Databricks AI · Fabric Engineer · Migration Expert · Python Expert
 
         **Tier 2 — Especializados:**
-        Data Quality Steward · Governance Auditor · Semantic Modeler · dbt Expert ·
-        Catalog Intelligence · Ontology Engineer · Data Contracts Engineer · Schema Designer ·
-        Cost Optimizer · Data Mesh Architect · Spark Diagnostics · Medallion Architect ·
-        Business Monitor
+        dbt Expert · Data Quality Steward · Governance Auditor · Data Contracts Engineer ·
+        Data Mesh Architect · Fabric RTI · Fabric Ontology
 
         **Tier 3/0 — Conversacionais:**
         Business Analyst · Geral (Haiku, zero MCP)
