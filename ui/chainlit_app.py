@@ -1264,6 +1264,70 @@ async def _handle_party(user_input: str) -> None:
         cl.user_session.set("chat_history", _hist)
 
 
+# ── /geral — resposta direta via Haiku sem Supervisor ────────────────────────
+
+
+async def _handle_geral(user_input: str) -> None:
+    """
+    Executa /geral diretamente via Haiku (anthropic.AsyncAnthropic), sem Supervisor.
+
+    ~95% mais barato que roteamento pelo Supervisor. Mantém histórico de conversa
+    na sessão Chainlit para suporte a follow-ups.
+    """
+    from commands.geral import run_geral_query
+
+    # Extrai a query (remove o prefixo /geral)
+    parts = user_input.split(maxsplit=1)
+    query = parts[1].strip() if len(parts) > 1 else ""
+    if not query:
+        await cl.Message(
+            content="⚠️ `/geral` requer uma pergunta. Exemplo: `/geral o que é Delta Lake?`",
+            author="Sistema",
+        ).send()
+        return
+
+    geral_history: list[dict] = cl.user_session.get("_geral_history") or []
+    geral_history.append({"role": "user", "content": query})
+
+    response_msg = cl.Message(content="", author="💬 Geral (Haiku)")
+    await response_msg.send()
+
+    try:
+        text, metrics = await run_geral_query(query, geral_history, session_type="geral")
+    except Exception as exc:
+        await response_msg.stream_token(f"❌ **Erro:** `{exc}`")
+        await response_msg.update()
+        geral_history.pop()
+        cl.user_session.set("_geral_history", geral_history)
+        return
+
+    cost = metrics.get("cost", 0.0)
+    duration = metrics.get("duration", 0.0)
+    footer = f"\n\n---\n*💰 `${cost:.5f}` · ⏱️ `{duration:.1f}s` · Haiku (T0, zero MCP)*"
+
+    await response_msg.stream_token((text or "_Sem resposta._") + footer)
+    await response_msg.update()
+
+    if text:
+        geral_history.append({"role": "assistant", "content": text})
+    cl.user_session.set("_geral_history", geral_history)
+
+    # Tracking para export
+    from datetime import datetime as _dt
+
+    _hist = cl.user_session.get("chat_history") or []
+    if text:
+        _hist.append(
+            {
+                "role": "assistant",
+                "author": "Geral (Haiku)",
+                "content": text,
+                "timestamp": _dt.now().strftime("%Y-%m-%d %H:%M:%S"),
+            }
+        )
+        cl.user_session.set("chat_history", _hist)
+
+
 # ── Event handlers do Chainlit ────────────────────────────────────────────────
 
 
@@ -1488,6 +1552,11 @@ async def on_message(message: cl.Message) -> None:
     # Comando /party — perspectivas independentes multi-agente (sem Supervisor)
     if user_input.lower().startswith("/party"):
         await _handle_party(user_input)
+        return
+
+    # Comando /geral — resposta direta via Haiku sem Supervisor (~95% mais barato)
+    if user_input.lower().startswith("/geral"):
+        await _handle_geral(user_input)
         return
 
     mode: str | None = cl.user_session.get("mode")
