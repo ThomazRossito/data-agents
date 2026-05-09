@@ -124,11 +124,10 @@ async def capture_session_context(
     if isinstance(tool_output, dict):
         tool_output = str(tool_output)
 
-    # Atualiza start times para slow_op detection (PreToolUse não está disponível aqui,
-    # então usamos o inverso: registramos o tempo de PostToolUse e o duration vem de fora
-    # via tool_use_id tracking. Alternativa: registramos no PostToolUse como "agora - start".
-    # Como não temos PreToolUse neste hook, usamos duração estimada via timestamp do output.)
-    _track_lesson_state(tool_name, tool_input, tool_use_id)
+    # Normalize tool_use_id — SDK may pass non-str types (e.g. dict) in some versions.
+    tool_use_id_safe: str = str(tool_use_id) if tool_use_id is not None else tool_name
+
+    _track_lesson_state(tool_name, tool_input, tool_use_id_safe)
 
     # Ignora tools de infraestrutura (não geram contexto útil)
     skip_tools = {"Glob", "Grep", "Read", "Bash"}
@@ -156,7 +155,7 @@ async def capture_session_context(
         tool_name=tool_name,
         tool_input=tool_input,
         tool_output=str(tool_output) if tool_output else "",
-        tool_use_id=tool_use_id or tool_name,
+        tool_use_id=tool_use_id_safe,
         input_data=input_data,
     )
 
@@ -223,7 +222,8 @@ def pre_track_lesson_timing(
     """PreToolUse: registra o instante de início de cada tool call para slow_op detection."""
     global _tool_start_times_lesson
 
-    tid = tool_use_id or tool_name
+    # Normalize to str — SDK may pass non-str types in some runtime versions.
+    tid = str(tool_use_id) if tool_use_id is not None else tool_name
     _tool_start_times_lesson[tid] = time.monotonic()
 
 
@@ -279,7 +279,7 @@ def _detect_lesson_triggers(
                 break
 
     # Trigger 4: operação lenta
-    start = _tool_start_times_lesson.get(tool_use_id)
+    start = _tool_start_times_lesson.get(str(tool_use_id))
     if start is not None:
         duration = time.monotonic() - start
         if duration >= _SLOW_OP_THRESHOLD_S and tool_name.startswith("mcp__"):
