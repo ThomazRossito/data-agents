@@ -31,6 +31,9 @@ import signal
 import sys
 import time
 
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -84,6 +87,15 @@ from commands.analyze import (
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
+
+# Readline-capable prompt: setas, histórico, Ctrl+A/E, backspace, etc.
+# FileHistory persiste o histórico entre sessões em logs/.cli_history.
+_HISTORY_FILE = _Path(__file__).parent / "logs" / ".cli_history"
+_prompt_session: PromptSession = PromptSession(
+    history=FileHistory(str(_HISTORY_FILE)),
+    auto_suggest=AutoSuggestFromHistory(),
+    mouse_support=False,
+)
 
 # Estado exposto para atexit/signal handlers (T1.1).
 # Atualizado a cada turn bem-sucedido em run_interactive; consumido pelo
@@ -526,8 +538,9 @@ async def _handle_memory_command(user_input: str) -> None:
                 )
                 return
 
-        console.print(f"[yellow]Tem certeza que deseja apagar {label}? (s/N)[/yellow] ", end="")
-        confirm = input().strip().lower()
+        confirm = (
+            _prompt_session.prompt(f"Tem certeza que deseja apagar {label}? (s/N) ").strip().lower()
+        )
         if confirm not in ("s", "sim", "y", "yes"):
             console.print("[dim]Cancelado.[/dim]")
             return
@@ -955,7 +968,7 @@ async def run_interactive() -> None:
                         user_input = await asyncio.wait_for(
                             asyncio.get_event_loop().run_in_executor(
                                 None,
-                                lambda: console.input("[bold green]Você:[/bold green] ").strip(),
+                                lambda: _prompt_session.prompt("Você: ").strip(),
                             ),
                             timeout=settings.idle_timeout_minutes * 60
                             if settings.idle_timeout_minutes > 0

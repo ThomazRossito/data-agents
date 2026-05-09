@@ -49,6 +49,10 @@ dependencies = [
     # Output formatado
     "rich>=13.0",
 
+    # Input interativo no CLI: setas, histórico persistente, Ctrl+A/E, backspace
+    # Substitui console.input() do Rich que não suporta readline
+    "prompt_toolkit>=3.0",
+
     # Export de conversas (HTML) — usado pela UI Chainlit (/export)
     # PDF: abrir o HTML no browser e usar Cmd+P → Salvar como PDF
     "markdown2>=2.4",
