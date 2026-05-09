@@ -2,7 +2,7 @@
 domain: industry
 industry: financial-services
 updated_at: 2026-04-30
-agents: [catalog-intelligence, business-analyst, governance-auditor, data-quality-steward]
+agents: [fabric-engineer, business-analyst, governance-auditor, data-quality-steward]
 ---
 
 # Financial Services — Knowledge Base de Indústria
@@ -18,10 +18,10 @@ atuando em bancos, fintechs, seguradoras, gestoras de ativos e corretoras.
 
 | Caso de Uso | Descrição | Domínios de Dados | Agentes |
 |-------------|-----------|-------------------|---------|
-| Credit Scoring em tempo real | Modelo ML que avalia risco de crédito em milissegundos na aprovação de empréstimos | `customers`, `credit_history`, `transactions`, `bureau_data` | spark-expert, sql-expert |
-| Detecção de Fraude Transacional | Identificar padrões anômalos em transações via ML ou regras | `transactions`, `devices`, `ip_geolocation`, `fraud_labels` | spark-expert, data-quality-steward |
-| Stress Testing de Carteira | Simulação de cenários macroeconômicos no portfólio de crédito | `portfolio`, `market_data`, `economic_scenarios` | sql-expert |
-| Provisioning IFRS 9 / PCLD | Cálculo de Perda Esperada (ECL) por estágio de inadimplência | `contracts`, `payments`, `collateral`, `rating_history` | spark-expert |
+| Credit Scoring em tempo real | Modelo ML que avalia risco de crédito em milissegundos na aprovação de empréstimos | `customers`, `credit_history`, `transactions`, `bureau_data` | databricks-ai, databricks-engineer |
+| Detecção de Fraude Transacional | Identificar padrões anômalos em transações via ML ou regras | `transactions`, `devices`, `ip_geolocation`, `fraud_labels` | databricks-ai, data-quality-steward |
+| Stress Testing de Carteira | Simulação de cenários macroeconômicos no portfólio de crédito | `portfolio`, `market_data`, `economic_scenarios` | databricks-engineer |
+| Provisioning IFRS 9 / PCLD | Cálculo de Perda Esperada (ECL) por estágio de inadimplência | `contracts`, `payments`, `collateral`, `rating_history` | databricks-engineer |
 
 ### Compliance e Regulatório
 

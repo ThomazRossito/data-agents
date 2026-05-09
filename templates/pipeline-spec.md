@@ -100,9 +100,9 @@ SCD2 usa `AUTO CDC INTO`. NUNCA LAG/LEAD/ROW_NUMBER manual.
 
 | Ordem | Agente | Tarefa | Dependências |
 |-------|--------|--------|-------------|
-| 1 | spark-expert | [PREENCHER] | Nenhuma |
+| 1 | databricks-engineer | [PREENCHER] | Nenhuma |
 | 2 | data-quality-steward | [PREENCHER] | Etapa 1 |
-| 3 | semantic-modeler | [PREENCHER] | Etapa 1 |
+| 3 | fabric-engineer | [PREENCHER] | Etapa 1 |
 
 ---
 

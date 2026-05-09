@@ -98,4 +98,4 @@ Um pipeline só está **Done** quando todos os itens abaixo estão marcados.
 - `kb/data-quality/` — Great Expectations, profiling, SLA
 - `kb/shared/sql-rules.md` — regras SQL obrigatórias
 - `kb/shared/anti-patterns.md` — anti-padrões H04, H08, C05, C06
-- Agentes: `pipeline-architect`, `spark-expert`, `data-quality-steward`
+- Agentes: `databricks-engineer`, `fabric-engineer`, `data-quality-steward`

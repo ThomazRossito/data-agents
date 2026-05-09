@@ -5,7 +5,7 @@ mcp_validated: "2026-05-05"
 # KB: Web Semântica e Ontologias — Índice
 
 **Domínio:** OWL, RDF, SKOS e padrões de web semântica aplicados ao ecossistema de dados.
-**Agentes:** ontology-engineer
+**Agentes:** fabric-ontology
 
 > **Escopo atual:** OWL é o formato primário implementado.
 > **Roadmap:** RDF puro, SKOS, SPARQL, Turtle, N-Triples e JSON-LD serão cobertos em fases futuras.
@@ -62,8 +62,8 @@ mcp_validated: "2026-05-05"
 
 ### Escalação de Responsabilidades
 
-- **ontology-engineer** → design, validação, serialização e integração da ontologia.
+- **fabric-ontology** → design, validação, serialização e integração da ontologia.
 - **python-expert** → execução de scripts rdflib locais, testes unitários de ontologia.
-- **spark-expert** → notebooks Spark no Fabric para processamento de ontologias em escala.
+- **databricks-engineer** → notebooks Spark no Fabric para processamento de ontologias em escala.
 - **governance-auditor** → alinhamento entre ontologia e metadados de governança (Unity Catalog tags, PII).
-- **semantic-modeler** → mapeamento entre ontologia OWL e Semantic Model Power BI (se necessário).
+- **fabric-engineer** → mapeamento entre ontologia OWL e Semantic Model Power BI (se necessário).

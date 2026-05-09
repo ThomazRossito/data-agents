@@ -25,21 +25,21 @@
 ### WF-01: Pipeline End-to-End (Bronze → Gold → Consumo)
 
 ```
-┌──────────────┐    ┌──────────────────┐    ┌────────────────────┐    ┌─────────────────┐
-│ spark-expert │───→│ data-quality-    │───→│ semantic-modeler   │───→│ governance-     │
-│              │    │ steward          │    │                    │    │ auditor         │
-│ Cria pipeline│    │ Define           │    │ Modelo semântico + │    │ Auditoria de    │
-│ SDP completo │    │ expectations +   │    │ DAX / Metric Views │    │ linhagem e PII  │
-│ (B→S→G)      │    │ profiling        │    │ sobre Gold         │    │                 │
-└──────────────┘    └──────────────────┘    └────────────────────┘    └─────────────────┘
+┌──────────────────────┐    ┌──────────────────┐    ┌────────────────────┐    ┌─────────────────┐
+│ databricks-engineer  │───→│ data-quality-    │───→│ fabric-engineer    │───→│ governance-     │
+│                      │    │ steward          │    │                    │    │ auditor         │
+│ Cria pipeline SDP    │    │ Define           │    │ Modelo semântico + │    │ Auditoria de    │
+│ completo (B→S→G)     │    │ expectations +   │    │ DAX / Metric Views │    │ linhagem e PII  │
+│                      │    │ profiling        │    │ sobre Gold         │    │                 │
+└──────────────────────┘    └──────────────────┘    └────────────────────┘    └─────────────────┘
 ```
 
 **Trigger:** Usuário solicita pipeline completo com consumo analítico.
 **Spec:** `templates/pipeline-spec.md`
 **Handoff points:**
-1. spark-expert entrega DDL + código do pipeline → data-quality-steward recebe as tabelas para validar
-2. data-quality-steward confirma expectations → semantic-modeler recebe tabelas Gold validadas
-3. semantic-modeler entrega modelo → governance-auditor valida linhagem e PII
+1. databricks-engineer entrega DDL + código do pipeline → data-quality-steward recebe as tabelas para validar
+2. data-quality-steward confirma expectations → fabric-engineer recebe tabelas Gold validadas
+3. fabric-engineer entrega modelo → governance-auditor valida linhagem e PII
 
 **Prompt de delegação do Supervisor para cada agente:**
 ```
@@ -57,57 +57,57 @@ Restrições constitucionais: [regras relevantes de kb/constitution.md]
 ### WF-02: Star Schema Design + Implementação
 
 ```
-┌──────────────┐    ┌──────────────────┐    ┌────────────────────┐
-│ sql-expert   │───→│ spark-expert     │───→│ data-quality-      │
-│              │    │                  │    │ steward            │
-│ DDL dims +   │    │ Pipeline SDP     │    │ Expectations +     │
-│ facts (Gold) │    │ para popular     │    │ validação FK       │
-└──────────────┘    └──────────────────┘    └────────────────────┘
-                                                     │
-                                                     ▼
-                                           ┌─────────────────┐
-                                           │ semantic-modeler │
-                                           │                  │
-                                           │ Modelo semântico │
-                                           │ + DAX measures   │
-                                           └─────────────────┘
+┌──────────────────────┐    ┌──────────────────────┐    ┌────────────────────┐
+│ databricks-engineer  │───→│ databricks-engineer  │───→│ data-quality-      │
+│                      │    │ (2ª etapa)           │    │ steward            │
+│ DDL dims + facts     │    │ Pipeline SDP         │    │ Expectations +     │
+│ (Gold) — schema      │    │ para popular         │    │ validação FK       │
+└──────────────────────┘    └──────────────────────┘    └────────────────────┘
+                                                                  │
+                                                                  ▼
+                                                        ┌─────────────────┐
+                                                        │ fabric-engineer  │
+                                                        │                  │
+                                                        │ Modelo semântico │
+                                                        │ + DAX measures   │
+                                                        └─────────────────┘
 ```
 
 **Trigger:** Usuário solicita design de Star Schema / camada Gold.
 **Spec:** `templates/star-schema-spec.md`
 **Handoff points:**
-1. sql-expert entrega DDL → spark-expert implementa pipeline de carga
-2. spark-expert entrega pipeline → data-quality-steward valida integridade referencial
-3. data-quality-steward confirma qualidade → semantic-modeler cria modelo de consumo
+1. databricks-engineer entrega DDL → databricks-engineer implementa pipeline de carga (context chain)
+2. databricks-engineer entrega pipeline → data-quality-steward valida integridade referencial
+3. data-quality-steward confirma qualidade → fabric-engineer cria modelo de consumo
 
 ---
 
 ### WF-03: Migração Cross-Platform
 
 ```
-┌──────────────────┐    ┌──────────────┐    ┌────────────────┐
-│ pipeline-        │───→│ sql-expert   │───→│ spark-expert   │
-│ architect        │    │              │    │                │
-│ Conectividade +  │    │ Conversão    │    │ Pipeline de    │
-│ estratégia       │    │ de dialeto   │    │ movimentação   │
-└──────────────────┘    └──────────────┘    └────────────────┘
-                                                    │
-                                      ┌─────────────┤
-                                      ▼             ▼
-                              ┌──────────────┐ ┌─────────────────┐
-                              │ data-quality-│ │ governance-     │
-                              │ steward      │ │ auditor         │
-                              │ Validação    │ │ Linhagem +      │
-                              │ pós-carga    │ │ PII cross-plat  │
-                              └──────────────┘ └─────────────────┘
+┌──────────────────────┐    ┌──────────────────────┐    ┌────────────────────┐
+│ databricks-engineer  │───→│ databricks-engineer  │───→│ fabric-engineer    │
+│                      │    │ (2ª etapa)           │    │                    │
+│ Estratégia +         │    │ Conversão de         │    │ Adaptação de       │
+│ inventário de schema │    │ dialeto DDL          │    │ artefatos Fabric   │
+└──────────────────────┘    └──────────────────────┘    └────────────────────┘
+                                                                  │
+                                              ┌───────────────────┤
+                                              ▼                   ▼
+                                      ┌──────────────┐ ┌─────────────────┐
+                                      │ data-quality-│ │ governance-     │
+                                      │ steward      │ │ auditor         │
+                                      │ Validação    │ │ Linhagem +      │
+                                      │ pós-carga    │ │ PII cross-plat  │
+                                      └──────────────┘ └─────────────────┘
 ```
 
 **Trigger:** Usuário solicita migração Databricks ↔ Fabric.
 **Spec:** `templates/cross-platform-spec.md`
 **Handoff points:**
-1. pipeline-architect define estratégia de conectividade → sql-expert converte DDL
-2. sql-expert entrega DDL convertida → spark-expert implementa movimentação de dados
-3. spark-expert conclui carga → data-quality-steward e governance-auditor trabalham **em paralelo**
+1. databricks-engineer faz inventário de schema e define estratégia → converte DDL para dialeto destino
+2. databricks-engineer entrega DDL convertido → fabric-engineer adapta artefatos para Fabric
+3. fabric-engineer conclui adaptação → data-quality-steward e governance-auditor trabalham **em paralelo**
 
 ---
 
@@ -138,33 +138,33 @@ Restrições constitucionais: [regras relevantes de kb/constitution.md]
 ### WF-05: Migração Relacional → Nuvem (SQL Server / PostgreSQL → Databricks/Fabric)
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌──────────────────┐
-│ migration-      │───→│ sql-expert       │───→│ spark-expert     │
-│ expert          │    │                  │    │                  │
-│                 │    │ Adapta DDL para  │    │ Gera notebooks   │
-│ Assessment +    │    │ Delta/Lakehouse  │    │ de carga Bronze  │
-│ inventário DDL  │    │ + tipos          │    │ → Silver → Gold  │
-└─────────────────┘    └──────────────────┘    └──────────────────┘
-                                                        │
-                              ┌─────────────────────────┤ (paralelo)
-                              ▼                         ▼
-              ┌──────────────────────┐   ┌──────────────────────┐
-              │ data-quality-        │   │ governance-auditor   │
-              │ steward              │   │                      │
-              │                      │   │ Linhagem + PII +     │
-              │ Validação de dados   │   │ compliance LGPD      │
-              │ migrados + testes DQ │   │ pós-migração         │
-              └──────────────────────┘   └──────────────────────┘
-                              │
-                              ▼ (consolidação pelo Supervisor)
-                    Relatório de Migração Completo
+┌─────────────────┐    ┌──────────────────────┐    ┌──────────────────────┐
+│ migration-      │───→│ databricks-engineer  │───→│ databricks-engineer  │
+│ expert          │    │                      │    │ (3ª etapa)           │
+│                 │    │ Adapta DDL para      │    │ Gera notebooks       │
+│ Assessment +    │    │ Delta/Lakehouse      │    │ de carga Bronze      │
+│ inventário DDL  │    │ + tipos              │    │ → Silver → Gold      │
+└─────────────────┘    └──────────────────────┘    └──────────────────────┘
+                                                              │
+                                    ┌─────────────────────────┤ (paralelo)
+                                    ▼                         ▼
+                    ┌──────────────────────┐   ┌──────────────────────┐
+                    │ data-quality-        │   │ governance-auditor   │
+                    │ steward              │   │                      │
+                    │                      │   │ Linhagem + PII +     │
+                    │ Validação de dados   │   │ compliance LGPD      │
+                    │ migrados + testes DQ │   │ pós-migração         │
+                    └──────────────────────┘   └──────────────────────┘
+                                    │
+                                    ▼ (consolidação pelo Supervisor)
+                          Relatório de Migração Completo
 ```
 
 **Trigger:** Usuário solicita migração de SQL Server ou PostgreSQL para Databricks ou Microsoft Fabric.
 **Handoff points:**
 1. migration-expert faz assessment completo via `migration_source` MCP → extrai DDL, views, procedures, estatísticas
-2. sql-expert recebe o inventário e adapta DDL para Delta Lake (Databricks) ou Lakehouse (Fabric), mapeando tipos
-3. spark-expert recebe o DDL adaptado e gera notebooks PySpark para carga Bronze → Silver → Gold
+2. databricks-engineer recebe o inventário e adapta DDL para Delta Lake (Databricks) ou Lakehouse (Fabric), mapeando tipos
+3. databricks-engineer recebe o DDL adaptado e gera notebooks PySpark para carga Bronze → Silver → Gold
 4. data-quality-steward e governance-auditor trabalham **em paralelo** após a carga inicial
 5. Supervisor consolida o relatório final com status de cada objeto migrado e resultados de DQ
 
@@ -225,26 +225,26 @@ Quando detectado, o Supervisor deve:
 ### WF-06: Schema → Implementation (DDL-first, Seed/Script dependente)
 
 ```
-┌──────────────┐    ┌─────────────────────────────┐    ┌──────────────────┐
-│  sql-expert  │───→│  Workflow Context Cache      │───→│  python-expert   │
-│              │    │  output/workflow-context/    │    │                  │
-│ Cria DDL     │    │  wf06-context.md             │    │ Lê o DDL antes   │
-│ completo     │    │  (contém schema completo)    │    │ de gerar scripts │
-│ (schema)     │    └─────────────────────────────┘    │ seed/config/etc. │
-└──────────────┘                                        └──────────────────┘
+┌──────────────────────┐    ┌─────────────────────────────┐    ┌──────────────────┐
+│ databricks-engineer  │───→│  Workflow Context Cache      │───→│  python-expert   │
+│                      │    │  output/workflow-context/    │    │                  │
+│ Cria DDL completo    │    │  wf06-context.md             │    │ Lê o DDL antes   │
+│ (schema)             │    │  (contém schema completo)    │    │ de gerar scripts │
+│                      │    └─────────────────────────────┘    │ seed/config/etc. │
+└──────────────────────┘                                        └──────────────────┘
 ```
 
 **Trigger:** Usuário solicita schema + script/código que opera sobre esse schema
 (seed, gerador de dados, migration script, API layer, ORM, testes de integração, etc).
 
 **Regra fundamental:** O python-expert (ou qualquer agente de implementação) **jamais**
-pode ser executado em paralelo com o sql-expert quando seu output depende do schema.
+pode ser executado em paralelo com o databricks-engineer quando seu output depende do schema.
 O DDL é o contrato — deve existir antes de qualquer código que o consuma.
 
-**Spec:** não requer template — o DDL gerado pelo sql-expert é o próprio contrato.
+**Spec:** não requer template — o DDL gerado pelo databricks-engineer é o próprio contrato.
 
 **Handoff points:**
-1. sql-expert gera DDL completo com todos os nomes de colunas, tipos e constraints
+1. databricks-engineer gera DDL completo com todos os nomes de colunas, tipos e constraints
 2. Supervisor lê o DDL e compila `output/workflow-context/wf06-context.md` com:
    - Lista de tabelas e colunas exatas (extraída do DDL)
    - Tipos de dados e constraints relevantes
@@ -265,7 +265,7 @@ Sua tarefa: [descrição do script]
 ```
 
 **Por que esse workflow existe:**
-Sem ele, o Supervisor tende a paralelizar sql-expert + python-expert — o que é
+Sem ele, o Supervisor tende a paralelizar databricks-engineer + python-expert — o que é
 otimização correta para tarefas independentes, mas catastrófico quando o script
 depende do schema. Os dois agentes fazem escolhas razoáveis isoladamente
 (`unit_cost` vs `cost_price`) mas divergem porque nunca compartilharam o contrato.
@@ -292,9 +292,9 @@ Antes de paralelizar qualquer delegação, o Supervisor deve verificar:
 
 Se a resposta for **sim** → **sequenciar obrigatoriamente**, nunca paralelizar.
 Exemplos de dependência de artefato:
-- sql-expert gera DDL → python-expert gera script que faz INSERT nessas tabelas
-- spark-expert gera pipeline → data-quality-steward valida as tabelas produzidas
-- migration-expert extrai DDL → sql-expert converte o DDL extraído
+- databricks-engineer gera DDL → python-expert gera script que faz INSERT nessas tabelas
+- databricks-engineer gera pipeline → data-quality-steward valida as tabelas produzidas
+- migration-expert extrai DDL → databricks-engineer converte o DDL extraído
 
 Quando detectado, o Supervisor deve:
 1. Informar o usuário qual workflow será utilizado

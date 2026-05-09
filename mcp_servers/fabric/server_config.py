@@ -159,7 +159,7 @@ FABRIC_OFFICIAL_MCP_TOOLS = [
 
 # Subset readonly do oficial — exclui operações de escrita/criação.
 # Usado pelo alias `fabric_official_readonly` em agents/loader.py para agentes
-# com escopo de leitura (sql-expert, governance-auditor, data-quality-steward).
+# com escopo de leitura (fabric-engineer, governance-auditor, data-quality-steward).
 _DESTRUCTIVE_OFFICIAL_SUFFIXES = (
     "onelake_upload_file",
     "onelake_delete_file",

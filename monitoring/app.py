@@ -1436,19 +1436,31 @@ elif page == "🔭 Observabilidade":
     # Sessões Supervisor (interactive, ui, plan, party, workflow, review, dev-assistant)
     # são tratadas como multi-agente e aparecem no card "Supervisor / multi".
     _SESSION_TYPE_TO_AGENT: dict[str, str] = {
-        "sql": "sql-expert",
-        "spark": "spark-expert",
-        "pipeline": "pipeline-architect",
+        "sql": "databricks-engineer",
+        "spark": "databricks-engineer",
+        "pipeline": "databricks-engineer",
+        "cdc": "databricks-engineer",
+        "diagnose": "databricks-engineer",
+        "genie": "databricks-engineer",
+        "dashboard": "databricks-engineer",
+        "ai": "databricks-ai",
+        "streaming": "databricks-ai",
+        "fabric": "fabric-engineer",
+        "semantic": "fabric-engineer",
+        "schema": "fabric-engineer",
+        "finops": "fabric-engineer",
+        "catalog": "fabric-engineer",
+        "medallion": "fabric-engineer",
+        "ontology": "fabric-ontology",
+        "migrate": "migration-expert",
+        "python": "python-expert",
         "dbt": "dbt-expert",
         "quality": "data-quality-steward",
         "governance": "governance-auditor",
-        "semantic": "semantic-modeler",
-        "genie": "semantic-modeler",
-        "dashboard": "semantic-modeler",
+        "contract": "data-contracts-engineer",
+        "mesh": "data-mesh-architect",
         "brief": "business-analyst",
-        "python": "python-expert",
-        "migrate": "migration-expert",
-        "fabric": "pipeline-architect",
+        "ship": "business-analyst",
         "geral": "geral",
     }
     _SUPERVISOR_LIKE = {
@@ -1953,17 +1965,14 @@ elif page == "ℹ️ Sobre":
     st.markdown(
         """
         O **Data Agents** é um sistema multi-agente que segue a arquitetura **DOMA**
-        (Data Orchestration Method for Agents), com 23 agentes especialistas:
+        (Data Orchestration Method for Agents), com 14 agentes especialistas:
 
-        **Tier 1 — Core:**
-        SQL Expert · Spark Expert · Pipeline Architect · Python Expert · Migration Expert ·
-        AI Data Engineer · Streaming Engineer · CDC Specialist
+        **Tier 1 — Engineering Core:**
+        Databricks Engineer · Databricks AI · Fabric Engineer · Migration Expert · Python Expert
 
         **Tier 2 — Especializados:**
-        Data Quality Steward · Governance Auditor · Semantic Modeler · dbt Expert ·
-        Catalog Intelligence · Ontology Engineer · Data Contracts Engineer · Schema Designer ·
-        Cost Optimizer · Data Mesh Architect · Spark Diagnostics · Medallion Architect ·
-        Business Monitor
+        dbt Expert · Data Quality Steward · Governance Auditor · Data Contracts Engineer ·
+        Data Mesh Architect · Fabric RTI · Fabric Ontology
 
         **Tier 3/0 — Conversacionais:**
         Business Analyst · Geral (Haiku, zero MCP)

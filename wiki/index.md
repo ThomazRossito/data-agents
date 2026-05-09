@@ -1,7 +1,7 @@
 # Data Agents — Índice Central
 
 Sistema multi-agente construído sobre o Claude Agent SDK da Anthropic.
-Orquestra 23 agentes especialistas em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
+Orquestra 14 agentes especialistas em Engenharia, Qualidade, Governança, Análise de Dados, Streaming, FinOps e Web Semântica.
 
 ---
 
@@ -15,32 +15,24 @@ Orquestra 23 agentes especialistas em Engenharia, Qualidade, Governança, Análi
 
 ## Agentes
 
-### Tier 1 — Core (Pipelines Complexos)
-- [[sql-expert]] — SQL, schemas, catálogos Databricks e Fabric
-- [[spark-expert]] — PySpark, DLT, Delta Lake
-- [[python-expert]] — Python puro: pacotes, APIs, CLIs, testes
-- [[pipeline-architect]] — ETL/ELT cross-platform
+### Tier 1 — Engineering Core
+- [[databricks-engineer]] — SQL (Unity Catalog/Spark SQL), PySpark, LakeFlow/DLT, CDC, Jobs, diagnóstico Spark, Genie, AI/BI Dashboards
+- [[databricks-ai]] — RAG, Vector Search, embeddings, LLMOps, AI Functions, Kafka, Flink, Spark Structured Streaming
+- [[fabric-engineer]] — Fabric completo: Medallion, Data Factory, Star Schema, Semantic Models, DAX, Catalog, FinOps
 - [[migration-expert]] — Migração SQL Server/PostgreSQL → Databricks/Fabric
-- [[ai-data-engineer]] — RAG, Vector Search, embeddings, LLMOps, AI Functions
-- [[streaming-engineer]] — Kafka, Flink, Spark Structured Streaming, Fabric RTI
-- [[cdc-specialist]] — Debezium, Kafka Connect, AUTO CDC INTO
+- [[python-expert]] — Python puro: pacotes, APIs, CLIs, testes
 
 ### Tier 2 — Especializados
 - [[dbt-expert]] — dbt Core: models, testes, snapshots
-- [[data-quality-steward]] — Validação, profiling, SLA
+- [[data-quality-steward]] — Validação, profiling, SLA cross-platform
 - [[governance-auditor]] — Auditoria, LGPD, linhagem, RLS/OLS
-- [[semantic-modeler]] — Modelos semânticos, DAX, Genie
-- [[catalog-intelligence]] — Comentários AI, Data Maturity Score
-- [[ontology-engineer]] — Ontologias OWL 2, triples → Delta
 - [[data-contracts-engineer]] — ODCS, SLA contratual, breaking changes
-- [[schema-designer]] — Star Schema, Data Vault 2.0, SCD
-- [[cost-optimizer]] — DBU/CU, rightsizing, FinOps
 - [[data-mesh-architect]] — Data Mesh, Data Products, governança federada
-- [[spark-diagnostics]] — OOM, skew, shuffle, falhas DLT
-- [[medallion-architect]] — Bronze/Silver/Gold design
+- [[fabric-rti]] — Fabric Real-Time Intelligence: Eventhouse, KQL, Eventstream, Activator
+- [[fabric-ontology]] — OWL 2, RDF, SPARQL, Fabric IQ Ontology
 
 ### Tier 3 — Conversacionais
-- [[business-analyst]] — Intake de requisitos, /brief
+- [[business-analyst]] — Intake de requisitos, /brief, /ship
 
 ### Tier 0 — Direto (sem MCP)
 - [[geral]] — Perguntas conceituais, zero MCP (Haiku)

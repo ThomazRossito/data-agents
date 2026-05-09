@@ -60,7 +60,7 @@ Todos os agentes devem consultar este arquivo antes de recomendar soluções.
 | M06 | Delta table sem `TBLPROPERTIES` de retention | Databricks | Sem `delta.logRetentionDuration` explícito, comportamento depende do cluster default. |
 | M07 | KQL query sem `limit` explícito | Fabric RTI | Queries Kusto sem limit podem retornar volumes inesperados em Eventhouses grandes. |
 | M08 | dbt model sem description no schema.yml | dbt | Sem documentação, `dbt docs generate` produz catálogo incompleto. |
-| M09 | Agente delegando para pipeline-architect tarefas de qualidade | Orquestração | Viola S6 da Constituição — qualidade é responsabilidade exclusiva do data-quality-steward. |
+| M09 | Agente delegando para agentes de engenharia tarefas de qualidade | Orquestração | Viola S6 da Constituição — qualidade é responsabilidade exclusiva do data-quality-steward. |
 | M10 | KB consultada após geração de código | KB | Viola S3 da Constituição — KB-First significa consultar ANTES de planejar, não depois. |
 
 ---

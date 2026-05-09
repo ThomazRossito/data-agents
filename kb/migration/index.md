@@ -199,7 +199,7 @@ ASSESS → ANALYZE → DESIGN → TRANSPILE → RECONCILE
 | **Simples** | DDL puro, tipos básicos, sem procedures | Transpilação automática pelo agente |
 | **Médio** | Views com lógica, procedures simples, tipos especiais | Transpilação + revisão manual |
 | **Complexo** | Cursores, procedures com lógica de negócio, triggers | Reescrita manual recomendada — agente gera esqueleto |
-| **Bloqueado** | Features sem equivalente (ex: CLR, linked servers) | Documentar como gap — escalar para pipeline-architect |
+| **Bloqueado** | Features sem equivalente (ex: CLR, linked servers) | Documentar como gap — escalar para migration-expert ou databricks-engineer |
 
 ---
 

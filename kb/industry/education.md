@@ -2,7 +2,7 @@
 domain: industry
 industry: education
 updated_at: 2026-04-30
-agents: [catalog-intelligence, business-analyst, governance-auditor, data-quality-steward]
+agents: [fabric-engineer, business-analyst, governance-auditor, data-quality-steward]
 ---
 
 # Education — Knowledge Base de Indústria

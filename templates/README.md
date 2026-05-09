@@ -17,9 +17,9 @@ O Supervisor deve gerar um spec preenchido (baseado no template relevante) quand
 
 | Template | Quando Usar | Agentes Envolvidos |
 |----------|-------------|-------------------|
-| `pipeline-spec.md` | Criação/migração de pipelines ETL/ELT | pipeline-architect, spark-expert, data-quality-steward |
-| `star-schema-spec.md` | Design de camada Gold com Star Schema | spark-expert, sql-expert, semantic-modeler |
-| `cross-platform-spec.md` | Operações Fabric ↔ Databricks | pipeline-architect + agentes de ambas plataformas |
+| `pipeline-spec.md` | Criação/migração de pipelines ETL/ELT | databricks-engineer, fabric-engineer, data-quality-steward |
+| `star-schema-spec.md` | Design de camada Gold com Star Schema | databricks-engineer, fabric-engineer |
+| `cross-platform-spec.md` | Operações Fabric ↔ Databricks | databricks-engineer, fabric-engineer + agentes de qualidade |
 
 ## Fluxo Spec-First
 

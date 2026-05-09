@@ -178,7 +178,7 @@ def parse_party_args(user_input: str) -> tuple[list[str], str]:
       /party --quality <query>              → grupo "quality"
       /party --arch <query>                 → grupo "arch"
       /party --full <query>                 → grupo "full"
-      /party sql-expert spark-expert <query> → agentes explícitos (separados por espaço)
+      /party databricks-engineer fabric-engineer <query> → agentes explícitos (separados por espaço)
 
     Returns:
         (agent_names, clean_query)

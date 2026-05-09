@@ -2,7 +2,7 @@
 domain: industry
 industry: retail
 updated_at: 2026-04-30
-agents: [catalog-intelligence, business-analyst, data-quality-steward]
+agents: [fabric-engineer, business-analyst, data-quality-steward]
 ---
 
 # Retail — Knowledge Base de Indústria

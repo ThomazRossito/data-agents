@@ -111,4 +111,4 @@ Antes de declarar a migração concluída:
 - `kb/shared/sql-rules.md` — regras SQL obrigatórias no destino
 - `kb/shared/anti-patterns.md` — anti-padrões C02, H01, H08
 - `kb/governance/` — LGPD, PII, permissões
-- Agentes: `migration-expert`, `sql-expert`, `governance-auditor`, `data-quality-steward`
+- Agentes: `migration-expert`, `databricks-engineer`, `governance-auditor`, `data-quality-steward`

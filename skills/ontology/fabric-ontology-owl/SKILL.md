@@ -236,9 +236,9 @@ def ontology_report(path: str) -> str:
 | Situação                                        | Escalar Para         |
 |-------------------------------------------------|----------------------|
 | Executar script rdflib localmente               | `python-expert`      |
-| Criar Spark notebook no Fabric                  | `spark-expert`       |
+| Criar Spark notebook no Fabric                  | `databricks-engineer` |
 | Propriedade detectada como PII                  | `governance-auditor` |
-| Ontologia precisa alimentar Semantic Model BI   | `semantic-modeler`   |
+| Ontologia precisa alimentar Semantic Model BI   | `fabric-engineer`    |
 | Formato de destino não listado nesta skill      | Consultar roadmap em `kb/semantic-web/index.md` |
 | Importar modelo OWL para Fabric IQ Ontology     | Ver skill `owl-to-fabric-iq/SKILL.md` |
 
@@ -352,7 +352,7 @@ contextualization foi criada com `destinationNodeKeyColumns: ["StoreId"]` no lug
 
 ### Correção
 
-Executar via `python main.py` com o `ontology-engineer`:
+Executar via `python main.py` com o `fabric-ontology`:
 
 ```
 # Passo 1 — Remover a contextualization incorreta
