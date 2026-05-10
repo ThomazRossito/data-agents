@@ -125,7 +125,8 @@ include = [
 line-length = 100
 target-version = "py311"
 extend-exclude = [
-    "skills/",  # Reference/example files from external sources — not project code
+    "skills/",   # Reference/example files from external sources — not project code
+    "inputs/",   # External/vendor source files — not project code
 ]
 
 [tool.pytest.ini_options]
