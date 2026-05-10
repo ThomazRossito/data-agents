@@ -5,7 +5,7 @@
 > Medallion (Bronze → Silver → Gold) com as regras da KB Fabric e KB Pipeline Design.
 >
 > **Convenção de placeholders:** valores entre `{{duplas_chaves}}` devem ser substituídos
-> pelo fabric-engineer antes de injetar a célula no notebook.
+> pelo pipeline-architect antes de injetar a célula no notebook.
 
 ---
 
@@ -820,7 +820,7 @@ descrição, camada, responsável e data de criação para documentação e rast
 ---
 
 > **Aviso:** este notebook faz parte da arquitetura Medallion.
-> Nao execute celulas fora de ordem. Consulte o fabric-engineer antes de alterar a logica de MERGE ou SCD.
+> Nao execute celulas fora de ordem. Consulte o pipeline-architect antes de alterar a logica de MERGE ou SCD.
 ```
 
 ---

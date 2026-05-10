@@ -2,7 +2,7 @@
 domain: industry
 industry: insurance
 updated_at: 2026-04-30
-agents: [fabric-engineer, business-analyst, governance-auditor, data-quality-steward]
+agents: [catalog-intelligence, business-analyst, governance-auditor, data-quality-steward]
 ---
 
 # Insurance (Seguros) — Knowledge Base de Indústria

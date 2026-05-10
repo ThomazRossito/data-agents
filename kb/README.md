@@ -37,14 +37,14 @@ tarefas complexas sejam especificadas antes de serem executadas.
 
 | Domínio               | Diretório                  | Agentes que Usam                                      |
 |-----------------------|----------------------------|-------------------------------------------------------|
-| Padrões SQL           | `kb/sql-patterns/`         | databricks-engineer, fabric-engineer                  |
-| Padrões Spark         | `kb/spark-patterns/`       | databricks-engineer                                   |
-| Design de Pipelines   | `kb/pipeline-design/`      | databricks-engineer, fabric-engineer                  |
+| Padrões SQL           | `kb/sql-patterns/`         | sql-expert                                            |
+| Padrões Spark         | `kb/spark-patterns/`       | spark-expert, pipeline-architect                      |
+| Design de Pipelines   | `kb/pipeline-design/`      | pipeline-architect, spark-expert                      |
 | Qualidade de Dados    | `kb/data-quality/`         | data-quality-steward                                  |
 | Governança            | `kb/governance/`           | governance-auditor                                    |
-| Modelagem Semântica   | `kb/semantic-modeling/`    | fabric-engineer                                       |
-| Microsoft Fabric      | `kb/fabric/`               | fabric-engineer, fabric-rti, fabric-ontology          |
-| Databricks            | `kb/databricks/`           | databricks-engineer, databricks-ai                    |
+| Modelagem Semântica   | `kb/semantic-modeling/`    | semantic-modeler                                      |
+| Microsoft Fabric      | `kb/fabric/`               | pipeline-architect, sql-expert, semantic-modeler      |
+| Databricks            | `kb/databricks/`           | pipeline-architect, sql-expert, spark-expert          |
 
 ---
 

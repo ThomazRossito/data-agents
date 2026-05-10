@@ -1,7 +1,7 @@
 ---
 domain: industry
 updated_at: 2026-04-30
-agents: [fabric-engineer, business-analyst, governance-auditor, data-quality-steward]
+agents: [catalog-intelligence, business-analyst, governance-auditor, data-quality-steward]
 ---
 
 # Industry Knowledge Base — Índice
@@ -47,7 +47,7 @@ Verificar pelas palavras-chave no contexto do usuário:
 ### Carregar a KB da vertical antes de análise
 
 ```python
-# Para fabric-engineer analisando tabelas financeiras (catalog scan/discover):
+# Para catalog-intelligence analisando tabelas financeiras:
 Read("kb/industry/financial-services.md")
 
 # Para business-analyst processando transcript de reunião de saúde:

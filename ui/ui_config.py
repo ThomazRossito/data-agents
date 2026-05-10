@@ -81,16 +81,6 @@ TOOL_LABELS: dict[str, str] = {
     "mcp__migration_source__get_ddl": "🔄 Extraindo DDL da origem",
     "mcp__migration_source__list_tables": "🔄 Inventário do banco de origem",
     "mcp__migration_source__get_table_stats": "🔄 Estatísticas do banco de origem",
-    # Fabric Official — OneLake file ops
-    "mcp__fabric_official__list_lakehouses": "📋 Listando Lakehouses",
-    "mcp__fabric_official__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
-    "mcp__fabric_official__onelake_list_files": "📂 Listando arquivos no OneLake",
-    # Databricks — pipeline e volume ops
-    "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline LakeFlow",
-    "mcp__databricks__upload_to_volume": "⬆️  Enviando arquivo para Volume",
-    "mcp__databricks__list_volume_files": "📂 Listando arquivos no Volume",
-    # Fabric RTI
-    "mcp__fabric_rti__kusto_command": "⚙️  Executando comando KQL",
 }
 
 
@@ -104,26 +94,33 @@ def tool_label(name: str) -> str:
 
 # ── Nomes de exibição por agente ──────────────────────────────────────────────
 AGENT_DISPLAY_NAMES: dict[str, str] = {
-    "databricks-engineer": "Databricks Engineer",
-    "databricks-ai": "Databricks AI",
+    "sql-expert": "SQL Expert",
+    "spark-expert": "Spark Expert",
+    "pipeline-architect": "Pipeline Architect",
     "python-expert": "Python Expert",
     "migration-expert": "Migration Expert",
     "data-quality-steward": "Data Quality Steward",
     "governance-auditor": "Governance Auditor",
-    "fabric-engineer": "Fabric Engineer",
-    "fabric-rti": "Fabric RTI",
-    "fabric-ontology": "Fabric Ontology",
+    "semantic-modeler": "Semantic Modeler",
     "business-analyst": "Business Analyst",
     "dbt-expert": "dbt Expert",
-    "data-contracts-engineer": "Data Contracts Engineer",
-    "data-mesh-architect": "Data Mesh Architect",
     "geral": "Geral",
 }
 
-# Tier de cada agente — lido dinamicamente do registry para evitar dessincronização
-from config.agent_meta import get_agent_tiers as _get_agent_tiers  # noqa: E402
-
-AGENT_TIERS: dict[str, str] = _get_agent_tiers()
+# Tier de cada agente (para badges no dashboard)
+AGENT_TIERS: dict[str, str] = {
+    "sql-expert": "T1",
+    "spark-expert": "T1",
+    "pipeline-architect": "T1",
+    "python-expert": "T1",
+    "migration-expert": "T1",
+    "data-quality-steward": "T2",
+    "governance-auditor": "T2",
+    "semantic-modeler": "T2",
+    "dbt-expert": "T2",
+    "business-analyst": "T3",
+    "geral": "T3",
+}
 
 TIER_COLORS: dict[str, str] = {
     "T1": "#3FB950",  # verde (core engineering)
@@ -140,17 +137,13 @@ def agent_display_name(raw: str) -> str:
 # ── Grupos de comandos para sidebar ──────────────────────────────────────────
 COMMAND_GROUPS: dict[str, list[str]] = {
     "📋 Intake & Planejamento": ["/brief", "/plan", "/review", "/status"],
-    "⚡ Engenharia Core": ["/sql", "/spark", "/pipeline", "/dbt", "/python", "/migrate"],
-    "🤖 AI & Streaming": ["/ai", "/streaming", "/cdc"],
+    "⚡ Databricks": ["/sql", "/spark", "/pipeline", "/dbt"],
     "🏭 Microsoft Fabric": ["/fabric", "/semantic"],
-    "🏗️ Arquitetura": ["/schema", "/medallion", "/mesh"],
-    "🔍 Qualidade & Gov.": ["/quality", "/governance", "/contract"],
-    "💰 FinOps & Diagnóstico": ["/finops", "/diagnose"],
+    "🔍 Qualidade & Gov.": ["/quality", "/governance"],
+    "🐍 Python & Migração": ["/python", "/migrate"],
     "🔧 Sistema": ["/health", "/skill"],
-    "🎉 Multi-Agente": ["/party", "/analyze-project", "/workflow"],
     "🧠 Memória": ["/memory"],
     "💬 Conversacional": ["/geral"],
-    "📂 Sessões": ["/sessions", "/resume"],
 }
 
 
@@ -195,10 +188,10 @@ WORKFLOW_METADATA: dict[str, dict] = {
         "icon": "🏗️",
         "description": "Bronze→Silver→Gold + Quality + Governance + Semantic Layer",
         "agents": [
-            "databricks-engineer",
+            "spark-expert",
             "data-quality-steward",
             "governance-auditor",
-            "fabric-engineer",
+            "semantic-modeler",
         ],
         "when": "Criar pipeline Medallion completo do zero",
     },
@@ -206,16 +199,17 @@ WORKFLOW_METADATA: dict[str, dict] = {
         "name": "Star Schema",
         "icon": "⭐",
         "description": "Schema Discovery → Star Schema → Quality → Semantic Modeling",
-        "agents": ["databricks-engineer", "data-quality-steward", "fabric-engineer"],
+        "agents": ["sql-expert", "spark-expert", "data-quality-steward", "semantic-modeler"],
         "when": "Criar camada Gold em Star Schema a partir de tabelas Silver",
     },
     "WF-03": {
         "name": "Migração Cross-Platform",
         "icon": "🔀",
-        "description": "Design → Databricks+Fabric (paralelo) → Reconciliation → Governance",
+        "description": "Design → SQL+Spark (paralelo) → Reconciliation → Governance",
         "agents": [
-            "databricks-engineer",
-            "fabric-engineer",
+            "pipeline-architect",
+            "sql-expert",
+            "spark-expert",
             "data-quality-steward",
             "governance-auditor",
         ],
@@ -234,7 +228,8 @@ WORKFLOW_METADATA: dict[str, dict] = {
         "description": "Assessment → Design → DDL+Pipeline (paralelo) → Reconciliation → PII",
         "agents": [
             "migration-expert",
-            "databricks-engineer",
+            "sql-expert",
+            "spark-expert",
             "data-quality-steward",
             "governance-auditor",
         ],

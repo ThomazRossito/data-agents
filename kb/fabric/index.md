@@ -5,7 +5,7 @@ mcp_validated: "2026-04-15"
 # KB: Microsoft Fabric — Índice
 
 **Domínio:** Arquitetura, padrões e boas práticas do Microsoft Fabric.
-**Agentes:** fabric-engineer, fabric-rti, fabric-ontology
+**Agentes:** pipeline-architect, sql-expert, semantic-modeler
 
 ---
 

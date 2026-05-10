@@ -10,62 +10,63 @@ class TestParseCommand:
         result = parse_command("/sql SELECT * FROM tabela")
         assert result is not None
         assert result.command == "/sql"
-        assert result.agent == "databricks-engineer"
+        assert result.agent == "sql-expert"
         assert result.doma_mode == "express"
-        assert "databricks-engineer" in result.doma_prompt
+        assert "sql-expert" in result.doma_prompt
 
     def test_spark_command(self):
         result = parse_command("/spark Crie um DataFrame com filtro")
         assert result is not None
         assert result.command == "/spark"
-        assert result.agent == "databricks-engineer"
+        assert result.agent == "spark-expert"
         assert result.doma_mode == "express"
 
     def test_pipeline_command(self):
         result = parse_command("/pipeline Crie um pipeline Medallion")
         assert result is not None
         assert result.command == "/pipeline"
-        assert result.agent == "databricks-engineer"
+        assert result.agent == "pipeline-architect"
         assert result.doma_mode == "express"
 
     def test_fabric_command(self):
         result = parse_command("/fabric Crie um Lakehouse com Direct Lake")
         assert result is not None
         assert result.command == "/fabric"
-        assert result.agent == "fabric-engineer"
+        assert result.agent == "pipeline-architect"
         assert result.doma_mode == "express"
         assert "Fabric" in result.doma_prompt
 
-    def test_fabric_semantic_model_routes_to_fabric_engineer(self):
-        """Semantic Model tasks devem ser roteadas para fabric-engineer."""
+    def test_fabric_semantic_model_routes_to_semantic_modeler(self):
+        """Quando task menciona Semantic Model, o prompt deve instruir roteamento para semantic-modeler."""
         result = parse_command("/fabric analise o semantic model do microsoft fabric")
         assert result is not None
         assert result.command == "/fabric"
-        assert result.agent == "fabric-engineer"
-        assert "fabric-engineer" in result.doma_prompt
+        # O prompt template deve conter instrução de roteamento para semantic-modeler
+        assert "semantic-modeler" in result.doma_prompt
+        # E a tarefa do usuário deve estar presente no prompt
         assert "analise o semantic model do microsoft fabric" in result.doma_prompt
 
-    def test_fabric_command_includes_task_in_prompt(self):
-        """O prompt do /fabric deve incluir a tarefa do usuário."""
+    def test_fabric_semantic_model_routing_rule_covers_keywords(self):
+        """O prompt do /fabric deve cobrir todas as palavras-chave de semântica."""
         result = parse_command("/fabric crie medidas DAX para o modelo Power BI")
         assert result is not None
-        assert result.agent == "fabric-engineer"
-        assert "fabric-engineer" in result.doma_prompt
-        assert "crie medidas DAX para o modelo Power BI" in result.doma_prompt
+        # O prompt template deve mencionar DAX e Power BI como gatilhos para semantic-modeler
+        assert "DAX" in result.doma_prompt
+        assert "Power BI" in result.doma_prompt
+        assert "semantic-modeler" in result.doma_prompt
 
-    def test_fabric_pipeline_task_routes_to_fabric_engineer(self):
-        """Tasks de pipeline no /fabric devem ir para fabric-engineer."""
+    def test_fabric_pipeline_task_keeps_pipeline_architect(self):
+        """Tasks de pipeline no /fabric devem manter pipeline-architect na instrução."""
         result = parse_command("/fabric crie um pipeline de ingestão Bronze")
         assert result is not None
-        assert result.agent == "fabric-engineer"
-        assert "fabric-engineer" in result.doma_prompt
+        assert "pipeline-architect" in result.doma_prompt
 
     def test_fabric_routing_covers_direct_lake(self):
-        """Direct Lake tasks devem ser roteadas para fabric-engineer."""
+        """Direct Lake deve acionar roteamento para semantic-modeler."""
         result = parse_command("/fabric otimize as tabelas para Direct Lake")
         assert result is not None
-        assert result.agent == "fabric-engineer"
-        assert "Direct Lake" in result.doma_prompt  # task is embedded in prompt
+        assert "semantic-modeler" in result.doma_prompt
+        assert "Direct Lake" in result.doma_prompt
 
     def test_plan_command(self):
         result = parse_command("/plan Crie um pipeline completo com SCD2")
@@ -115,9 +116,9 @@ class TestParseCommand:
         result = parse_command("/semantic Crie modelo semântico para tabelas Gold")
         assert result is not None
         assert result.command == "/semantic"
-        assert result.agent == "fabric-engineer"
+        assert result.agent == "semantic-modeler"
         assert result.doma_mode == "express"
-        assert "fabric-engineer" in result.doma_prompt
+        assert "semantic-modeler" in result.doma_prompt
 
     def test_unknown_command_returns_none(self):
         result = parse_command("/unknown teste")

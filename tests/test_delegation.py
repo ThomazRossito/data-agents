@@ -76,7 +76,7 @@ class TestClassify:
         assert classify("xyz abc qualquer coisa não relacionada 12345") is None
 
     def test_matches_spark_keyword(self):
-        assert classify("preciso escrever um job pyspark") == "databricks-engineer"
+        assert classify("preciso escrever um job pyspark") == "spark-expert"
 
     def test_matches_dbt_keyword(self):
         assert classify("vamos criar models dbt") == "dbt-expert"
@@ -85,7 +85,7 @@ class TestClassify:
         assert classify("campo contém PII de cliente") == "governance-auditor"
 
     def test_case_insensitive(self):
-        assert classify("POWER BI DAX medidas") == "fabric-engineer"
+        assert classify("POWER BI DAX medidas") == "semantic-modeler"
 
     def test_deterministic(self):
         """Duas chamadas com mesmo input retornam mesmo resultado."""

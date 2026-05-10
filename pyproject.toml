@@ -1,6 +1,6 @@
 [project]
 name = "data-agents"
-version = "2.3.0"
+version = "2.1.0"
 description = "Sistema Multi-Agentes para Engenharia, Qualidade, Governança e Análise de Dados — Databricks + Microsoft Fabric"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,10 +13,6 @@ dependencies = [
     # e scripts/refresh_skills.py (web_search nativo). Não é dependência transitiva
     # garantida do claude-agent-sdk.
     "anthropic>=0.39.0",
-
-    # MCP framework — declarado explicitamente para garantir versão mínima compatível
-    # com fabric_ontology e demais MCPs customizados (FastMCP requer >=1.27.0).
-    "mcp[cli]>=1.27.0",
 
     # MCP Servers
     "databricks-mcp-server>=0.4.4",
@@ -49,14 +45,12 @@ dependencies = [
     # Output formatado
     "rich>=13.0",
 
-    # Input interativo no CLI: setas, histórico persistente, Ctrl+A/E, backspace
-    # Substitui console.input() do Rich que não suporta readline
-    "prompt_toolkit>=3.0",
-
     # Export de conversas (HTML) — usado pela UI Chainlit (/export)
     # PDF: abrir o HTML no browser e usar Cmd+P → Salvar como PDF
     "markdown2>=2.4",
 
+    # Business Monitor — scheduler autônomo (monitor_daemon.py)
+    "apscheduler>=3.10",
     "pyyaml>=6.0",
 
 ]
@@ -103,7 +97,6 @@ ui = [
 data-agents = "main:main"
 fabric-sql-mcp = "mcp_servers.fabric_sql.server:main"
 fabric-semantic-mcp = "mcp_servers.fabric_semantic.server:main"
-fabric-ontology-mcp = "mcp_servers.fabric_ontology.server:main"
 databricks-genie-mcp = "mcp_servers.databricks_genie.server:main"
 migration-source-mcp = "mcp_servers.migration_source.server:main"
 
@@ -131,23 +124,17 @@ include = [
 [tool.ruff]
 line-length = 100
 target-version = "py311"
-cache-dir = ".cache/ruff"
 extend-exclude = [
     "skills/",   # Reference/example files from external sources — not project code
-    "inputs/",   # External repos vendored for integration — not project code
+    "inputs/",   # External/vendor source files — not project code
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
-cache_dir = ".cache/pytest"
-
-[tool.coverage.run]
-data_file = "logs/.coverage"
 
 [tool.mypy]
 python_version = "3.11"
-cache_dir = ".cache/mypy"
 strict_optional = true
 warn_unused_ignores = true
 warn_return_any = false

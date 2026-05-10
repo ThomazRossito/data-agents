@@ -64,123 +64,51 @@ routes:
     tier: T2
     keywords: [PII, LGPD, GDPR, sensível]
 
-  # Microsoft Fabric (plataforma completa)
-  - situation: "Qualquer tarefa exclusiva do Microsoft Fabric"
-    agent: fabric-engineer
-    tier: T1
-    keywords: [fabric, lakehouse, onelake, "data factory fabric", "power bi", DAX, "direct lake", "semantic model fabric"]
-  - situation: "Descoberta: listar workspaces / lakehouses / tabelas no Fabric"
-    agent: fabric-engineer
-    tier: T1
-    keywords: [workspace, lakehouse, "list items", "o que existe", descoberta]
-  - situation: "Design ou revisão de arquitetura Medallion no Fabric"
-    agent: fabric-engineer
-    tier: T1
-    keywords: [bronze, silver, gold, medallion, lakehouse]
-  - situation: "Semantic Model / DAX / Direct Lake (Fabric)"
-    agent: fabric-engineer
-    tier: T1
+  # Modelagem semântica e BI
+  - situation: "Gold Layer criada → preparar para consumo BI"
+    agent: semantic-modeler
+    tier: T2
+    keywords: [gold, BI, consumo]
+  - situation: "Semantic Model mencionado (Fabric/Power BI/DAX)"
+    agent: semantic-modeler
+    tier: T2
     keywords: ["semantic model", "power bi", DAX, "direct lake"]
-  - situation: "Comentários de catálogo / Data Maturity Score (Fabric)"
-    agent: fabric-engineer
-    tier: T1
-    keywords: [comentários, catálogo, "maturity score", "estate scan"]
-  - situation: "Star Schema / Data Vault / SCD (Fabric)"
-    agent: fabric-engineer
-    tier: T1
-    keywords: ["star schema", "data vault", scd, dimensional, hub, satellite]
-  - situation: "Governança Fabric: Sensitivity Labels / Workspace Roles / linhagem"
-    agent: fabric-engineer
-    tier: T1
-    keywords: ["sensitivity label", "workspace role", linhagem, lineage, purview]
-  - situation: "FinOps Fabric: Capacity Units / rightsizing"
-    agent: fabric-engineer
-    tier: T1
-    keywords: [cu, "capacity unit", "capacity units", finops, rightsizing]
-
-  # Fabric Real-Time Intelligence
-  - situation: "Fabric RTI: Eventhouse / KQL / Eventstream / Activator"
-    agent: fabric-rti
-    tier: T2
-    keywords: [eventhouse, kql, kusto, eventstream, activator, rti, "real-time intelligence"]
-  - situation: "KQL queries / séries temporais em tempo real (Fabric)"
-    agent: fabric-rti
-    tier: T2
-    keywords: ["kql query", "time series", "bin()", "summarize", kusto]
-
-  # Fabric Ontology (OWL / Fabric IQ)
-  - situation: "OWL / RDF / ontologia / Fabric IQ Ontology"
-    agent: fabric-ontology
-    tier: T2
-    keywords: [owl, rdf, ontologia, ontology, turtle, skos, sparql, rdflib, "fabric iq"]
-
-  # Databricks — Engenharia de Dados (plataforma completa)
-  - situation: "Qualquer tarefa SQL / Spark SQL / Unity Catalog (Databricks)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [sql, "spark sql", "unity catalog", schema, catalog, table, databricks]
-  - situation: "PySpark / DLT / LakeFlow / Delta Lake (Databricks)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [pyspark, "spark sql", dlt, lakeflow, delta, "delta lake", "streaming table", "materialized view"]
-  - situation: "Jobs e orquestração Databricks"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [jobs, job, orquestração, orchestration, cron, agendamento, databricks]
-  - situation: "CDC com Debezium / Kafka Connect / AUTO CDC INTO (Databricks)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [debezium, "kafka connect", cdc, binlog, wal, "change data capture", "apply changes", "auto cdc", scd2]
-  - situation: "Diagnóstico Spark: OOM / data skew / shuffle / job travado"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [oom, skew, shuffle, spill, "out of memory", "spark ui", aqe, hung, hang, timeout, deadlock]
-  - situation: "Criar Knowledge Assistant (KA) / Mosaic AI Supervisor (MAS)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [KA, MAS, "knowledge assistant", mosaic]
-  - situation: "Executar código serverless / criar cluster/warehouse (Databricks)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [serverless, cluster, warehouse, execute_code]
   - situation: "Criar/atualizar Genie Space (Databricks)"
-    agent: databricks-engineer
-    tier: T1
+    agent: semantic-modeler
+    tier: T2
     keywords: [genie, "conversational bi"]
   - situation: "Criar/publicar AI/BI Dashboard (Databricks)"
-    agent: databricks-engineer
-    tier: T1
+    agent: semantic-modeler
+    tier: T2
     keywords: [dashboard, "ai/bi", aibi]
-  - situation: "Custo de DBU elevado → investigar e otimizar (Databricks)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [dbu, custo, cost, "rightsizing cluster", otimização, finops, databricks]
-  - situation: "Pipeline DLT com falhas recorrentes (Databricks)"
-    agent: databricks-engineer
-    tier: T1
-    keywords: [dlt, lakeflow, "pipeline failure", "pipeline error", "expectations failed"]
+  - situation: "Consultar endpoint de modelo ML/GenAI"
+    agent: semantic-modeler
+    tier: T2
+    keywords: ["model serving", mlflow, endpoint]
+  - situation: "Relatório de métricas / análise consumível"
+    agent: semantic-modeler
+    tier: T2
+    keywords: [métricas, KPI, relatório]
 
-  # Databricks — AI e Streaming
-  - situation: "Pipeline RAG / Vector Search / embeddings (Databricks)"
-    agent: databricks-ai
+  # Pipelines e infraestrutura
+  - situation: "Criar Knowledge Assistant (KA) / Mosaic (MAS)"
+    agent: pipeline-architect
     tier: T1
-    keywords: [rag, vector, embedding, embeddings, "vector search", llmops]
-  - situation: "AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks"
-    agent: databricks-ai
+    keywords: [KA, MAS, "knowledge assistant", mosaic]
+  - situation: "Executar código serverless / criar cluster/warehouse"
+    agent: pipeline-architect
     tier: T1
-    keywords: ["ai functions", "ai_query", "ai_summarize", "ai_classify", llm, genai]
-  - situation: "LLMOps: MLflow evaluation, model registry, serving (Databricks)"
-    agent: databricks-ai
+    keywords: [serverless, cluster, warehouse, execute_code]
+
+  # SQL e Spark
+  - situation: "Múltiplas queries SQL independentes em paralelo"
+    agent: sql-expert
     tier: T1
-    keywords: [mlflow, "model serving", evaluation, "feature store", llmops]
-  - situation: "Kafka / Flink / Spark Structured Streaming (Databricks)"
-    agent: databricks-ai
+    keywords: [execute_sql_multi, "queries paralelas"]
+  - situation: "PySpark / Spark SQL / DLT"
+    agent: spark-expert
     tier: T1
-    keywords: [kafka, flink, streaming, "structured streaming", "spark streaming"]
-  - situation: "Watermarks, late data, exactly-once (Databricks)"
-    agent: databricks-ai
-    tier: T1
-    keywords: [watermark, "late data", "exactly-once", "at-least-once", trigger]
+    keywords: [pyspark, "spark sql", dlt, lakeflow, delta]
 
   # dbt
   - situation: "dbt (models, refs, sources, testes, snapshots)"
@@ -194,27 +122,11 @@ routes:
     tier: T1
     keywords: [python, pandas, polars, fastapi, typer, pytest, pydantic]
 
-  # Data Contracts
-  - situation: "Data Contract / ODCS / SLA de qualidade contratual"
-    agent: data-contracts-engineer
+  # Operações
+  - situation: "Alerta de negócio recebido (estoque, vendas, SLA)"
+    agent: business-monitor
     tier: T2
-    keywords: ["data contract", odcs, contrato, "schema evolution", "breaking change"]
-  - situation: "Breaking change em schema → impacto em consumidores"
-    agent: data-contracts-engineer
-    tier: T2
-    keywords: ["breaking change", "schema change", deprecation, compatibility]
-
-  # Data Mesh
-  - situation: "Data Mesh: domínios, Data Products, governança federada"
-    agent: data-mesh-architect
-    tier: T2
-    keywords: ["data mesh", "data product", domínio, "self-serve", "federated governance"]
-  - situation: "Mapeamento de domínios de negócio → plataforma de dados"
-    agent: data-mesh-architect
-    tier: T2
-    keywords: [domínio, domain, ownership, "data product"]
-
-  # Conceitual
+    keywords: [alerta, estoque, vendas, "sla violado"]
   - situation: "Pergunta conceitual sem MCP"
     agent: geral
     tier: T3

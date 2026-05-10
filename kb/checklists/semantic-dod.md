@@ -69,7 +69,7 @@ e Metric Views no Databricks. Aplicar ao final de qualquer entrega de modelagem 
 - [ ] **Model size avaliado** — tamanho do modelo em memória (Import) ou framed tables (Direct Lake) dentro do limite da capacidade
 - [ ] **Certified dataset** — dataset certificado no Fabric (Endorsed > Certified) pelo Data Owner
 - [ ] **Change management** — processo de aprovação para mudanças em medidas críticas documentado
-- [ ] **Review pelo fabric-engineer** — entrega revisada pelo agente especialista antes de go-live
+- [ ] **Review pelo semantic-modeler** — entrega revisada pelo agente especialista antes de go-live
 - [ ] **Comunicação aos consumidores** — time de BI / analistas informados sobre novas métricas / mudanças
 
 ---
@@ -113,4 +113,4 @@ Para Metric Views no Databricks (camada semântica nativa):
 - `kb/fabric/` — Fabric Lakehouse, Direct Lake, OneLake
 - `kb/databricks/` — Unity Catalog, Genie Spaces, Metric Views
 - `kb/shared/anti-patterns.md` — H07 (Direct Lake sem cache), H09 (DAX circular), M09
-- Agentes: `fabric-engineer`, `databricks-engineer`, `governance-auditor`
+- Agentes: `semantic-modeler`, `sql-expert`, `governance-auditor`

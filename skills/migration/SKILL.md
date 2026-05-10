@@ -181,10 +181,10 @@ FROM silver.erp_clientes;
 | Situação | Agente |
 |----------|--------|
 | PII detectado (CPF, e-mail, cartão) | `governance-auditor` |
-| Pipeline ETL de ingestão | `databricks-engineer` |
+| Pipeline ETL de ingestão | `pipeline-architect` |
 | Validação de qualidade pós-migração | `data-quality-steward` |
-| Queries complexas na silver/gold | `databricks-engineer` |
-| Jobs PySpark de ingestão | `databricks-engineer` |
+| Queries complexas na silver/gold | `sql-expert` |
+| Jobs PySpark de ingestão | `spark-expert` |
 
 ## Anti-Padrões (resumo rápido)
 

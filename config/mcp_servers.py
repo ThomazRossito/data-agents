@@ -31,18 +31,11 @@ from mcp_servers.fabric_sql.server_config import get_fabric_sql_mcp_config
 from mcp_servers.firecrawl.server_config import get_firecrawl_mcp_config
 from mcp_servers.github.server_config import get_github_mcp_config
 from mcp_servers.memory_mcp.server_config import get_memory_mcp_config
-from mcp_servers.fabric_ontology.server_config import get_fabric_ontology_mcp_config
 from mcp_servers.migration_source.server_config import get_migration_source_mcp_config
 from mcp_servers.postgres.server_config import get_postgres_mcp_config
 from mcp_servers.tavily.server_config import get_tavily_mcp_config
 
 logger = logging.getLogger("data_agents.mcp")
-
-# MCPs sem credenciais obrigatórias — sempre ativos independente do .env.
-# Exportado como constante pública para que commands/mcp.py e outros módulos
-# possam importar sem duplicar a lista.
-# fabric_ontology: auth via Azure CLI (az login), sem env vars extras.
-ALWAYS_ACTIVE_MCPS: list[str] = ["context7", "memory_mcp", "fabric_ontology"]
 
 # Registry completo de plataformas disponíveis
 ALL_MCP_CONFIGS: dict = {
@@ -86,10 +79,6 @@ ALL_MCP_CONFIGS: dict = {
     # Extrai DDL, views, procedures, functions e stats para assessment e planejamento de migração.
     # Requer MIGRATION_SOURCES no .env com registry JSON das fontes.
     "migration_source": get_migration_source_mcp_config,
-    # fabric_ontology: MCP customizado para CRUD completo no Fabric IQ Ontology.
-    # Entity types, relationship types, data bindings, contextualizations.
-    # Auth via Azure CLI (az login) — sem credenciais extras no .env.
-    "fabric_ontology": get_fabric_ontology_mcp_config,
     # Adicione novas plataformas aqui:
     # "snowflake": get_snowflake_mcp_config,
     # "bigquery":  get_bigquery_mcp_config,
@@ -118,6 +107,9 @@ def build_mcp_registry(platforms: list[str] | None = None) -> dict:
         from config.settings import settings
 
         available = settings.get_available_platforms()
+
+        # MCPs sem credenciais obrigatórias — sempre ativos independente do .env
+        ALWAYS_ACTIVE_MCPS = ["context7", "memory_mcp"]
 
         if available:
             # Ativa plataformas com credenciais + MCPs que não precisam de credenciais

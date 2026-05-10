@@ -3,8 +3,8 @@ Testes de definição e carregamento dos agentes.
 
 Cobre:
   - Loader dinâmico (agents/loader.py): parsing de frontmatter, resolução de tools, carga completa
-  - Agentes T1 (Core): databricks-engineer, databricks-ai, fabric-engineer, migration-expert, python-expert
-  - Agentes T2 (Especializados): data-quality-steward, governance-auditor, fabric-rti, fabric-ontology
+  - Agentes T1 (Core): sql-expert, spark-expert, pipeline-architect
+  - Agentes T2 (Especializados): data-quality-steward, governance-auditor, semantic-modeler
   - Compatibilidade retroativa com as factories Python legadas (definitions/)
 """
 
@@ -91,20 +91,16 @@ class TestLoadAllAgents:
     def test_all_expected_agents_loaded(self):
         agents = load_all_agents()
         expected = [
-            "databricks-engineer",
-            "databricks-ai",
-            "python-expert",
-            "migration-expert",
+            "sql-expert",
+            "spark-expert",
+            "pipeline-architect",
             "data-quality-steward",
             "governance-auditor",
-            "fabric-engineer",
-            "fabric-rti",
-            "fabric-ontology",
+            "semantic-modeler",
             "dbt-expert",
-            "data-contracts-engineer",
-            "data-mesh-architect",
-            "business-analyst",
-            "geral",
+            "migration-expert",
+            "catalog-intelligence",
+            "ontology-engineer",
         ]
         for name in expected:
             assert name in agents, f"Agente '{name}' não encontrado no registry"
@@ -140,112 +136,68 @@ class TestLoadAllAgents:
 # ─── Testes dos Agentes T1 (Core) ────────────────────────────────────────────
 
 
-class TestDatabricksEngineer:
-    """Testes específicos para o databricks-engineer (T1 — plataforma completa Databricks)."""
+class TestSqlExpert:
+    """Testes específicos para o sql-expert."""
 
-    def test_databricks_engineer_is_loaded(self):
+    def test_sql_expert_has_no_bash(self):
         agents = load_all_agents()
-        assert "databricks-engineer" in agents, "databricks-engineer não encontrado no registry"
+        agent = agents["sql-expert"]
+        assert "Bash" not in (agent.tools or []), "SQL Expert não deve ter Bash"
 
-    def test_databricks_engineer_tier_is_t1(self):
-        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
-
-        path = AGENTS_REGISTRY_DIR / "databricks-engineer.md"
-        content = path.read_text(encoding="utf-8")
-        meta, _ = _parse_frontmatter(content)
-        assert meta.get("tier") == "T1", "databricks-engineer deve ter tier: T1"
-
-    def test_databricks_engineer_has_databricks_tools(self):
+    def test_sql_expert_has_rti_tools(self):
         agents = load_all_agents()
-        agent = agents["databricks-engineer"]
+        agent = agents["sql-expert"]
+        rti_tools = [t for t in (agent.tools or []) if "fabric_rti" in t]
+        assert len(rti_tools) > 0, "SQL Expert deve ter tools do Fabric RTI para KQL"
+
+    def test_sql_expert_has_databricks_tools(self):
+        agents = load_all_agents()
+        agent = agents["sql-expert"]
         db_tools = [t for t in (agent.tools or []) if "databricks" in t]
-        assert len(db_tools) > 0, "databricks-engineer deve ter tools do Databricks"
+        assert len(db_tools) > 0, "SQL Expert deve ter tools do Databricks"
 
-    def test_databricks_engineer_has_bash(self):
-        agents = load_all_agents()
-        agent = agents["databricks-engineer"]
-        assert "Bash" in (agent.tools or []), "databricks-engineer deve ter Bash"
 
-    def test_databricks_engineer_has_genie_tools(self):
-        agents = load_all_agents()
-        agent = agents["databricks-engineer"]
-        genie_tools = [t for t in (agent.tools or []) if "genie" in t]
-        assert len(genie_tools) > 0, "databricks-engineer deve ter tools do Genie"
+class TestSparkExpert:
+    """Testes específicos para o spark-expert."""
 
-    def test_databricks_engineer_has_migration_source(self):
+    def test_spark_expert_has_no_mcp_tools(self):
         agents = load_all_agents()
-        agent = agents["databricks-engineer"]
-        ms_tools = [t for t in (agent.tools or []) if "migration_source" in t]
-        assert len(ms_tools) > 0, "databricks-engineer deve ter tools do migration_source (CDC)"
-
-    def test_databricks_engineer_has_no_fabric_tools(self):
-        """databricks-engineer é exclusivo Databricks — sem MCPs do Fabric."""
-        agents = load_all_agents()
-        agent = agents["databricks-engineer"]
-        fabric_tools = [t for t in (agent.tools or []) if "mcp__fabric" in t]
-        assert len(fabric_tools) == 0, (
-            f"databricks-engineer não deve ter tools do Fabric: {fabric_tools}"
+        agent = agents["spark-expert"]
+        # spark-expert gera código localmente — não executa queries nem acessa catálogos.
+        # MCPs de plataformas de dados (Databricks, Fabric) não são permitidos.
+        # MCPs utilitários sem credenciais (ex: context7 para docs atualizadas) são permitidos.
+        UTILITY_MCP_PREFIXES = ("mcp__context7__", "mcp__memory_mcp__")
+        platform_mcp_tools = [
+            t
+            for t in (agent.tools or [])
+            if t.startswith("mcp__") and not t.startswith(UTILITY_MCP_PREFIXES)
+        ]
+        assert len(platform_mcp_tools) == 0, (
+            f"Spark Expert não deve ter MCP tools de plataforma de dados: {platform_mcp_tools}"
         )
 
-    def test_databricks_engineer_model_is_sonnet(self):
+    def test_spark_expert_model_is_sonnet(self):
         agents = load_all_agents()
-        agent = agents["databricks-engineer"]
+        agent = agents["spark-expert"]
         assert "sonnet" in agent.model.lower()
 
 
-class TestDatabricksAi:
-    """Testes específicos para o databricks-ai (T1 — AI + Streaming no Databricks)."""
+class TestPipelineArchitect:
+    """Testes específicos para o pipeline-architect."""
 
-    def test_databricks_ai_is_loaded(self):
+    def test_pipeline_architect_has_both_platforms(self):
         agents = load_all_agents()
-        assert "databricks-ai" in agents, "databricks-ai não encontrado no registry"
+        agent = agents["pipeline-architect"]
+        tools = agent.tools or []
+        has_databricks = any("databricks" in t for t in tools)
+        has_fabric = any("fabric" in t for t in tools)
+        assert has_databricks, "Pipeline Architect deve ter tools do Databricks"
+        assert has_fabric, "Pipeline Architect deve ter tools do Fabric"
 
-    def test_databricks_ai_tier_is_t1(self):
-        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
-
-        path = AGENTS_REGISTRY_DIR / "databricks-ai.md"
-        content = path.read_text(encoding="utf-8")
-        meta, _ = _parse_frontmatter(content)
-        assert meta.get("tier") == "T1", "databricks-ai deve ter tier: T1"
-
-    def test_databricks_ai_has_databricks_tools(self):
+    def test_pipeline_architect_model_is_sonnet(self):
         agents = load_all_agents()
-        agent = agents["databricks-ai"]
-        db_tools = [t for t in (agent.tools or []) if "databricks" in t]
-        assert len(db_tools) > 0, "databricks-ai deve ter tools do Databricks"
-
-    def test_databricks_ai_has_serving_tools(self):
-        agents = load_all_agents()
-        agent = agents["databricks-ai"]
-        serving_tools = [t for t in (agent.tools or []) if "serving" in t]
-        assert len(serving_tools) > 0, "databricks-ai deve ter tools do Model Serving"
-
-    def test_databricks_ai_has_context7(self):
-        agents = load_all_agents()
-        agent = agents["databricks-ai"]
-        ctx7_tools = [t for t in (agent.tools or []) if "context7" in t]
-        assert len(ctx7_tools) > 0, "databricks-ai deve ter tools do context7"
-
-    def test_databricks_ai_has_no_fabric_tools(self):
-        """databricks-ai não acessa Fabric — fronteira de plataforma limpa."""
-        agents = load_all_agents()
-        agent = agents["databricks-ai"]
-        fabric_tools = [t for t in (agent.tools or []) if "mcp__fabric" in t]
-        assert len(fabric_tools) == 0, f"databricks-ai não deve ter tools do Fabric: {fabric_tools}"
-
-    def test_databricks_ai_has_no_genie_mcp_tools(self):
-        """databricks-ai não usa o MCP dedicado de Genie Space management."""
-        agents = load_all_agents()
-        agent = agents["databricks-ai"]
-        # Verifica ausência do MCP databricks_genie (Space management especializado)
-        genie_mcp_tools = [t for t in (agent.tools or []) if "mcp__databricks_genie__" in t]
-        assert len(genie_mcp_tools) == 0, (
-            f"databricks-ai não deve ter tools do MCP databricks_genie: {genie_mcp_tools}"
-        )
-
-    def test_databricks_ai_model_is_sonnet(self):
-        agents = load_all_agents()
-        agent = agents["databricks-ai"]
+        agent = agents["pipeline-architect"]
+        # T1 usa claude-sonnet-4-6 por padrão (TIER_MODEL_MAP pode sobrescrever para Opus)
         assert "sonnet" in agent.model.lower()
 
 
@@ -352,43 +304,26 @@ class TestDbtExpert:
         assert meta.get("tier") == "T2", "dbt-expert deve ter tier: T2"
 
 
-class TestFabricEngineer:
-    """Testes específicos para o fabric-engineer (T1)."""
+class TestSemanticModeler:
+    """Testes específicos para o semantic-modeler."""
 
-    def test_fabric_engineer_is_loaded(self):
+    def test_semantic_modeler_has_fabric_tools(self):
+        """Semantic Modeler precisa de tools do Fabric para inspecionar tabelas Gold."""
         agents = load_all_agents()
-        assert "fabric-engineer" in agents, "fabric-engineer não encontrado no registry"
-
-    def test_fabric_engineer_tier_is_t1(self):
-        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
-
-        path = AGENTS_REGISTRY_DIR / "fabric-engineer.md"
-        content = path.read_text(encoding="utf-8")
-        meta, _ = _parse_frontmatter(content)
-        assert meta.get("tier") == "T1", "fabric-engineer deve ter tier: T1"
-
-    def test_fabric_engineer_has_fabric_tools(self):
-        agents = load_all_agents()
-        agent = agents["fabric-engineer"]
+        agent = agents["semantic-modeler"]
         fabric_tools = [t for t in (agent.tools or []) if "fabric" in t]
-        assert len(fabric_tools) > 0, "fabric-engineer deve ter tools do Fabric"
+        assert len(fabric_tools) > 0, "Semantic Modeler deve ter tools do Fabric"
 
-    def test_fabric_engineer_has_semantic_tools(self):
+    def test_semantic_modeler_has_no_rti_tools(self):
+        """Semantic Modeler não usa RTI — foca em modelagem semântica, não streaming."""
         agents = load_all_agents()
-        agent = agents["fabric-engineer"]
-        semantic_tools = [t for t in (agent.tools or []) if "fabric_semantic" in t]
-        assert len(semantic_tools) > 0, "fabric-engineer deve ter tools do fabric_semantic MCP"
+        agent = agents["semantic-modeler"]
+        rti_tools = [t for t in (agent.tools or []) if "fabric_rti" in t]
+        assert len(rti_tools) == 0, f"Semantic Modeler não deve ter tools RTI: {rti_tools}"
 
-    def test_fabric_engineer_has_no_databricks_tools(self):
-        """fabric-engineer é exclusivo Fabric — não deve ter MCPs do Databricks."""
+    def test_semantic_modeler_model_is_sonnet(self):
         agents = load_all_agents()
-        agent = agents["fabric-engineer"]
-        db_tools = [t for t in (agent.tools or []) if "mcp__databricks__" in t]
-        assert len(db_tools) == 0, f"fabric-engineer não deve ter tools do Databricks: {db_tools}"
-
-    def test_fabric_engineer_model_is_sonnet(self):
-        agents = load_all_agents()
-        agent = agents["fabric-engineer"]
+        agent = agents["semantic-modeler"]
         assert "sonnet" in agent.model.lower()
 
 
@@ -438,9 +373,8 @@ class TestTokenBudgetsByTier:
         agents = load_all_agents(tier_turns_map=tier_map, inject_cache_prefix=False)
 
         for name, agent in agents.items():
-            # python-expert is T1 and has no frontmatter max_turns override
-            if name == "python-expert":  # T1, no frontmatter override
-                assert agent.maxTurns == 20, "python-expert (T1) deveria ter maxTurns=20"
+            if name == "sql-expert":  # T1
+                assert agent.maxTurns == 20, "sql-expert (T1) deveria ter maxTurns=20"
             if name == "data-quality-steward":  # T2
                 assert agent.maxTurns == 10, "data-quality-steward (T2) deveria ter maxTurns=10"
 
@@ -450,8 +384,7 @@ class TestTokenBudgetsByTier:
         agents = load_all_agents(tier_effort_map=effort_map, inject_cache_prefix=False)
 
         for name, agent in agents.items():
-            # python-expert is T1 and has no frontmatter effort override
-            if name == "python-expert":  # T1, no frontmatter override
+            if name == "pipeline-architect":  # T1
                 assert agent.effort == "high"
             if name == "governance-auditor":  # T2
                 assert agent.effort == "medium"
@@ -529,53 +462,81 @@ class TestTokenBudgetsByTier:
 
         for name, agent in agents.items():
             # T2 agents não devem ter maxTurns setado pelo mapa
-            if name in ("data-quality-steward", "governance-auditor", "fabric-rti"):
+            if name in ("data-quality-steward", "governance-auditor", "semantic-modeler"):
                 assert agent.maxTurns is None, (
                     f"Agente T2 '{name}' não deve ter maxTurns com mapa parcial T1-only"
                 )
 
 
-# ─── Testes do Fabric RTI (T2) ───────────────────────────────────────────────
+# ─── Testes do Catalog Intelligence (T2) ─────────────────────────────────────
 
 
-class TestFabricRti:
-    """Testes específicos para o fabric-rti (T2 — Fabric Real-Time Intelligence)."""
+class TestCatalogIntelligence:
+    """Testes específicos para o catalog-intelligence."""
 
-    def test_fabric_rti_is_loaded(self):
-        """fabric-rti deve ser carregado no registry."""
+    def test_catalog_intelligence_is_loaded(self):
+        """catalog-intelligence deve ser carregado no registry."""
         agents = load_all_agents()
-        assert "fabric-rti" in agents, "fabric-rti não encontrado no registry"
+        assert "catalog-intelligence" in agents, "catalog-intelligence não encontrado no registry"
 
-    def test_fabric_rti_tier_is_t2(self):
-        """fabric-rti é especializado — deve ser Tier T2."""
+    def test_catalog_intelligence_model_is_sonnet(self):
+        """catalog-intelligence é T2 — deve usar Sonnet."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        assert "sonnet" in agent.model.lower(), (
+            f"catalog-intelligence deve usar Sonnet, mas usa: {agent.model}"
+        )
+
+    def test_catalog_intelligence_has_databricks_readonly(self):
+        """catalog-intelligence precisa de tools readonly do Databricks para DESCRIBE e info_schema."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        db_tools = [t for t in (agent.tools or []) if "databricks" in t]
+        assert len(db_tools) > 0, "catalog-intelligence deve ter tools do Databricks"
+
+    def test_catalog_intelligence_has_fabric_readonly(self):
+        """catalog-intelligence deve ter acesso readonly ao Fabric."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        fabric_tools = [t for t in (agent.tools or []) if "fabric" in t]
+        assert len(fabric_tools) > 0, "catalog-intelligence deve ter tools do Fabric"
+
+    def test_catalog_intelligence_has_no_destructive_tools(self):
+        """catalog-intelligence é somente leitura — nunca deve ter tools de criação ou modificação."""
+        agents = load_all_agents()
+        agent = agents["catalog-intelligence"]
+        # Verificar ausência de tools de escrita de dados (exceto COMMENT ON)
+        # Tools como create_table, ingest_data, upload_file não devem estar presentes
+        forbidden_patterns = ["create_table", "ingest", "upload_file", "delete", "drop"]
+        forbidden_found = [
+            t for t in (agent.tools or []) if any(p in t for p in forbidden_patterns)
+        ]
+        assert len(forbidden_found) == 0, (
+            f"catalog-intelligence não deve ter tools destrutivas: {forbidden_found}"
+        )
+
+    def test_catalog_intelligence_tier_is_t2(self):
+        """catalog-intelligence deve ter tier T2."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        path = AGENTS_REGISTRY_DIR / "fabric-rti.md"
+        path = AGENTS_REGISTRY_DIR / "catalog-intelligence.md"
         content = path.read_text(encoding="utf-8")
         meta, _ = _parse_frontmatter(content)
         assert meta.get("tier") == "T2", (
-            f"fabric-rti deve ter tier: T2, mas tem: {meta.get('tier')}"
+            f"catalog-intelligence deve ter tier: T2, mas tem: {meta.get('tier')}"
         )
 
-    def test_fabric_rti_model_is_sonnet(self):
-        agents = load_all_agents()
-        agent = agents["fabric-rti"]
-        assert "sonnet" in agent.model.lower()
+    def test_catalog_intelligence_has_industry_kb_domain(self):
+        """catalog-intelligence deve ter industry em kb_domains para receber contexto das verticais."""
+        from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-    def test_fabric_rti_has_kusto_query_tool(self):
-        """fabric-rti precisa de kusto_query para consultas KQL no Eventhouse."""
-        agents = load_all_agents()
-        agent = agents["fabric-rti"]
-        assert "mcp__fabric_rti__kusto_query" in (agent.tools or []), (
-            "fabric-rti deve ter mcp__fabric_rti__kusto_query"
+        path = AGENTS_REGISTRY_DIR / "catalog-intelligence.md"
+        content = path.read_text(encoding="utf-8")
+        meta, _ = _parse_frontmatter(content)
+        kb_domains = meta.get("kb_domains", [])
+        assert "industry" in kb_domains, (
+            "catalog-intelligence deve ter 'industry' em kb_domains para receber KBs de verticals"
         )
-
-    def test_fabric_rti_has_no_databricks_tools(self):
-        """fabric-rti opera exclusivamente no Fabric RTI — sem Databricks."""
-        agents = load_all_agents()
-        agent = agents["fabric-rti"]
-        db_tools = [t for t in (agent.tools or []) if "mcp__databricks__" in t]
-        assert len(db_tools) == 0, f"fabric-rti não deve ter tools do Databricks: {db_tools}"
 
 
 class TestGeral:
@@ -634,25 +595,25 @@ class TestModelRoutingByTier:
     def test_load_without_tier_map_uses_frontmatter_model(self):
         """Sem tier_model_map, cada agente usa o model do seu frontmatter."""
         agents = load_all_agents(tier_model_map=None)
-        # databricks-engineer e fabric-engineer são T1 — frontmatter declara claude-sonnet-4-6
-        assert "sonnet" in agents["databricks-engineer"].model.lower()
-        assert "sonnet" in agents["fabric-engineer"].model.lower()
+        # sql-expert e pipeline-architect são T1 — frontmatter declara claude-sonnet-4-6
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        assert "sonnet" in agents["pipeline-architect"].model.lower()
         # geral é T0 — frontmatter declara claude-haiku-4-5
         assert "haiku" in agents["geral"].model.lower()
 
     def test_load_with_empty_tier_map_uses_frontmatter_model(self):
         """Com tier_model_map vazio, comportamento idêntico a None."""
         agents = load_all_agents(tier_model_map={})
-        assert "sonnet" in agents["databricks-engineer"].model.lower()
-        assert "sonnet" in agents["fabric-engineer"].model.lower()
+        assert "sonnet" in agents["sql-expert"].model.lower()
+        assert "sonnet" in agents["pipeline-architect"].model.lower()
         assert "haiku" in agents["geral"].model.lower()
 
     def test_load_with_tier_map_overrides_model(self):
         """Com tier_model_map populado, o modelo do tier sobrescreve o do frontmatter."""
         tier_map = {"T1": "claude-opus-4-6", "T2": "claude-haiku-4-5"}
         agents = load_all_agents(tier_model_map=tier_map)
-        # databricks-engineer é T1 → deve receber claude-opus-4-6
-        assert agents["databricks-engineer"].model == "claude-opus-4-6"
+        # sql-expert é T1 → deve receber claude-opus-4-6
+        assert agents["sql-expert"].model == "claude-opus-4-6"
         # data-quality-steward é T2 → deve receber claude-haiku-4-5
         assert agents["data-quality-steward"].model == "claude-haiku-4-5"
 
@@ -660,8 +621,8 @@ class TestModelRoutingByTier:
         """Se o tier_model_map não cobre todos os tiers, apenas os cobertos são roteados."""
         tier_map = {"T2": "claude-haiku-4-5"}
         agents = load_all_agents(tier_model_map=tier_map)
-        # databricks-engineer é T1, não está no mapa → mantém frontmatter (sonnet)
-        assert "sonnet" in agents["databricks-engineer"].model.lower()
+        # sql-expert é T1, não está no mapa → mantém frontmatter (sonnet)
+        assert "sonnet" in agents["sql-expert"].model.lower()
         # data-quality-steward é T2 → recebe haiku
         assert agents["data-quality-steward"].model == "claude-haiku-4-5"
 
@@ -669,13 +630,7 @@ class TestModelRoutingByTier:
         """Todos os agentes T1 devem declarar tier no frontmatter."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        t1_agents = [
-            "databricks-engineer",
-            "databricks-ai",
-            "python-expert",
-            "migration-expert",
-            "fabric-engineer",
-        ]
+        t1_agents = ["sql-expert", "spark-expert", "pipeline-architect"]
         for name in t1_agents:
             path = AGENTS_REGISTRY_DIR / f"{name}.md"
             content = path.read_text(encoding="utf-8")
@@ -686,15 +641,7 @@ class TestModelRoutingByTier:
         """Todos os agentes T2 devem declarar tier no frontmatter."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        t2_agents = [
-            "data-quality-steward",
-            "governance-auditor",
-            "fabric-rti",
-            "fabric-ontology",
-            "dbt-expert",
-            "data-contracts-engineer",
-            "data-mesh-architect",
-        ]
+        t2_agents = ["data-quality-steward", "governance-auditor", "semantic-modeler", "dbt-expert"]
         for name in t2_agents:
             path = AGENTS_REGISTRY_DIR / f"{name}.md"
             content = path.read_text(encoding="utf-8")
@@ -711,37 +658,38 @@ class TestKBInjection:
     def test_load_with_kb_injection_adds_content_to_prompt(self):
         """Com inject_kb_index=True, o prompt dos agentes deve conter conteúdo da KB."""
         agents = load_all_agents(inject_kb_index=True)
-        # databricks-engineer tem kb_domains: [databricks, spark-patterns, sql-patterns, pipeline-design, migration]
-        agent = agents["databricks-engineer"]
+        # sql-expert tem kb_domains: [sql-patterns, databricks, fabric]
+        agent = agents["sql-expert"]
         assert "Knowledge Base" in agent.prompt
-        assert "databricks" in agent.prompt.lower() or "Databricks" in agent.prompt
+        assert "sql-patterns" in agent.prompt.lower() or "Padrões SQL" in agent.prompt
 
     def test_load_without_kb_injection_preserves_original_prompt(self):
         """Com inject_kb_index=False e inject_skills_index=False, sem contexto injetado."""
         agents = load_all_agents(inject_kb_index=False, inject_skills_index=False)
-        agent = agents["databricks-engineer"]
+        agent = agents["sql-expert"]
         assert "[Contexto Injetado]" not in agent.prompt
 
     def test_load_with_kb_injection_default_false_preserves_prompt(self):
         """O default de inject_kb_index é False — sem injeção de KB index."""
         agents = load_all_agents()
-        agent = agents["databricks-engineer"]
+        agent = agents["sql-expert"]
         # KB index não é injetado por padrão (o marcador específico de injeção não aparece)
         assert "[Contexto Injetado] Knowledge Base" not in agent.prompt
 
     def test_load_without_any_injection_preserves_prompt(self):
         """Com ambas injeções desabilitadas, o prompt não deve ter contexto injetado."""
         agents = load_all_agents(inject_kb_index=False, inject_skills_index=False)
-        agent = agents["databricks-engineer"]
+        agent = agents["sql-expert"]
         assert "[Contexto Injetado]" not in agent.prompt
 
     def test_all_agents_with_kb_domains_get_injection(self):
         """Todos os agentes que declaram kb_domains devem receber injeção quando ativado."""
         agents = load_all_agents(inject_kb_index=True)
         agents_with_kb = [
-            "databricks-engineer",
-            "databricks-ai",
-            "fabric-engineer",
+            "sql-expert",
+            "spark-expert",
+            "pipeline-architect",
+            "semantic-modeler",
             "data-quality-steward",
             "governance-auditor",
             "dbt-expert",
@@ -754,10 +702,11 @@ class TestKBInjection:
     def test_kb_injection_includes_all_declared_domains(self):
         """A injeção deve incluir conteúdo de todos os domínios declarados no kb_domains."""
         agents = load_all_agents(inject_kb_index=True)
-        # databricks-engineer tem kb_domains: [databricks, spark-patterns, sql-patterns, pipeline-design, migration]
-        prompt = agents["databricks-engineer"].prompt
-        assert "Databricks" in prompt
+        # pipeline-architect tem kb_domains: [pipeline-design, databricks, fabric]
+        prompt = agents["pipeline-architect"].prompt
         assert "Design de Pipelines" in prompt or "pipeline-design" in prompt.lower()
+        assert "Databricks" in prompt
+        assert "Fabric" in prompt
 
     def test_kb_injection_with_invalid_domain_ignores_gracefully(self, tmp_path):
         """Domínios inválidos no kb_domains são silenciosamente ignorados."""
@@ -932,83 +881,90 @@ class TestCachePrefix:
         )
 
 
-# ─── Testes do fabric-ontology ──────────────────────────────────────────────
+# ─── Testes do migration-expert ──────────────────────────────────────────────
 
 
-class TestFabricOntology:
-    """Testes específicos para o fabric-ontology (T2 — OWL/RDF/Fabric IQ)."""
+class TestOntologyEngineer:
+    """Testes específicos para o ontology-engineer (T2)."""
 
-    def test_fabric_ontology_is_loaded(self):
-        """fabric-ontology deve ser carregado no registry."""
+    def test_ontology_engineer_is_loaded(self):
+        """ontology-engineer deve ser carregado no registry."""
         agents = load_all_agents()
-        assert "fabric-ontology" in agents, "fabric-ontology não encontrado no registry"
+        assert "ontology-engineer" in agents, "ontology-engineer não encontrado no registry"
 
-    def test_fabric_ontology_tier_is_t2(self):
-        """fabric-ontology é especializado — deve ser Tier T2."""
+    def test_ontology_engineer_tier_is_t2(self):
+        """ontology-engineer é especializado — deve ser Tier T2."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        path = AGENTS_REGISTRY_DIR / "fabric-ontology.md"
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
         content = path.read_text(encoding="utf-8")
         meta, _ = _parse_frontmatter(content)
         assert meta.get("tier") == "T2", (
-            f"fabric-ontology deve ter tier: T2, mas tem: {meta.get('tier')}"
+            f"ontology-engineer deve ter tier: T2, mas tem: {meta.get('tier')}"
         )
 
-    def test_fabric_ontology_model_is_sonnet(self):
+    def test_ontology_engineer_model_is_sonnet(self):
+        """ontology-engineer é T2 — deve usar Sonnet."""
         agents = load_all_agents()
-        agent = agents["fabric-ontology"]
-        assert "sonnet" in agent.model.lower()
+        agent = agents["ontology-engineer"]
+        assert "sonnet" in agent.model.lower(), (
+            f"ontology-engineer deve usar Sonnet, mas usa: {agent.model}"
+        )
 
-    def test_fabric_ontology_has_context7(self):
-        """fabric-ontology precisa de context7 para docs atualizadas de rdflib/owlready2."""
+    def test_ontology_engineer_has_context7(self):
+        """ontology-engineer precisa de context7 para docs atualizadas de rdflib/owlready2."""
         agents = load_all_agents()
-        agent = agents["fabric-ontology"]
+        agent = agents["ontology-engineer"]
         context7_tools = [t for t in (agent.tools or []) if "context7" in t]
-        assert len(context7_tools) > 0, "fabric-ontology deve ter tools do context7"
+        assert len(context7_tools) > 0, "ontology-engineer deve ter tools do context7"
 
-    def test_fabric_ontology_has_fabric_onelake_tools(self):
-        """fabric-ontology precisa das tools do Fabric Official para OneLake file ops."""
+    def test_ontology_engineer_has_fabric_onelake_tools(self):
+        """ontology-engineer precisa das tools do Fabric Official para OneLake file ops."""
         agents = load_all_agents()
-        agent = agents["fabric-ontology"]
+        agent = agents["ontology-engineer"]
         fabric_tools = [t for t in (agent.tools or []) if "fabric" in t]
         assert len(fabric_tools) > 0, (
-            "fabric-ontology deve ter tools do Fabric para OneLake (upload/download de ontologias)"
+            "ontology-engineer deve ter tools do Fabric para OneLake (upload/download de ontologias)"
         )
 
-    def test_fabric_ontology_has_no_databricks_platform_tools(self):
-        """fabric-ontology não acessa Databricks diretamente — foco em Fabric OneLake."""
+    def test_ontology_engineer_has_no_databricks_platform_tools(self):
+        """ontology-engineer não acessa Databricks diretamente — foco em Fabric OneLake."""
         agents = load_all_agents()
-        agent = agents["fabric-ontology"]
+        agent = agents["ontology-engineer"]
+        # context7 é permitido (utilitário sem credenciais); Databricks não é necessário
         databricks_tools = [t for t in (agent.tools or []) if "mcp__databricks__" in t]
         assert len(databricks_tools) == 0, (
-            f"fabric-ontology não deve ter tools diretas do Databricks: {databricks_tools}"
+            f"ontology-engineer não deve ter tools diretas do Databricks: {databricks_tools}"
         )
 
-    def test_fabric_ontology_has_bash(self):
-        """fabric-ontology deve ter Bash para executar rdflib localmente e converter formatos."""
+    def test_ontology_engineer_has_bash(self):
+        """ontology-engineer deve ter Bash para executar rdflib localmente e converter formatos."""
         agents = load_all_agents()
-        agent = agents["fabric-ontology"]
+        agent = agents["ontology-engineer"]
         assert "Bash" in (agent.tools or []), (
-            "fabric-ontology deve ter Bash para execução local de scripts rdflib"
+            "ontology-engineer deve ter Bash para execução local de scripts rdflib"
         )
 
-    def test_fabric_ontology_has_semantic_web_kb_domain(self):
+    def test_ontology_engineer_has_semantic_web_kb_domain(self):
+        """ontology-engineer deve ter semantic-web em kb_domains."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        path = AGENTS_REGISTRY_DIR / "fabric-ontology.md"
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
         content = path.read_text(encoding="utf-8")
         meta, _ = _parse_frontmatter(content)
         kb_domains = meta.get("kb_domains", [])
-        assert "semantic-web" in kb_domains, "fabric-ontology deve ter 'semantic-web' em kb_domains"
+        assert "semantic-web" in kb_domains, (
+            "ontology-engineer deve ter 'semantic-web' em kb_domains"
+        )
 
-    def test_fabric_ontology_has_fabric_sql_for_view_creation(self):
-        """fabric-ontology precisa de fabric_sql para criar views SQL diretamente no Fabric."""
+    def test_ontology_engineer_has_fabric_sql_for_view_creation(self):
+        """ontology-engineer precisa de fabric_sql para criar views SQL diretamente no Fabric."""
         agents = load_all_agents()
-        agent = agents["fabric-ontology"]
+        agent = agents["ontology-engineer"]
         fabric_sql_tools = [t for t in (agent.tools or []) if "fabric_sql" in t]
         assert len(fabric_sql_tools) > 0, (
-            "fabric-ontology deve ter tools do fabric_sql para executar CREATE VIEW "
-            "diretamente no SQL Analytics Endpoint"
+            "ontology-engineer deve ter tools do fabric_sql para executar CREATE VIEW "
+            "diretamente no SQL Analytics Endpoint — não apenas gerar o código"
         )
 
     def test_fabric_official_has_core_create_item(self):
@@ -1020,14 +976,15 @@ class TestFabricOntology:
             "(cria Notebooks, Lakehouses e outros itens nativos do Fabric)"
         )
 
-    def test_fabric_ontology_has_ontology_skill_domain(self):
+    def test_ontology_engineer_has_ontology_skill_domain(self):
+        """ontology-engineer deve ter ontology em skill_domains."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        path = AGENTS_REGISTRY_DIR / "fabric-ontology.md"
+        path = AGENTS_REGISTRY_DIR / "ontology-engineer.md"
         content = path.read_text(encoding="utf-8")
         meta, _ = _parse_frontmatter(content)
         skill_domains = meta.get("skill_domains", [])
-        assert "ontology" in skill_domains, "fabric-ontology deve ter 'ontology' em skill_domains"
+        assert "ontology" in skill_domains, "ontology-engineer deve ter 'ontology' em skill_domains"
 
 
 class TestMigrationExpert:

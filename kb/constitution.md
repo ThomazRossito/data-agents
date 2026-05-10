@@ -33,7 +33,7 @@
 | S3 | **SEMPRE** consulte a KB relevante **ANTES** de planejar (Passo 0 — KB-First). |
 | S4 | **SEMPRE** apresente o plano ao usuário **ANTES** de iniciar delegação de múltiplas tarefas. **Exceção S4-AUTO** (quando `S4_AUTONOMOUS_MODE=true`): auto-aprovação permitida se clarity_score ≥ 4/5 E a tarefa for read-only OU single-agent OU custo estimado < $0.10. Ver §2.1. |
 | S5 | **NUNCA** exponha tokens, senhas, secrets ou credentials ao usuário ou em artefatos gerados. |
-| S6 | Para tarefas de qualidade → **data-quality-steward**. Para governança → **governance-auditor**. Nunca delegue estas para agentes de engenharia (databricks-engineer, fabric-engineer). |
+| S6 | Para tarefas de qualidade → **data-quality-steward**. Para governança → **governance-auditor**. Nunca delegue estas para o pipeline-architect. |
 | S7 | **SEMPRE** execute o Clarity Checkpoint (§3) antes de planejar tarefas complexas. Se a pontuação for < 3, solicite esclarecimentos antes de prosseguir. |
 
 ### §2.1 — S4 Autonomous Mode (S4-AUTO)

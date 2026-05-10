@@ -122,8 +122,8 @@ class TestSkillInjectionInAgents:
 
     def test_agent_with_patterns_domain_gets_skills_injected(self):
         agents = load_all_agents(inject_skills_index=True)
-        # databricks-engineer: skill_domains: [databricks, patterns]
-        prompt = agents["databricks-engineer"].prompt
+        # pipeline-architect: [databricks, fabric, patterns]
+        prompt = agents["pipeline-architect"].prompt
         assert "[Contexto Injetado] Skills Disponíveis" in prompt
         assert "skills/patterns/pipeline-design/SKILL.md" in prompt
         assert "skills/patterns/star-schema-design/SKILL.md" in prompt

@@ -101,16 +101,15 @@ Para cada requisito identificado, mapeie ao domínio técnico mais adequado:
 
 | Menção no Transcript | Domínio Técnico | Agente Responsável |
 |---------------------|-----------------|--------------------|
-| Pipeline, ingestão, ETL, ELT, Bronze/Silver/Gold (Databricks) | pipeline-design | databricks-engineer |
-| SQL, schema, tabela, consulta, descoberta (Databricks) | sql-patterns | databricks-engineer |
-| Spark, PySpark, DLT, LakeFlow, transformação | spark-patterns | databricks-engineer |
-| Streaming, Kafka, Flink, RAG, Vector Search, AI Functions | databricks-ai | databricks-ai |
-| Star Schema, modelagem dimensional, dim_*, fact_* (Fabric) | pipeline-design | fabric-engineer |
+| Pipeline, ingestão, ETL, ELT, Bronze/Silver/Gold | pipeline-design | pipeline-architect / spark-expert |
+| SQL, schema, tabela, consulta, descoberta | sql-patterns | sql-expert |
+| Spark, PySpark, transformação, streaming | spark-patterns | spark-expert |
+| Star Schema, modelagem dimensional, dim_*, fact_* | pipeline-design | spark-expert |
 | Qualidade, validação, expectation, SLA de dados | data-quality | data-quality-steward |
 | Governança, auditoria, PII, LGPD, linhagem | governance | governance-auditor |
-| Power BI, DAX, Direct Lake, Semantic Model, métricas | semantic-modeling | fabric-engineer |
-| Databricks, Unity Catalog, Jobs, Workflows, DABs | databricks | databricks-engineer |
-| Fabric, Lakehouse, OneLake, Data Factory, Eventhouse | fabric | fabric-engineer |
+| Power BI, DAX, Direct Lake, Semantic Model, métricas | semantic-modeling | semantic-modeler |
+| Databricks, Unity Catalog, Jobs, Workflows, DABs | databricks | pipeline-architect |
+| Fabric, Lakehouse, OneLake, Data Factory, Eventhouse | fabric | pipeline-architect |
 
 ### Passo 5 — Priorização
 

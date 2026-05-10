@@ -75,7 +75,7 @@ O **Data Agents** é um sistema de **múltiplos agentes de Inteligência Artific
 
 O sistema é construído sobre o modelo de linguagem **Claude** da Anthropic e utiliza o **Model Context Protocol (MCP)** para que a IA possa interagir diretamente com as plataformas de dados, como se fosse um engenheiro humano acessando o painel de controle.
 
-São **14 agentes especialistas** organizados em quatro tiers de custo e capacidade, orquestrados por um Supervisor que nunca acessa dados diretamente — apenas coordena, planeja e delega.
+São **13 agentes especialistas** organizados em três tiers de custo e capacidade, orquestrados por um Supervisor que nunca acessa dados diretamente — apenas coordena, planeja e delega.
 
 O grande diferencial em relação a um simples "chatbot de programação" é a **camada de governança e conhecimento**: a IA é obrigada a ler manuais de boas práticas (Skills) antes de agir, garantindo que o código gerado seja seguro, eficiente e alinhado com os padrões corporativos modernos.
 
@@ -110,42 +110,32 @@ O grande diferencial em relação a um simples "chatbot de programação" é a *
 
 ```
  Você digita um comando (terminal ou Chainlit)
-                   │
-                   ▼
-┌──────────────────────────────────────────────────────────────┐
-│              Supervisor (claude-sonnet-4-6)                   │
-│    Consulta KB → Clarity Checkpoint → Delega ao especialista  │
-└──┬──────────────┬───────────────┬──────────────┬─────────────┘
-   │              │               │              │
-   ▼              ▼               ▼              ▼
-Tier T1        Tier T1         Tier T2        Tier T2/T3
-databricks-    fabric-         data-quality-  business-analyst
-engineer       engineer        steward        geral (T0/Haiku)
-databricks-ai  migration-      governance-
-               expert          auditor
-               python-expert   dbt-expert
-                               fabric-rti
-                               fabric-ontology
-                               data-contracts-
-                               engineer
-                               data-mesh-
-                               architect
-   │              │               │              │
-   └──────────────┴───────────────┴──────────────┘
-                          │
-                          ▼
+        │
+        ▼
+┌─────────────────────────────────────────────────┐
+│         Supervisor (claude-opus-4-6)            │
+│  Consulta KB → Cria PRD → Delega ao especialista│
+└───┬────────┬────────┬─────────┬────────┬────────┘
+    │        │        │         │        │
+    ▼        ▼        ▼         ▼        ▼
+SQL Expert  Spark  Pipeline  Quality  Semantic
+(T1/Opus)  Expert  Architect  Steward  Modeler
+           (T1)    (T1/Opus)  (T2)    (T2)
+    │        │        │         │        │
+    └────────┴────────┴─────────┴────────┘
+                      │
+                      ▼
 ┌──────────────────────────────────────────────────────────┐
-│                    MCP Servers (15)                        │
-│  databricks │ databricks_genie │ fabric │ fabric_official  │
-│  fabric_rti │ fabric_semantic  │ fabric_community         │
-│  fabric_sql │ fabric_ontology  │ migration_source         │
-│  context7   │ memory_mcp │ tavily │ github │ firecrawl    │
-│  postgres                                                  │
+│                    MCP Servers                            │
+│  databricks │ databricks_genie │ fabric │ fabric_sql     │
+│  fabric_rti │ fabric_semantic  │ fabric_community        │
+│  context7   │ memory_mcp │ tavily │ github │ firecrawl   │
+│  postgres   │ migration_source                            │
 └──────────────────────────────────────────────────────────┘
-                          │
-                          ▼
-              Plataformas de Nuvem Reais
-          (Databricks, Microsoft Fabric, GitHub...)
+                      │
+                      ▼
+            Plataformas de Nuvem Reais
+        (Databricks, Microsoft Fabric, GitHub...)
 ```
 
 Em paralelo a todo esse fluxo, **11 hooks** ficam monitorando cada ação: bloqueando comandos perigosos, registrando em logs de auditoria, alertando sobre custos e gerenciando o orçamento de contexto.
@@ -154,118 +144,91 @@ Em paralelo a todo esse fluxo, **11 hooks** ficam monitorando cada ação: bloqu
 
 ## 4. Os Agentes: A Equipe Virtual
 
-O sistema possui **14 agentes especialistas** organizados em quatro tiers. O tier define qual modelo Claude é usado, quantos turns (chamadas de ferramenta) o agente pode fazer por tarefa e qual nível de "esforço" de raciocínio aplica.
+O sistema possui **13 agentes especialistas** organizados em três tiers. O tier define qual modelo Claude é usado, quantos turns (chamadas de ferramenta) o agente pode fazer por tarefa e qual nível de "esforço" de raciocínio aplica.
 
 | Tier | Modelo padrão | Max Turns | Effort | Perfil |
 |------|---------------|-----------|--------|--------|
-| **T0** | claude-haiku-4-5 | 3 | low | Conversacional puro, zero MCP — exclusivo do agente `geral` |
-| **T1** | claude-sonnet-4-6 | 20 | high | Engineering Core: pipelines complexos, cross-platform |
-| **T2** | claude-sonnet-4-6 | 12 | medium | Especializados: qualidade, governança, semântica |
-| **T3** | claude-sonnet-4-6 | 5 | low | Conversacional com tools limitadas |
+| **T1** | claude-opus-4-6 | 20 | high | Pipelines complexos, cross-platform |
+| **T2** | claude-sonnet-4-6 | 12 | medium | Especialistas de domínio restrito |
+| **T3** | claude-opus-4-6 | 5 | low | Conversacional, sem MCP |
 
 ### 4.1. O Supervisor
 
-**Modelo:** claude-sonnet-4-6 | **Analogia:** Gerente de Projetos Sênior
+**Modelo:** claude-opus-4-6 | **Analogia:** Gerente de Projetos Sênior
 
-Ponto de entrada de todas as interações. Lê as Knowledge Bases, aplica o Clarity Checkpoint, aciona os especialistas certos e valida o resultado final contra a Constituição do sistema. **Nunca gera SQL, PySpark ou acessa MCP diretamente** — apenas coordena.
+Ponto de entrada de todas as interações. Lê as Knowledge Bases, cria um plano (PRD), aciona os especialistas certos e valida o resultado final contra a Constituição do sistema. **Nunca gera SQL, PySpark ou acessa MCP diretamente** — apenas coordena.
 
-### 4.2. databricks-engineer — Tier T1
+### 4.2. Business Analyst — Tier T3
 
-**Comandos:** `/sql`, `/spark`, `/pipeline`, `/cdc`, `/genie`, `/dashboard`, `/diagnose`
-**MCPs:** databricks, databricks_genie, context7, migration_source, postgres, memory_mcp, github, tavily
+**Comando:** `/brief` | **MCPs:** tavily, firecrawl
 
-O principal especialista Databricks. Cobre SQL (Spark SQL, T-SQL), PySpark, Delta Lake, LakeFlow/DLT, Jobs, CDC com Debezium, Genie Spaces e AI/BI Dashboards. Tem permissões amplas de execução: dispara jobs, executa SQL em warehouses, cria pipelines.
+Transforma reuniões brutas, prints de Slack, e-mails e briefings em backlogs estruturados P0/P1/P2. Usa busca web para enriquecer o contexto com referências de mercado quando necessário.
 
-### 4.3. databricks-ai — Tier T1
+### 4.3. SQL Expert — Tier T1
 
-**Comandos:** `/ai`, `/streaming`
-**MCPs:** databricks, context7, tavily
+**Comando:** `/sql` | **MCPs:** databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, postgres
 
-Especialista em IA e streaming no Databricks: RAG, Vector Search, embeddings, LLMOps, AI Functions, Feature Store, Kafka, Flink e Spark Structured Streaming.
+Especialista em SQL (Spark SQL, T-SQL, KQL), schemas, Unity Catalog e modelagem dimensional. Acesso **somente leitura** — não executa jobs nem modifica dados.
 
-### 4.4. fabric-engineer — Tier T1
+### 4.4. Spark Expert — Tier T1
 
-**Comandos:** `/fabric`, `/semantic`, `/schema`, `/finops`, `/medallion`, `/catalog`
-**MCPs:** fabric, fabric_community, fabric_official, fabric_sql, fabric_semantic
+**Comando:** `/spark` | **MCPs:** context7
 
-Cobre todo o ecossistema Microsoft Fabric: pipelines no Data Factory, Medallion (Bronze/Silver/Gold), Star Schema, Semantic Models, DAX, Direct Lake, Genie Spaces, FinOps e análise de capacidade (Capacity Units).
+Gera código PySpark e Spark SQL seguindo os padrões modernos do Databricks: Spark Declarative Pipelines (LakeFlow/DLT), operações Delta Lake (MERGE, OPTIMIZE, VACUUM) e SCD Tipo 1 e 2. Não se conecta à nuvem diretamente — gera código que o Pipeline Architect ou o usuário executa.
 
-### 4.5. migration-expert — Tier T1
+### 4.5. Pipeline Architect — Tier T1
 
-**Comando:** `/migrate`
-**MCPs:** migration_source, databricks, fabric, fabric_sql, context7
+**Comando:** `/pipeline` | **MCPs:** databricks, databricks_genie, fabric, fabric_community, fabric_sql, fabric_rti, context7, github, firecrawl, memory_mcp
 
-Assessment e migração de bancos relacionais (SQL Server, PostgreSQL) para Databricks ou Microsoft Fabric. O MCP `migration_source` conecta-se diretamente ao banco de origem para extrair DDL, views, procedures, functions e estatísticas.
+O único agente com permissões amplas de execução: dispara jobs no Databricks, inicia e para pipelines, faz upload/download no OneLake, cria pipelines no Data Factory do Fabric e executa comandos Bash. Ideal para tarefas ETL/ELT end-to-end e integrações cross-platform.
 
-### 4.6. python-expert — Tier T1
+### 4.6. dbt Expert — Tier T2
 
-**Comando:** `/python`
-**MCPs:** context7
+**Comando:** `/dbt` | **MCPs:** context7, postgres
 
-Python puro: pacotes, automação, APIs, CLIs, testes unitários, asyncio, pandas/polars. Consulta a documentação atualizada de bibliotecas via context7 antes de gerar código.
+Especialista em dbt Core: criação de models (staging, marts, intermediate), testes de qualidade, snapshots para SCD Tipo 2, seeds e geração de documentação. Usa context7 para buscar a documentação atualizada do dbt antes de agir.
 
-### 4.7. dbt-expert — Tier T2
+### 4.7. Data Quality Steward — Tier T2
 
-**Comando:** `/dbt`
-**MCPs:** context7, postgres
+**Comando:** `/quality` | **MCPs:** databricks, fabric, fabric_community, fabric_rti, postgres
 
-Especialista em dbt Core: models (staging, marts, intermediate), testes de qualidade, snapshots para SCD Tipo 2, seeds e documentação.
+Validação de dados, profiling estatístico, definição de SLAs e alertas de qualidade. Conhece os padrões de qualidade de cada camada da Arquitetura Medalhão.
 
-### 4.8. data-quality-steward — Tier T2
+### 4.8. Governance Auditor — Tier T2
 
-**Comando:** `/quality`
-**MCPs:** databricks, fabric, fabric_community, fabric_rti, postgres
+**Comando:** `/governance` | **MCPs:** databricks, fabric, fabric_community, tavily, postgres, memory_mcp
 
-Validação de dados, profiling estatístico, definição de SLAs e alertas de qualidade cross-platform. Conhece os padrões de qualidade de cada camada da Arquitetura Medalhão.
+Auditoria de acessos, linhagem de dados, detecção de PII e verificação de conformidade com LGPD/GDPR. Registra descobertas no knowledge graph de memória para referência futura.
 
-### 4.9. governance-auditor — Tier T2
+### 4.9. Semantic Modeler — Tier T2
 
-**Comando:** `/governance`
-**MCPs:** databricks, fabric, fabric_community, tavily, postgres, memory_mcp
+**Comando:** `/semantic`, `/genie`, `/dashboard` | **MCPs:** databricks, databricks_genie, fabric, fabric_community, fabric_semantic, fabric_sql, context7
 
-Auditoria de acessos, linhagem de dados, detecção de PII, RLS/OLS, Sensitivity Labels e conformidade com LGPD/GDPR. Registra descobertas no knowledge graph de memória para referência futura.
+DAX, Direct Lake, criação e gestão de Genie Spaces no Databricks e publicação de AI/BI Dashboards. O MCP `fabric_semantic` permite introspectar modelos semânticos existentes (TMDL, medidas DAX, relacionamentos, RLS) antes de propor mudanças.
 
-### 4.10. data-contracts-engineer — Tier T2
+### 4.10. Migration Expert — Tier T1
 
-**Comando:** `/contract`
-**MCPs:** context7, databricks, fabric_sql, postgres, memory_mcp
+**Comando:** `/migrate` | **MCPs:** migration_source, databricks, fabric, fabric_sql, context7
 
-ODCS v3: autoria de contratos, SLA de qualidade, schema evolution e gestão de breaking changes. Persiste contratos e decisões no knowledge graph.
+Assessment e migração de bancos relacionais (SQL Server, PostgreSQL) para Databricks ou Microsoft Fabric, seguindo a Arquitetura Medalhão. O MCP `migration_source` conecta-se diretamente ao banco de origem para extrair DDL, views, procedures, functions e estatísticas.
 
-### 4.11. data-mesh-architect — Tier T2
+### 4.11. Python Expert — Tier T1
 
-**Comando:** `/mesh`
-**MCPs:** context7, tavily, databricks, memory_mcp
+**Comando:** `/python` | **MCPs:** context7
 
-Mapeamento de domínios, design de Data Products, self-serve platform e maturity assessment de Data Mesh. Usa busca web para referenciar padrões atualizados.
+Python puro: pacotes, automação, APIs, CLIs, testes unitários, pandas/polars, scripts de ETL em Python. Usa context7 para documentação atualizada de bibliotecas antes de gerar código.
 
-### 4.12. fabric-rti — Tier T2
+### 4.12. Business Monitor — Tier T2
 
-**Comando:** `/streaming` (RTI focus)
-**MCPs:** fabric_rti
+**Comando:** `/monitor` | **MCPs:** databricks, fabric_sql, postgres, memory_mcp
 
-Real-Time Intelligence no Fabric: Eventhouse, KQL, Eventstream e Activator.
+Agente interativo de Q&A sobre alertas emitidos pelo daemon de monitoramento autônomo (`scripts/monitor_daemon.py`). Responde perguntas sobre alertas recebidos (estoque, vendas, SLA), investiga causa raiz de anomalias e enriquece o contexto com o estado atual das tabelas. O ciclo de varredura automático roda fora do agente, via `databricks-sdk` e `pymssql`.
 
-### 4.13. fabric-ontology — Tier T2
+### 4.13. Geral — Tier T3
 
-**Comando:** `/ontology`
-**MCPs:** context7, tavily, firecrawl, fabric, fabric_community, fabric_official, fabric_sql, fabric_ontology
+**Comando:** `/geral` | **MCPs:** nenhum
 
-OWL 2, RDF, SPARQL e integração com o Fabric IQ Ontology. Cria, edita e exporta ontologias diretamente no OneLake.
-
-### 4.14. business-analyst — Tier T3
-
-**Comando:** `/brief`, `/ship`
-**MCPs:** tavily, firecrawl
-
-Transforma reuniões brutas, prints de Slack, e-mails e briefings em backlogs estruturados P0/P1/P2. Usa busca web para enriquecer o contexto com referências de mercado.
-
-### 4.15. geral — Tier T0
-
-**Comando:** `/geral`
-**MCPs:** nenhum
-
-Respostas conceituais e explicações diretas, sem passar pelo Supervisor e sem acionar nenhum MCP. Usa Haiku 4.5 — cerca de 95% mais barato que uma resposta via Supervisor completo. Ideal para perguntas como "O que é Delta Lake?" ou "Explique o conceito de SCD Tipo 2".
+Respostas conceituais e explicações diretas, sem passar pelo Supervisor e sem acionar nenhum MCP. Cerca de 95% mais barato que uma resposta via Supervisor completo. Ideal para perguntas como "O que é Delta Lake?" ou "Explique o conceito de SCD Tipo 2".
 
 ---
 
@@ -301,11 +264,11 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente com pass
 
 | Workflow | Quando usar | Agentes encadeados |
 |----------|-------------|-------------------|
-| **WF-01** Pipeline End-to-End | "Crie um pipeline Bronze→Gold completo" | databricks-engineer → data-quality-steward → fabric-engineer → governance-auditor |
-| **WF-02** Star Schema | "Crie a camada Gold em Star Schema" | fabric-engineer → databricks-engineer → data-quality-steward |
-| **WF-03** Migração Cross-Platform | "Migre do Databricks para o Fabric" | databricks-engineer → fabric-engineer → data-quality-steward → governance-auditor |
-| **WF-04** Auditoria de Governança | "Gere um relatório de compliance" | governance-auditor → data-quality-steward → Relatório |
-| **WF-05** Migração Relacional→Nuvem | "Migre o SQL Server para Databricks" | migration-expert → databricks-engineer → data-quality-steward → governance-auditor |
+| **WF-01** Pipeline End-to-End | "Crie um pipeline Bronze→Gold completo" | Spark → Quality → Semantic → Governance |
+| **WF-02** Star Schema | "Crie a camada Gold em Star Schema" | SQL → Spark → Quality → Semantic |
+| **WF-03** Migração Cross-Platform | "Migre do Databricks para o Fabric" | Architect → SQL → Spark → Quality + Governance |
+| **WF-04** Auditoria de Governança | "Gere um relatório de compliance" | Governance → Quality → Relatório |
+| **WF-05** Migração Relacional→Nuvem | "Migre o SQL Server para Databricks" | Migration Expert → SQL → Spark → Quality + Governance |
 
 ---
 
@@ -315,7 +278,7 @@ Para projetos end-to-end, o Supervisor encadeia agentes automaticamente com pass
 
 Interface moderna com steps expandíveis em tempo real mostrando cada delegação e tool call enquanto acontecem. Dois modos disponíveis:
 
-- **Data Agents:** sistema completo com todos os 14 agentes
+- **Data Agents:** sistema completo com todos os 13 agentes
 - **Dev Assistant:** Claude direto com ferramentas de código (sem agentes especialistas)
 
 **Funcionalidades da Chainlit:**
@@ -411,7 +374,7 @@ Principais configurações:
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` | obrigatório | Chave de acesso à API do Claude |
 | `ANTHROPIC_BASE_URL` | (vazio) | URL de proxy LiteLLM (AWS Bedrock, etc.) — vazio = usa api.anthropic.com |
-| `DEFAULT_MODEL` | `claude-sonnet-4-6` | Modelo padrão do Supervisor |
+| `DEFAULT_MODEL` | `claude-opus-4-6` | Modelo padrão do Supervisor |
 | `TIER_MODEL_MAP` | `{}` | Override de modelo por tier T1/T2/T3 — tem precedência sobre o frontmatter dos agentes |
 | `TIER_TURNS_MAP` | T1=20, T2=12, T3=5 | Máximo de turns por tier |
 | `TIER_EFFORT_MAP` | high/medium/low | Nível de raciocínio por tier |
@@ -457,8 +420,7 @@ Os hooks são interceptadores automáticos ativados antes (`PreToolUse`) ou depo
 | `output_compressor_hook.py` | PostToolUse | Trunca outputs verbosos para preservar tokens de contexto |
 | `context_budget_hook.py` | PostToolUse | Alerta a 70%; compacta autonomamente a 80% (summary Haiku + reconexão); ERROR a 95% |
 | `workflow_tracker.py` | PostToolUse | Rastreia delegações, Clarity Checkpoint e cascade PRD→SPEC |
-| `memory_hook.py` | PreToolUse | Registra t₀ de cada tool call para medir duração real (`slow_op` detection) |
-| `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente; detecta triggers de LESSON_LEARNED |
+| `memory_hook.py` | PostToolUse | Captura contexto da sessão para memória persistente |
 | `session_logger.py` | PostToolUse | Registra métricas finais de custo/turns/duração por sessão |
 | `transcript_hook.py` | PostToolUse | Persiste transcript completo por sessão em `logs/sessions/<id>.jsonl` (append-only) — usado pelo `/resume` |
 | `checkpoint.py` | — | Save/restore automático do estado da sessão |
@@ -538,35 +500,24 @@ Os quatro MCPs customizados resolvem gaps específicos que os MCPs oficiais não
 | Comando | Agente | Quando usar |
 |---------|--------|-------------|
 | `/plan <tarefa>` | Supervisor | Tarefas complexas que precisam de PRD e aprovação antes de executar |
-| `/brief <texto>` | business-analyst | Converter reunião/briefing em backlog estruturado P0/P1/P2 |
-| `/sql <tarefa>` | databricks-engineer | Queries SQL, análise de schemas, Unity Catalog |
-| `/spark <tarefa>` | databricks-engineer | Código PySpark, Delta Lake, DLT/LakeFlow |
-| `/pipeline <tarefa>` | databricks-engineer | Pipelines ETL/ELT completos com execução na nuvem |
-| `/cdc <tarefa>` | databricks-engineer | CDC com Debezium, Kafka Connect, AUTO CDC INTO |
-| `/diagnose <tarefa>` | databricks-engineer | Diagnóstico de jobs Spark: OOM, skew, shuffle, hangs |
-| `/genie <tarefa>` | databricks-engineer | Criar/atualizar Genie Spaces no Databricks |
-| `/dashboard <tarefa>` | databricks-engineer | Criar/publicar AI/BI Dashboards |
-| `/ai <tarefa>` | databricks-ai | RAG, Vector Search, embeddings, LLMOps, AI Functions |
-| `/streaming <tarefa>` | databricks-ai | Kafka, Flink, Spark Structured Streaming |
-| `/fabric <tarefa>` | fabric-engineer | Qualquer tarefa Microsoft Fabric |
-| `/semantic <tarefa>` | fabric-engineer | DAX, Direct Lake, modelos semânticos |
-| `/schema <tarefa>` | fabric-engineer | Star Schema, Data Vault 2.0, SCD, modelagem dimensional |
-| `/finops <tarefa>` | fabric-engineer | FinOps Fabric: Capacity Units, rightsizing, análise de custo |
-| `/medallion <tarefa>` | fabric-engineer | Design Medallion Fabric: Bronze/Silver/Gold |
-| `/catalog <subcmd>` | fabric-engineer | Documentar/avaliar catálogo de dados Fabric |
-| `/migrate <fonte> para <destino>` | migration-expert | Assessment e migração de banco relacional para Databricks/Fabric |
-| `/python <tarefa>` | python-expert | Python puro, scripts, APIs, CLIs, testes unitários, asyncio |
-| `/dbt <tarefa>` | dbt-expert | Models, testes, snapshots, seeds, docs dbt |
-| `/quality <tarefa>` | data-quality-steward | Validação de dados, profiling, SLAs de qualidade |
-| `/governance <tarefa>` | governance-auditor | Auditoria, linhagem, LGPD, detecção de PII, RLS/OLS |
-| `/contract <tarefa>` | data-contracts-engineer | Data Contracts ODCS, SLA, schema evolution, breaking changes |
-| `/mesh <tarefa>` | data-mesh-architect | Data Mesh: domínios, Data Products, governança federada |
-| `/ontology <tarefa>` | fabric-ontology | OWL 2: design, import/export Fabric OneLake |
+| `/brief <texto>` | Business Analyst | Converter reunião/briefing em backlog estruturado P0/P1/P2 |
+| `/sql <tarefa>` | SQL Expert | Queries SQL, análise de schemas, modelagem dimensional |
+| `/spark <tarefa>` | Spark Expert | Código PySpark, Delta Lake, DLT/LakeFlow |
+| `/pipeline <tarefa>` | Pipeline Architect | Pipelines ETL/ELT completos com execução na nuvem |
+| `/dbt <tarefa>` | dbt Expert | Models, testes, snapshots, seeds, docs dbt |
+| `/quality <tarefa>` | Data Quality Steward | Validação de dados, profiling, SLAs de qualidade |
+| `/governance <tarefa>` | Governance Auditor | Auditoria, linhagem, LGPD, detecção de PII |
+| `/semantic <tarefa>` | Semantic Modeler | DAX, Direct Lake, modelos semânticos |
+| `/migrate <fonte> para <destino>` | Migration Expert | Assessment e migração de banco relacional para Databricks/Fabric |
+| `/python <tarefa>` | Python Expert | Python puro, scripts, APIs, testes unitários |
+| `/monitor <pergunta>` | Business Monitor | Q&A sobre alertas do daemon de monitoramento de negócio |
+| `/genie <tarefa>` | Semantic Modeler | Criar/atualizar Genie Spaces no Databricks |
+| `/dashboard <tarefa>` | Semantic Modeler | Criar/publicar AI/BI Dashboards |
 | `/review <artefato>` | Supervisor | Review de código ou pipeline |
 | `/party <query>` | Multi-agente | 2-8 agentes respondem simultaneamente (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
 | `/workflow <wf-id> <query>` | Multi-agente | Workflows colaborativos WF-01 a WF-05 com context chain |
-| `/geral <pergunta>` | geral | Respostas conceituais sem Supervisor — ~95% mais barato |
-| `/ship <título>` | business-analyst | Arquivar tarefa concluída com lições aprendidas |
+| `/fabric <tarefa>` | Pipeline Architect | Pipeline Architect com foco em Microsoft Fabric |
+| `/geral <pergunta>` | Geral | Respostas conceituais sem Supervisor — ~95% mais barato |
 | `/health` | — | Status de todas as plataformas configuradas |
 | `/status` | — | Estado da sessão: custo, turns, PRDs gerados |
 | `/memory <query>` | — | Consulta à memória persistente |
@@ -629,7 +580,7 @@ FABRIC_WORKSPACE_ID=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
 **Roteamento de modelos por tier (importante):**
 
 ```
-TIER_MODEL_MAP={"T1": "claude-sonnet-4-6", "T2": "claude-sonnet-4-6", "T3": "claude-sonnet-4-6"}
+TIER_MODEL_MAP={"T1": "claude-opus-4-6", "T2": "claude-sonnet-4-6", "T3": "claude-opus-4-6"}
 ```
 
 > Se `TIER_MODEL_MAP` não estiver definido, cada agente usa o modelo declarado no seu próprio arquivo em `agents/registry/`.
@@ -680,37 +631,17 @@ O sistema possui dois layers de memória complementares:
 
 ### Layer 1 — Memória Episódica (`memory/`)
 
-Captura fatos da sessão automaticamente via `memory_hook.py` e os persiste como arquivos Markdown individuais em `memory/data/{tipo}/{id}.md`. O retrieval é feito localmente via **SQLite FTS5 (BM25)** com reranking semântico opcional por embeddings ONNX — sem custo de API, latência < 5ms.
+Captura fatos da sessão automaticamente via `memory_hook.py`. Aplica **decay temporal** — memórias antigas perdem relevância gradualmente:
 
-**8 tipos de memória com políticas de decay diferentes:**
-
-| Tipo | Decay | Descrição |
-|------|-------|-----------|
+| Tipo de Memória | Decay Padrão | Descrição |
+|-----------------|--------------|-----------|
 | `USER` | Nunca | Preferências e orientações do usuário |
 | `ARCHITECTURE` | Nunca | Decisões de arquitetura do projeto |
-| `DATA_ASSET` | Nunca | Tabelas, schemas, datasets e suas características |
-| `PLATFORM_DECISION` | Nunca | Decisões sobre tecnologias, plataformas, integrações |
-| `FEEDBACK` | 90 dias | Correções e orientações recebidas |
-| `PIPELINE_STATUS` | 14 dias | Estado de execução de pipelines e jobs |
 | `PROGRESS` | 7 dias | Tarefas em andamento |
-| `LESSON_LEARNED` | 30 dias | Lições capturadas de erros e baixa performance — loop de aprendizado autônomo |
+| `FEEDBACK` | 90 dias | Orientações recebidas |
+| `PIPELINE_STATUS` | 14 dias | Status de pipelines de dados |
 
-O retrieval é executado antes de cada query ao Supervisor: o sistema busca memórias relevantes pelo índice FTS5 e as injeta no system prompt, mantendo contexto entre sessões sem custo adicional de LLM.
-
-#### Loop de Aprendizado Autônomo (LESSON_LEARNED)
-
-O tipo `LESSON_LEARNED` alimenta um loop de aprendizado entre sessões: erros e eventos de baixa performance são automaticamente capturados, sumarizados via Haiku (~$0.001) e armazenados como conhecimento estruturado. Na próxima sessão, essas lições são injetadas no system prompt dos agentes T1 antes de operações de alto risco.
-
-**Triggers de captura:**
-
-| Trigger | Condição |
-|---------|----------|
-| `error` | Qualquer erro em tool MCP |
-| `high_cost` | > 5 operações HIGH na sessão |
-| `retries` | Mesmo agente chamado > 3× |
-| `slow_op` | Tool MCP > 60 segundos de duração |
-
-Cada lesson segue o formato *O que aconteceu / Causa raiz / Padrão para evitar*. Limite de 50 lessons por agente (deduplicação automática por sobreposição de summary > 60%).
+**Retrieval semântico** é executado antes de cada query ao Supervisor: o sistema busca memórias relevantes e as injeta no system prompt, mantendo contexto entre sessões.
 
 Controle via `.env`:
 
@@ -723,7 +654,7 @@ MEMORY_RETRIEVAL_MAX=10           # máximo de memórias injetadas por query
 
 ### Layer 2 — Knowledge Graph (`memory_mcp/`)
 
-Grafo persistente de entidades nomeadas (tabelas, pipelines, times, decisões) e suas relações. Gerenciado pelos agentes diretamente via MCP tools. Não aplica decay — persiste indefinidamente no arquivo `memory.json` do diretório de execução.
+Grafo persistente de entidades nomeadas (tabelas, pipelines, times, decisões) e suas relações. Gerenciado pelos agentes Pipeline Architect e Governance Auditor. Não aplica decay — persiste indefinidamente no arquivo `memory.json` do diretório de execução.
 
 ---
 
@@ -735,17 +666,17 @@ O sistema usa uma hierarquia de configuração para determinar qual modelo Claud
 2. **Campo `model:` no frontmatter do agente** (`agents/registry/<nome>.md`) — padrão por agente
 3. **`DEFAULT_MODEL` no `.env`** — fallback global
 
-Por padrão, o sistema usa **claude-sonnet-4-6** para todos os tiers T1/T2/T3 e **claude-haiku-4-5** para o T0 (`geral`). Para economizar custo em especialistas T2, você pode fazer override via `TIER_MODEL_MAP`:
+Exemplo equilibrando custo e qualidade:
 
 ```json
 {
-  "T1": "claude-sonnet-4-6",
-  "T2": "claude-haiku-4-5",
-  "T3": "claude-sonnet-4-6"
+  "T1": "claude-opus-4-6",
+  "T2": "claude-sonnet-4-6",
+  "T3": "claude-opus-4-6"
 }
 ```
 
-> **Nota:** O `geral` (T0) usa `claude-haiku-4-5` fixado no frontmatter — não é afetado pelo `TIER_MODEL_MAP`. É o tier mais barato e sem MCP, ideal para perguntas conceituais rápidas.
+> **Por que T3 usa Opus?** Os agentes T3 fazem pouquíssimas interações (máx. 5 turns) e não usam MCPs — a latência extra do Opus é mínima e a qualidade de raciocínio é superior para perguntas conceituais.
 
 ---
 
@@ -779,8 +710,6 @@ pytest tests/ -v --tb=short --cov=agents --cov=config --cov=hooks --cov=commands
 | `test_mcp_configs.py` | Configurações dos MCP servers |
 | `test_mlflow_wrapper.py` | Wrapper MLflow |
 | `test_settings.py` | Leitura e validação das configurações |
-| `test_memory_lesson_learned.py` | LESSON_LEARNED: enum, CRUD, decay, prune, dedup, injeção (22 testes) |
-| `test_s4_relaxation.py` | S4 Autonomous Mode: settings, log_s4_decision, constitution, supervisor prompt |
 
 ---
 
@@ -803,7 +732,7 @@ make deploy-prod       # publica em produção
 
 **CI** (push para `main` / `develop`): Ruff → Mypy → pytest (cobertura 80%) → Bandit. Merge bloqueado em caso de falha.
 
-**CD** (manual via `workflow_dispatch`): Deploy via `databricks bundle deploy` + sincronização das Skills para o workspace. O trigger por tag de versão foi removido — deploys são sempre manuais e deliberados.
+**CD** (tag de versão `vX.Y.Z`): Deploy via `databricks bundle deploy` + sincronização das Skills para o workspace.
 
 ---
 
@@ -897,7 +826,7 @@ O projeto **Data Agents** representa uma abordagem madura e corporativa para o u
 
 **O problema do custo** é resolvido pelo Cost Guard e pelo roteamento por tier: cada tarefa usa o modelo adequado ao seu nível de complexidade, e o limite de orçamento por sessão é configurável.
 
-**O problema da especialização** é resolvido pela arquitetura multi-agente: cada um dos 14 agentes tem papel bem definido, MCPs adequados ao seu domínio e permissões alinhadas ao seu nível de responsabilidade.
+**O problema da especialização** é resolvido pela arquitetura multi-agente: cada um dos 13 agentes tem papel bem definido, MCPs adequados ao seu domínio e permissões alinhadas ao seu nível de responsabilidade.
 
 **O problema da observabilidade** é resolvido pelo Dashboard de Monitoramento (9 páginas) e pelo sistema de memória em dois layers, que mantém contexto entre sessões e acumula conhecimento sobre o projeto ao longo do tempo.
 

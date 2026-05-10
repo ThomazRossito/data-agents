@@ -33,14 +33,40 @@ SPEC_FILE_PATTERN = re.compile(r"output/(?:(\w+)/)?specs/(.*\.md)$", re.IGNORECA
 
 
 # ─── Agentes conhecidos ─────────────────────────────────────────────────────
-# Lidos dinamicamente do registry para evitar dessincronização com novos agentes.
 
-from config.agent_meta import get_known_agents as _get_known_agents  # noqa: E402
-from ui.ui_config import AGENT_DISPLAY_NAMES as _DISPLAY_NAMES  # noqa: E402
+KNOWN_AGENTS: frozenset[str] = frozenset(
+    {
+        "sql-expert",
+        "spark-expert",
+        "pipeline-architect",
+        "python-expert",
+        "migration-expert",
+        "data-quality-steward",
+        "governance-auditor",
+        "semantic-modeler",
+        "business-analyst",
+        "dbt-expert",
+        "business-monitor",
+        "geral",
+    }
+)
 
-KNOWN_AGENTS: frozenset[str] = _get_known_agents()
+_DISPLAY_NAMES: dict[str, str] = {
+    "sql-expert": "SQL Expert",
+    "spark-expert": "Spark Expert",
+    "pipeline-architect": "Pipeline Architect",
+    "python-expert": "Python Expert",
+    "migration-expert": "Migration Expert",
+    "data-quality-steward": "Data Quality Steward",
+    "governance-auditor": "Governance Auditor",
+    "semantic-modeler": "Semantic Modeler",
+    "business-analyst": "Business Analyst",
+    "dbt-expert": "dbt Expert",
+    "business-monitor": "Business Monitor",
+    "geral": "Geral",
+}
 
 
 def display_name_for(raw: str) -> str:
     """Retorna o nome legível para exibição no dashboard."""
-    return _DISPLAY_NAMES.get(raw, raw.replace("-", " ").title())
+    return _DISPLAY_NAMES.get(raw, raw)

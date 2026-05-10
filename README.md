@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Version-2.3.0-brightgreen" alt="Version">
+  <img src="https://img.shields.io/badge/Version-1.2.0-brightgreen" alt="Version">
   <img src="https://img.shields.io/badge/Python-3.12+-blue" alt="Python">
   <img src="https://img.shields.io/badge/Databricks-MCP-FF3621" alt="Databricks">
   <img src="https://img.shields.io/badge/Microsoft%20Fabric-MCP-0078D4" alt="Fabric">
@@ -26,7 +26,7 @@
 - [Protocolo DOMA & Workflows Colaborativos](#protocolo-doma--workflows-colaborativos)
 - [Migração de DW On-Premise para Databricks](#migração-de-dw-on-premise-para-databricks)
 - [Catalog Intelligence](#catalog-intelligence)
-- [Fabric Ontology](#fabric-ontology--web-semântica-no-fabric)
+- [Ontology Engineer](#ontology-engineer--web-semântica-no-fabric)
 - [Knowledge Base de Indústria](#knowledge-base-de-indústria)
 - [Confiabilidade e Proteção de Qualidade](#confiabilidade-e-proteção-de-qualidade)
 - [Plataformas e MCPs](#plataformas-e-mcps)
@@ -115,119 +115,79 @@ python main.py         # ou: make run
 
 ## Agentes Especialistas
 
-### Tier 1 — Engineering Core
-
-| Agente | Comando(s) | O que faz |
-|--------|-----------|-----------|
-| **Supervisor** | `/plan` | Coordena, planeja e valida tudo contra a Constituição — nunca executa código ou acessa MCP diretamente |
-| **Databricks Engineer** | `/sql`, `/spark`, `/pipeline`, `/cdc`, `/diagnose`, `/genie`, `/dashboard` | SQL (Unity Catalog, Spark SQL), PySpark, Delta Lake, LakeFlow/DLT, CDC (Debezium + AUTO CDC INTO), Jobs, diagnóstico Spark (OOM/skew/shuffle), Genie Spaces, AI/BI Dashboards, KA/MAS |
-| **Databricks AI** | `/ai`, `/streaming` | RAG pipelines, Vector Search, embeddings, feature stores, LLMOps com MLflow, AI Functions (AI_QUERY/AI_SUMMARIZE), Kafka, Flink, Spark Structured Streaming |
-| **Fabric Engineer** | `/fabric`, `/semantic`, `/schema`, `/finops`, `/catalog`, `/medallion` | Fabric completo: Medallion (Bronze/Silver/Gold), Data Factory, Star Schema / Data Vault 2.0, Semantic Models, DAX, Direct Lake, Genie Spaces, catálogo de dados, governança, FinOps (DBU/CU) |
-| **Migration Expert** | `/migrate` | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric; auto-revisão de DDL, conversão de tipos, namespace completo |
-| **Python Expert** | `/python` | Python puro: pacotes, automação, APIs REST, CLIs, testes, pandas/polars |
-
-### Tier 2 — Specialized
-
-| Agente | Comando(s) | O que faz |
-|--------|-----------|-----------|
-| **dbt Expert** | `/dbt` | dbt Core: models, testes, snapshots, seeds, docs, lineage |
-| **Data Quality Steward** | `/quality` | Validação de dados, profiling, schema drift, SLAs, alertas cross-platform |
-| **Governance Auditor** | `/governance` | Auditoria de acessos, linhagem, PII, LGPD/GDPR, RLS/OLS/Sensitivity Labels |
-| **Data Contracts Engineer** | `/contract` | Contratos ODCS, SLA de qualidade, schema governance, breaking change management |
-| **Data Mesh Architect** | `/mesh` | Data Mesh: domínios de negócio, Data Products, governança federada, avaliação de maturidade |
-| **Fabric RTI** | — | Fabric Real-Time Intelligence: Eventhouse, KQL, Eventstream, Activator — delegado pelo Fabric Engineer ou Supervisor |
-| **Fabric Ontology** | `/ontology` | OWL 2, RDF, SPARQL, Fabric IQ Ontology — design, validação, import/export OneLake, triples → Delta |
-
-### Tier 3 / T0 — Conversational
-
-| Agente | Comando(s) | O que faz |
-|--------|-----------|-----------|
-| **Business Analyst** | `/brief`, `/ship` | Converte reuniões e briefings em backlog P0/P1/P2; gera SHIPPED docs com decisões e trade-offs |
-| **Geral** | `/geral` | Respostas conceituais diretas — zero MCP, ~95% mais barato |
+| Agente | Comando | Tier | O que faz |
+|--------|---------|------|-----------|
+| **Supervisor** | `/plan` | — | Coordena, planeja e valida tudo contra a Constituição |
+| **Business Analyst** | `/brief`, `/ship` | T3 | Converte reuniões e briefings em backlog P0/P1/P2; gera SHIPPED docs |
+| **SQL Expert** | `/sql` | T1 | SQL (Spark SQL, T-SQL, KQL), schemas, Unity Catalog; auto-revisão de DDL/DML |
+| **Spark Expert** | `/spark` | T1 | PySpark, Delta Lake, pipelines Medallion |
+| **Pipeline Architect** | `/pipeline` | T1 | ETL/ELT, orquestração, cross-platform Databricks ↔ Fabric |
+| **dbt Expert** | `/dbt` | T2 | dbt Core: models, testes, snapshots, seeds, docs |
+| **Data Quality Steward** | `/quality` | T2 | Validação de dados, profiling, alertas, SLAs |
+| **Governance Auditor** | `/governance` | T2 | Auditoria de acessos, linhagem, PII, LGPD/GDPR |
+| **Semantic Modeler** | `/semantic`, `/genie` | T2 | DAX, Direct Lake, Genie Spaces, AI/BI Dashboards; Genie Health Check |
+| **Catalog Intelligence** | `/catalog` | T2 | Documenta catálogo com AI, calcula Data Maturity Score, Business Value Engine e alinhamento a indústria |
+| **Migration Expert** | `/migrate` | T1 | Assessment e migração de SQL Server/PostgreSQL para Databricks ou Fabric (Medallion); auto-revisão de DDL |
+| **Python Expert** | `/python` | T1 | Python puro: pacotes, automação, APIs, CLIs, testes, pandas/polars |
+| **Ontology Engineer** | `/ontology` | T2 | Design de ontologias OWL 2, import/export de arquivos OWL/RDF/Turtle no Fabric OneLake, conversão entre formatos, triples → Delta Lake |
+| **Business Monitor** | `/monitor` | T2 | Q&A interativo sobre alertas emitidos pelo daemon de monitoramento (`scripts/monitor_daemon.py`) |
+| **Geral** | `/geral` | T0 | Respostas conceituais diretas — zero MCP, ~95% mais barato |
 
 > Refresh de Skills é um script independente — `python scripts/refresh_skills.py` (não é mais um agente).
 
----
-
 ### Party Mode — Múltiplos Especialistas em Paralelo
 
-O comando `/party` convoca múltiplos agentes simultaneamente para a mesma pergunta. Cada um responde de forma independente, com sua perspectiva de domínio.
+O comando `/party` convoca 2 a 8 agentes simultaneamente para a mesma pergunta. Cada um responde de forma independente, com sua perspectiva de domínio.
 
 ```bash
 /party qual a diferença entre Delta Lake e Iceberg?
-# → databricks-engineer + databricks-ai + fabric-engineer respondem em paralelo
+# → sql-expert + spark-expert + pipeline-architect respondem em paralelo
 
 /party --quality como garantir qualidade em dados incrementais?
-# → data-quality-steward + governance-auditor + fabric-rti
+# → data-quality-steward + governance-auditor + semantic-modeler
 
 /party --engineering como processar um CSV de 10 GB com eficiência?
-# → python-expert + databricks-engineer + databricks-ai
+# → python-expert + spark-expert + pipeline-architect
 
 /party --migration como avaliar complexidade de migração de SQL Server?
-# → migration-expert + databricks-engineer + fabric-engineer
+# → migration-expert + sql-expert + spark-expert
 
 /party --full explique o Unity Catalog
-# → todos os T1 + principais T2 (9 especialistas em paralelo)
+# → todos os 8 agentes especialistas (T1 + principais T2)
 ```
 
 ---
 
 ## Comandos Disponíveis
 
-**Agentes Especialistas:**
-
-| Comando | Agente | Descrição |
-|---------|--------|-----------|
-| `/sql <query>` | databricks-engineer | SQL (Spark SQL, Unity Catalog, DDL/DML) |
-| `/spark <tarefa>` | databricks-engineer | PySpark, Delta Lake, Spark Declarative Pipelines |
-| `/pipeline <tarefa>` | databricks-engineer | Pipeline ETL/ELT no Databricks (Jobs, LakeFlow) |
-| `/cdc <tarefa>` | databricks-engineer | Change Data Capture: Debezium, AUTO CDC INTO, transactional outbox |
-| `/diagnose <problema>` | databricks-engineer | Diagnóstico Spark: OOM, data skew, shuffle failure, hang |
-| `/genie <tarefa>` | databricks-engineer | Criar/atualizar Genie Spaces para Conversational BI |
-| `/dashboard <tarefa>` | databricks-engineer | Criar/publicar AI/BI Dashboards no Databricks |
-| `/streaming <tarefa>` | databricks-ai | Kafka, Flink, Spark Structured Streaming, Fabric RTI |
-| `/ai <tarefa>` | databricks-ai | RAG pipelines, Vector Search, embeddings, LLMOps, AI Functions |
-| `/fabric <tarefa>` | fabric-engineer | Qualquer tarefa Microsoft Fabric |
-| `/semantic <tarefa>` | fabric-engineer | DAX, Direct Lake, Metric Views, Semantic Models |
-| `/schema <tarefa>` | fabric-engineer | Star Schema, Data Vault 2.0, SCD types, grain definition |
-| `/finops <tarefa>` | fabric-engineer | FinOps: custo DBU/CU, rightsizing, otimização Delta |
-| `/catalog <subcmd>` | fabric-engineer | Catálogo de dados: comentários, scan, discover, industry, value |
-| `/medallion <tarefa>` | fabric-engineer | Design de camadas Bronze/Silver/Gold no Fabric |
-| `/migrate <fonte> para <destino>` | migration-expert | Assessment e migração de banco relacional para Databricks/Fabric |
-| `/python <tarefa>` | python-expert | Python puro: pacotes, testes, APIs, CLIs, automação |
-| `/dbt <tarefa>` | dbt-expert | dbt Core: models, testes, snapshots, seeds, docs |
-| `/quality <tarefa>` | data-quality-steward | Qualidade de dados cross-platform |
-| `/governance <tarefa>` | governance-auditor | Auditoria, linhagem, PII, LGPD/GDPR, RLS/OLS |
-| `/contract <tarefa>` | data-contracts-engineer | Data Contracts ODCS, SLA, schema governance, breaking changes |
-| `/mesh <tarefa>` | data-mesh-architect | Data Mesh: domínios, Data Products, governança federada |
-| `/ontology <tarefa>` | fabric-ontology | OWL 2, import/export OneLake, triples → Delta, Fabric IQ Ontology |
-| `/geral <pergunta>` | geral | Resposta direta sem Supervisor — mais rápido e barato |
-
----
-
-**Catalog Intelligence** _(via `/catalog` → fabric-engineer):_
-
-| Subcomando | Descrição |
-|------------|-----------|
+| Comando | Descrição |
+|---------|-----------|
+| `/sql <query>` | SQL direto para o sql-expert |
+| `/spark <tarefa>` | PySpark/DLT direto para o spark-expert |
+| `/pipeline <tarefa>` | Pipeline ETL direto para o pipeline-architect |
+| `/dbt <tarefa>` | dbt Core direto para o dbt-expert |
+| `/quality <tarefa>` | Qualidade de dados direta |
+| `/governance <tarefa>` | Auditoria e governança direta |
+| `/semantic <tarefa>` | Modelagem semântica direta |
+| `/migrate <fonte> para <destino>` | Assessment e migração de banco relacional para Databricks/Fabric |
+| `/python <tarefa>` | Python puro direto para o python-expert |
+| `/ontology <tarefa>` | Web semântica: design OWL 2, import/export OneLake, conversão de formatos, triples → Delta |
+| `/monitor <pergunta>` | Q&A sobre alertas do daemon de monitoramento de negócio |
+| `/genie <tarefa>` | Criar/atualizar Genie Spaces no Databricks |
+| `/dashboard <tarefa>` | Criar/publicar AI/BI Dashboards no Databricks |
 | `/catalog comments <schema>` | Gera comentários de AI para tabelas e colunas de um schema |
 | `/catalog scan [schema]` | Calcula Data Maturity Score (0–100, A–F) e exporta relatório em `output/catalog/` |
 | `/catalog discover [schema]` | Descobre casos de uso de negócio para tabelas existentes |
 | `/catalog industry <schema>` | Alinha tabelas a KPIs e casos de uso da indústria detectada |
 | `/catalog value [schema]` | Business Value Engine: ranking de tabelas por valor com custo estimado de downtime |
-
----
-
-**Orquestração e Sessão:**
-
-| Comando | Descrição |
-|---------|-----------|
 | `/brief <texto>` | Converte transcript/briefing em backlog estruturado |
 | `/ship <feature>` | Gera SHIPPED doc — decisões, trade-offs e próximos passos de uma feature entregue |
 | `/plan <objetivo>` | Planejamento completo com thinking habilitado (8k tokens) |
 | `/review <artefato>` | Review de código ou pipeline |
 | `/party <query>` | Multi-agente paralelo (flags: `--quality`, `--arch`, `--engineering`, `--migration`, `--full`) |
-| `/analyze-project [--quality\|--arch\|--databricks\|--fabric] [descrição]` | Análise completa do projeto: 4 especialistas em paralelo, relatório salvo em `output/analyze-project/` |
 | `/workflow <wf-id> <query>` | Executa workflow colaborativo pré-definido (WF-01 a WF-05) com context chain |
+| `/fabric <tarefa>` | Pipeline Architect com foco em Microsoft Fabric |
+| `/geral <pergunta>` | Resposta direta sem Supervisor — mais rápido e barato |
 | `/health` | Status das plataformas configuradas |
 | `/status` | Estado da sessão atual |
 | `/memory <query>` | Consulta à memória persistente (`/memory clear` para limpar com confirmação) |
@@ -261,7 +221,7 @@ O fluxo de **migração** orquestra 7 fases em sequência — do briefing inicia
 
 ## Catalog Intelligence
 
-O **Fabric Engineer** inclui capacidades de Catalog Intelligence — transforma catálogos de dados brutos em ativos documentados, avaliados e alinhados ao negócio. Opera sobre Unity Catalog (Databricks) e Fabric Lakehouse.
+O agente **catalog-intelligence** transforma catálogos de dados brutos em ativos documentados, avaliados e alinhados ao negócio. Opera sobre Unity Catalog (Databricks) e Fabric Lakehouse.
 
 ### Comandos `/catalog`
 
@@ -286,13 +246,13 @@ O **Fabric Engineer** inclui capacidades de Catalog Intelligence — transforma 
 
 ---
 
-## Fabric Ontology — Web Semântica no Fabric
+## Ontology Engineer — Web Semântica no Fabric
 
 <p align="center">
-  <img src="img/readme/ontology_engineer_futuristic.png" alt="Fluxo Fabric Ontology" width="100%">
+  <img src="img/readme/ontology_engineer_futuristic.png" alt="Fluxo Ontology Engineer" width="100%">
 </p>
 
-O agente **fabric-ontology** traz suporte a **OWL 2** (Web Ontology Language) ao ecossistema de dados — design de ontologias de domínio, import/export de arquivos para o Microsoft Fabric OneLake e integração com Delta Lake para consultas SQL sobre grafos semânticos.
+O agente **ontology-engineer** traz suporte a **OWL 2** (Web Ontology Language) ao ecossistema de dados — design de ontologias de domínio, import/export de arquivos para o Microsoft Fabric OneLake e integração com Delta Lake para consultas SQL sobre grafos semânticos.
 
 > **Escopo atual:** OWL 2. **Roadmap:** SKOS → SPARQL endpoint → SHACL → Linked Data.
 
@@ -327,7 +287,7 @@ O agente: (1) cria o Turtle com namespace `https://ontologia.empresa.com.br/hr/`
 - **Bibliotecas:** `rdflib>=7.0`, `owlready2>=0.47` — instalar com `pip install -e ".[ontology]"`
 - **Armazenamento:** OneLake Files (`Files/ontologies/`) + Delta Table `ontology_triples` com colunas `subject`, `predicate`, `object`, `graph`, `datatype`, `lang_tag`, `source_file`, `loaded_at`
 - **MCPs usados:** `fabric_official` (OneLake file ops + workspace items), `fabric_community` (descoberta), `context7` (docs rdflib), `tavily`/`firecrawl` (ontologias públicas W3C, OBO, Schema.org)
-- **Escalação:** `databricks-engineer` para notebooks em escala, `governance-auditor` para propriedades PII
+- **Escalação:** `spark-expert` para notebooks em escala, `governance-auditor` para propriedades PII
 
 ---
 
@@ -366,7 +326,7 @@ Detectado por padrões: `rate limit`, `overloaded`, `529`, `too many requests`, 
 
 ### Auto-Revisão de DDL (LLM-as-Reviewer)
 
-O **databricks-engineer** executa 10 verificações antes de entregar qualquer DDL/DML:
+O **sql-expert** executa 10 verificações antes de entregar qualquer DDL/DML:
 
 - Bloqueia `DROP` sem confirmação explícita do usuário
 - Rejeita `UPDATE`/`DELETE` sem `WHERE`
@@ -384,7 +344,7 @@ O **migration-expert** executa 10 verificações específicas de migração:
 
 ### Genie Health Check
 
-O **fabric-engineer** e o **databricks-engineer** incluem um playbook de 20 verificações para Genie Spaces:
+O **semantic-modeler** inclui um playbook de 20 verificações para Genie Spaces:
 
 | Dimensão | Checks | O que avalia |
 |----------|--------|-------------|
@@ -458,27 +418,10 @@ Arquitetura multi-camada com custo de retrieval zero (sem chamada LLM).
 
 **Retrieval:** BM25 lexical via FTS5 + rerank por cosine similarity quando `fastembed` instalado. Sem chamada Sonnet lateral — latência < 5ms, custo $0.
 
-### Loop de Aprendizado Autônomo (LESSON_LEARNED)
-
-Além da memória episódica, o sistema captura automaticamente **lições aprendidas** de erros e eventos de baixa performance — formando um loop de aprendizado entre sessões.
-
-**4 triggers de captura (PostToolUse + PreToolUse):**
-
-| Trigger | Condição | Custo |
-|---------|----------|-------|
-| `error` | Qualquer erro em tool MCP | ~$0.001/lesson (Haiku) |
-| `high_cost` | > 5 operações HIGH na sessão | ~$0.001/lesson |
-| `retries` | Mesmo agente chamado > 3× | ~$0.001/lesson |
-| `slow_op` | Tool MCP > 60s de duração | ~$0.001/lesson |
-
-Cada lesson é estruturada em 3 seções (*O que aconteceu / Causa raiz / Padrão para evitar*) e injetada no system prompt dos agentes T1 antes de operações de alto risco. Decay automático de 30 dias. Limite de 50 lessons ativas por agente com deduplicação por sobreposição de summary (>60%).
-
 ```bash
 MEMORY_ENABLED=true
 MEMORY_RETRIEVAL_ENABLED=true
 MEMORY_CAPTURE_ENABLED=true
-# MEMORY_DECAY_LESSON_LEARNED_DAYS=30
-# MEMORY_LESSON_MAX_PER_AGENT=50
 
 # Embeddings semânticos locais (opcional — requer pip install ".[memory]")
 SHORT_TERM_EMBEDDER_ENABLED=false
@@ -537,10 +480,6 @@ make health-fabric
 | `INJECT_KB_INDEX` | true | Injeção automática de KBs nos agentes |
 | `IDLE_TIMEOUT_MINUTES` | 30 | Reset automático por inatividade |
 | `MEMORY_ENABLED` | true | Sistema de memória persistente |
-| `MEMORY_LESSON_MAX_PER_AGENT` | 50 | Máximo de LESSON_LEARNED ativas por agente |
-| `S4_AUTONOMOUS_MODE` | false | Quando true, auto-aprova delegações read-only/single-agent/baixo custo sem confirmação humana |
-| `S4_AUTO_APPROVAL_MIN_CLARITY_SCORE` | 4 | Clarity score mínimo (0–5) para auto-aprovação S4 |
-| `S4_AUTO_APPROVAL_MAX_COST_USD` | 0.10 | Custo estimado máximo (USD) para auto-aprovação S4 |
 | `CONSOLE_LOG_LEVEL` | WARNING | Nível de log no terminal (WARNING oculta logs operacionais) |
 | `SKILL_REFRESH_INTERVAL_DAYS` | 3 | Intervalo de refresh das Skills |
 | `AGENT_PERMISSION_MODE` | `bypassPermissions` | `acceptEdits` para pedir confirmação antes de writes |

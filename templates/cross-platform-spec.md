@@ -62,10 +62,10 @@ Alternativa: OneLake Shortcuts para zero-copy.
 
 | Componente | Databricks | Fabric | Ação Necessária |
 |-----------|-----------|--------|----------------|
-| DDL | Spark SQL | T-SQL (Synapse) | [Conversão automática via databricks-engineer] |
+| DDL | Spark SQL | T-SQL (Synapse) | [Conversão automática via sql-expert] |
 | Queries analíticas | Spark SQL | T-SQL ou KQL | [PREENCHER] |
 | Expectations | SDP `@dp.expect*` | [Sem equivalente nativo] | [Implementar via data-quality-steward] |
-| Semantic Layer | Metric Views | Direct Lake + DAX | [Mapeamento via fabric-engineer] |
+| Semantic Layer | Metric Views | Direct Lake + DAX | [Mapeamento via semantic-modeler] |
 
 **Regra de Dialeto:**
 - Databricks → Spark SQL
@@ -104,19 +104,19 @@ Alternativa: OneLake Shortcuts para zero-copy.
 
 | Ordem | Agente | Tarefa | Plataforma |
 |-------|--------|--------|-----------|
-| 1 | databricks-engineer | Estratégia de conectividade + inventário de schema | Ambas |
-| 2 | databricks-engineer | DDL nas plataformas destino + conversão de dialeto | Destino |
-| 3 | fabric-engineer | Adaptação de artefatos e movimentação para Fabric | Destino |
+| 1 | pipeline-architect | Configurar conectividade cross-platform | Ambas |
+| 2 | sql-expert | DDL nas plataformas destino + conversão de dialeto | Destino |
+| 3 | spark-expert | Pipeline de movimentação/transformação | Origem |
 | 4 | data-quality-steward | Expectations + validação pós-carga | Ambas |
 | 5 | governance-auditor | Auditoria de acessos e linhagem cross-platform | Ambas |
-| 6 | fabric-engineer | Modelo semântico na plataforma de consumo | Destino |
+| 6 | semantic-modeler | Modelo semântico na plataforma de consumo | Destino |
 
 ---
 
 ## 9. Checklist de Validação
 
 - [ ] Estratégia de conectividade definida e testada
-- [ ] Mapeamento de dialetos validado (databricks-engineer)
+- [ ] Mapeamento de dialetos validado (sql-expert)
 - [ ] Linhagem documentada em ambas plataformas
 - [ ] PII protegido em ambas as plataformas
 - [ ] Expectations definidas em ambos os lados

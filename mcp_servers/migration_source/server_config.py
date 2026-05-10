@@ -73,17 +73,3 @@ MIGRATION_SOURCE_MCP_TOOLS = [
     "mcp__migration_source__migration_source_get_schema_summary",
     "mcp__migration_source__migration_source_sample_table",
 ]
-
-# Subconjunto metadata-only: listing + describe + sample (sem extração de DDL/definições completas)
-MIGRATION_SOURCE_MCP_READONLY_TOOLS = [
-    "mcp__migration_source__migration_source_list_sources",
-    "mcp__migration_source__migration_source_diagnostics",
-    "mcp__migration_source__migration_source_list_schemas",
-    "mcp__migration_source__migration_source_list_tables",
-    "mcp__migration_source__migration_source_describe_table",
-    "mcp__migration_source__migration_source_count_tables_by_schema",
-    "mcp__migration_source__migration_source_list_views",
-    "mcp__migration_source__migration_source_list_procedures",
-    "mcp__migration_source__migration_source_list_functions",
-    "mcp__migration_source__migration_source_sample_table",
-]

@@ -120,20 +120,18 @@ Leia o arquivo completo e extraia:
 - Restrições
 
 Agentes a analisar:
-- `agents/registry/databricks-engineer.md`
-- `agents/registry/databricks-ai.md`
-- `agents/registry/fabric-engineer.md`
-- `agents/registry/fabric-rti.md`
-- `agents/registry/fabric-ontology.md`
-- `agents/registry/migration-expert.md`
-- `agents/registry/python-expert.md`
-- `agents/registry/dbt-expert.md`
-- `agents/registry/data-quality-steward.md`
-- `agents/registry/governance-auditor.md`
-- `agents/registry/data-contracts-engineer.md`
-- `agents/registry/data-mesh-architect.md`
 - `agents/registry/business-analyst.md`
+- `agents/registry/business-monitor.md`
+- `agents/registry/data-quality-steward.md`
+- `agents/registry/dbt-expert.md`
 - `agents/registry/geral.md`
+- `agents/registry/governance-auditor.md`
+- `agents/registry/migration-expert.md`
+- `agents/registry/pipeline-architect.md`
+- `agents/registry/python-expert.md`
+- `agents/registry/semantic-modeler.md`
+- `agents/registry/spark-expert.md`
+- `agents/registry/sql-expert.md`
 
 ### Fase 5 — Todos os Hooks
 
@@ -180,6 +178,7 @@ MCP servers a analisar:
 
 - `commands/parser.py` — `CommandRegistry`, como faz parse de args
 - `commands/geral.py` — implementação do `/geral`
+- `commands/monitor.py` — implementação do `/monitor`
 - `commands/party.py` — flags `--quality`, `--arch`, `--engineering`, `--migration`, `--full`; como executa em paralelo
 - `commands/sessions.py` — como lista e restaura sessões
 - `commands/workflow.py` — como executa WF-01 a WF-05
@@ -204,6 +203,8 @@ MCP servers a analisar:
 - `utils/frontmatter.py` — `parse_yaml_frontmatter()`: regex/parser
 - `utils/tokenizer.py` — modelo de contagem de tokens, preços por modelo
 - `utils/summarizer.py` — quando usa Haiku, como estrutura o prompt de sumarização
+- `utils/monitor_alerter.py` — canais de alerta disponíveis
+- `scripts/monitor_daemon.py` — frequência de checagem, formato de alertas
 - `scripts/refresh_skills.py` — como chama Messages API diretamente
 - `scripts/bootstrap.py` — o que valida no ambiente
 - `scripts/analyze_tool_coverage.py` — métricas de cobertura de tools

@@ -121,17 +121,15 @@ class TestFormatContextEntry:
 
     def test_agent_tool_includes_agent_name(self):
         result = _format_context_entry(
-            "Agent", {"agent_name": "databricks-engineer", "prompt": "consulta tabela X"}, "resp"
+            "Agent", {"agent_name": "sql-expert", "prompt": "consulta tabela X"}, "resp"
         )
-        assert "databricks-engineer" in result
+        assert "sql-expert" in result
         assert "consulta tabela X" in result
 
     def test_agent_tool_fallback_name_key(self):
         """Suporte ao campo 'name' como fallback de 'agent_name'."""
-        result = _format_context_entry(
-            "Agent", {"name": "fabric-engineer", "prompt": "teste"}, None
-        )
-        assert "fabric-engineer" in result
+        result = _format_context_entry("Agent", {"name": "spark-expert", "prompt": "teste"}, None)
+        assert "spark-expert" in result
 
     def test_agent_tool_prompt_truncated_at_200(self):
         """Prompt do Agent deve ser truncado em 200 caracteres."""

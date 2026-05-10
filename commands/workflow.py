@@ -11,7 +11,7 @@ Implementa três melhorias sobre o sistema de delegação simples do Supervisor:
 2. Parallel Tasks (CrewAI: async_execution=True por task)
    Tasks independentes dentro do mesmo workflow rodam em asyncio.gather.
    Ex: no WF-01, data-quality-steward e governance-auditor podem rodar em paralelo
-   depois que o databricks-engineer terminar.
+   depois que o spark-expert terminar.
 
 3. Human Pause (CrewAI: human_input=True)
    Workflows com impacto em produção pausam antes de fases destrutivas e aguardam
@@ -52,10 +52,6 @@ logger = logging.getLogger("data_agents.workflow")
 # recebe (wf_id, phase_name, context_so_far) → True para continuar, False para abortar
 HumanPauseCallback = Callable[[str, str, str], Awaitable[bool]]
 
-# Tipo do callback de progresso de etapa:
-# recebe (wf_id, phase, agent, status) onde status é "start" | "done" | "error"
-StepCallback = Callable[[str, str, str, str], Awaitable[None]]
-
 
 # ── Definições de dados ───────────────────────────────────────────────────────
 
@@ -65,7 +61,7 @@ class WorkflowStep:
     """Define uma etapa do workflow."""
 
     agent: str
-    """Nome do agente a invocar (ex: 'databricks-engineer')."""
+    """Nome do agente a invocar (ex: 'spark-expert')."""
 
     task: str
     """Descrição da tarefa para esta etapa. Suporta {context} como placeholder
@@ -215,9 +211,6 @@ class WorkflowRunner:
     human_pause_callback : HumanPauseCallback | None
         Chamado quando require_human_approval=True.
         Se None, usa aprovação automática (útil em testes).
-    step_callback : StepCallback | None
-        Chamado no início ("start"), fim ("done") e erro ("error") de cada etapa.
-        Útil para atualizar UI em tempo real (ex: Chainlit cl.Step).
     """
 
     def __init__(
@@ -225,12 +218,10 @@ class WorkflowRunner:
         wf_id: str,
         steps: list[WorkflowStep],
         human_pause_callback: HumanPauseCallback | None = None,
-        step_callback: StepCallback | None = None,
     ):
         self.wf_id = wf_id
         self.steps = steps
         self._human_pause = human_pause_callback or _default_human_pause
-        self._step_callback = step_callback
 
     async def run(self, query: str) -> WorkflowResult:
         """Executa o workflow completo."""
@@ -322,9 +313,6 @@ class WorkflowRunner:
         phase_label = step.phase or step.agent
         logger.info(f"[{self.wf_id}] Iniciando etapa: {phase_label}")
 
-        if self._step_callback:
-            await self._step_callback(self.wf_id, phase_label, step.agent, "start")
-
         # Injeta contexto acumulado no prompt da task
         enriched_task = state.inject_context(step.task, step)
 
@@ -346,10 +334,6 @@ class WorkflowRunner:
             logger.info(
                 f"[{self.wf_id}] Etapa '{phase_label}' concluída em {duration:.1f}s (${cost:.4f})"
             )
-
-            if self._step_callback:
-                await self._step_callback(self.wf_id, phase_label, step.agent, "done")
-
             return StepResult(
                 step=step,
                 output=output_text,
@@ -360,10 +344,6 @@ class WorkflowRunner:
         except Exception as e:
             duration = time.monotonic() - t0
             logger.error(f"[{self.wf_id}] Etapa '{phase_label}' falhou: {e}", exc_info=True)
-
-            if self._step_callback:
-                await self._step_callback(self.wf_id, phase_label, step.agent, "error")
-
             return StepResult(
                 step=step,
                 output="",
@@ -381,7 +361,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
     """WF-01: Pipeline End-to-End Bronze→Gold."""
     return [
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="spark-expert",
             phase="Bronze Ingestion",
             task=(
                 "Crie a camada Bronze do pipeline Medallion para o seguinte projeto:\n\n{context}\n\n"
@@ -390,7 +370,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
             ),
         ),
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="spark-expert",
             phase="Silver Transformation",
             task=(
                 "Com base na camada Bronze já criada, crie a camada Silver:\n\n{context}\n\n"
@@ -399,7 +379,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
             ),
         ),
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="spark-expert",
             phase="Gold Layer",
             task=(
                 "Com base nas camadas Bronze e Silver, crie a camada Gold:\n\n{context}\n\n"
@@ -427,7 +407,7 @@ def build_wf01_pipeline_end_to_end(target_platform: str = "databricks") -> list[
             parallel_with=["Data Quality"],
         ),
         WorkflowStep(
-            agent="fabric-engineer",
+            agent="semantic-modeler",
             phase="Semantic Layer",
             task=(
                 "Com base na camada Gold criada, crie o modelo semântico:\n\n{context}\n\n"
@@ -442,7 +422,7 @@ def build_wf02_star_schema() -> list[WorkflowStep]:
     """WF-02: Star Schema na camada Gold."""
     return [
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="sql-expert",
             phase="Schema Discovery",
             task=(
                 "Explore os schemas disponíveis e identifique as tabelas Silver para o Star Schema:\n\n{context}\n\n"
@@ -450,7 +430,7 @@ def build_wf02_star_schema() -> list[WorkflowStep]:
             ),
         ),
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="spark-expert",
             phase="Star Schema Implementation",
             task=(
                 "Com base na descoberta de schema, implemente o Star Schema em PySpark:\n\n{context}\n\n"
@@ -469,7 +449,7 @@ def build_wf02_star_schema() -> list[WorkflowStep]:
             parallel_with=["Semantic Modeling"],
         ),
         WorkflowStep(
-            agent="fabric-engineer",
+            agent="semantic-modeler",
             phase="Semantic Modeling",
             task=(
                 "Com base no Star Schema, crie o modelo semântico:\n\n{context}\n\n"
@@ -484,7 +464,7 @@ def build_wf03_cross_platform() -> list[WorkflowStep]:
     """WF-03: Migração Cross-Platform Databricks ↔ Fabric."""
     return [
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="pipeline-architect",
             phase="Architecture Design",
             task=(
                 "Projete a arquitetura de migração cross-platform:\n\n{context}\n\n"
@@ -492,7 +472,7 @@ def build_wf03_cross_platform() -> list[WorkflowStep]:
             ),
         ),
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="sql-expert",
             phase="SQL Transpilation",
             task=(
                 "Transcreva os objetos SQL para o dialeto do destino:\n\n{context}\n\n"
@@ -501,11 +481,11 @@ def build_wf03_cross_platform() -> list[WorkflowStep]:
             parallel_with=["Spark Migration"],
         ),
         WorkflowStep(
-            agent="fabric-engineer",
+            agent="spark-expert",
             phase="Spark Migration",
             task=(
-                "Adapte o código para a plataforma Fabric destino:\n\n{context}\n\n"
-                "Converta pipelines DLT/Auto Loader para Data Factory/Fabric equivalentes."
+                "Migre o código PySpark/DLT para a plataforma destino:\n\n{context}\n\n"
+                "Adapte Auto Loader, Delta Lake e jobs para o equivalente no destino."
             ),
             parallel_with=["SQL Transpilation"],
         ),
@@ -586,7 +566,7 @@ def build_wf05_relational_migration(
         ),
         # DDL transpilation e pipeline rodam em paralelo
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="sql-expert",
             phase="DDL Transpilation",
             task=(
                 "Transcreva o DDL do banco de origem para o dialeto do destino:\n\n{context}\n\n"
@@ -596,7 +576,7 @@ def build_wf05_relational_migration(
             parallel_with=["Pipeline Generation"],
         ),
         WorkflowStep(
-            agent="databricks-engineer",
+            agent="spark-expert",
             phase="Pipeline Generation",
             task=(
                 "Gere os jobs de ingestão para mover dados da fonte ao destino:\n\n{context}\n\n"

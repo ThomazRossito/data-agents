@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import logging
 import time
-from collections.abc import Awaitable, Callable
 
 import anthropic
 
@@ -86,7 +85,6 @@ async def run_geral_query(
     user_message: str,
     history: list[dict],
     session_type: str = "geral",
-    token_callback: Callable[[str], Awaitable[None]] | None = None,
 ) -> tuple[str, dict[str, float]]:
     """
     Executa consulta /geral via API Anthropic direta (sem SDK de agentes).
@@ -101,19 +99,14 @@ async def run_geral_query(
       3. Exibir o response_text (CLI com Rich ou UI com Streamlit).
 
     Args:
-        user_message:   Mensagem atual do usuário (sem histórico embutido).
-        history:        Lista [{role, content}] incluindo a mensagem atual.
-        session_type:   Tipo de sessão para logging (default "geral").
-        token_callback: Quando fornecido, ativa streaming — chamado com cada
-                        chunk de texto à medida que chega da API. Útil para
-                        UIs que exibem tokens progressivamente (ex: Chainlit).
-                        Se None, usa messages.create() (espera resposta completa).
+        user_message: Mensagem atual do usuário (sem histórico embutido).
+        history:      Lista [{role, content}] incluindo a mensagem atual.
+        session_type: Tipo de sessão para logging (default "geral").
 
     Returns:
         Tuple (response_text, metrics) onde:
-          - response_text: Texto completo da resposta.
-          - metrics: {"cost": float, "turns": float, "duration": float,
-                      "input_tokens": float, "output_tokens": float}
+          - response_text: Texto da resposta (vazio se erro).
+          - metrics: {"cost": float, "turns": float, "duration": float}
 
     Raises:
         Propaga exceções da API Anthropic — o caller deve tratar e reverter histórico.
@@ -122,45 +115,25 @@ async def run_geral_query(
     model = _geral_model()
 
     client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+
     t0 = time.monotonic()
-
-    response_text = ""
-    input_tokens = 0
-    output_tokens = 0
-
-    if token_callback is not None:
-        # Streaming: tokens chegam progressivamente; callback atualiza a UI em tempo real
-        async with client.messages.stream(
-            model=model,
-            max_tokens=4096,
-            system=GERAL_SYSTEM,
-            messages=[{"role": "user", "content": prompt}],
-        ) as stream:
-            async for chunk in stream.text_stream:
-                response_text += chunk
-                await token_callback(chunk)
-
-            final = await stream.get_final_message()
-            if final.usage:
-                input_tokens = final.usage.input_tokens
-                output_tokens = final.usage.output_tokens
-    else:
-        # Non-streaming: espera a resposta completa antes de retornar
-        message = await client.messages.create(
-            model=model,
-            max_tokens=4096,
-            system=GERAL_SYSTEM,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        for block in message.content:
-            if hasattr(block, "text") and block.text.strip():
-                response_text += block.text
-        input_tokens = message.usage.input_tokens if message.usage else 0
-        output_tokens = message.usage.output_tokens if message.usage else 0
-
+    message = await client.messages.create(
+        model=model,
+        max_tokens=4096,
+        system=GERAL_SYSTEM,
+        messages=[{"role": "user", "content": prompt}],
+    )
     duration = time.monotonic() - t0
 
+    # Extrai texto da resposta
+    response_text = ""
+    for block in message.content:
+        if hasattr(block, "text") and block.text.strip():
+            response_text += block.text
+
     # Calcula custo estimado (Haiku: $0.80/MTok input, $4.00/MTok output)
+    input_tokens = message.usage.input_tokens if message.usage else 0
+    output_tokens = message.usage.output_tokens if message.usage else 0
     cost = (input_tokens * 0.80 + output_tokens * 4.00) / 1_000_000
 
     metrics: dict[str, float] = {

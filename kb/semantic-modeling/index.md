@@ -5,7 +5,7 @@ mcp_validated: "2026-04-15"
 # KB: Modelagem Semântica — Índice
 
 **Domínio:** Modelos semânticos, métricas DAX, Direct Lake e consumo analítico.
-**Agentes:** fabric-engineer
+**Agentes:** semantic-modeler
 
 ---
 

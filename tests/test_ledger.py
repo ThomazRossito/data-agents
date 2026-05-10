@@ -126,7 +126,7 @@ class TestVerifyEntry:
             "event": "tool_call",
             "tool_name": "mcp__databricks__execute_sql",
             "session_id": "sess-abc",
-            "agent_name": "databricks-engineer",
+            "agent_name": "sql-expert",
             "result_type": "success",
         }
         entry["ledger_entry_hash"] = ledger.sign_entry(entry, key)

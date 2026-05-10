@@ -6,7 +6,6 @@ import pytest
 
 from commands.workflow import (
     WORKFLOW_REGISTRY,
-    StepCallback,
     StepResult,
     WorkflowResult,
     WorkflowState,
@@ -27,20 +26,20 @@ from commands.workflow import (
 class TestWorkflowState:
     def test_empty_context_returns_empty_string(self):
         state = WorkflowState(wf_id="WF-01", query="teste")
-        step = WorkflowStep(agent="databricks-engineer", task="tarefa")
+        step = WorkflowStep(agent="spark-expert", task="tarefa")
         assert state.build_context_for(step) == ""
 
     def test_add_and_build_context(self):
         state = WorkflowState(wf_id="WF-01", query="criar pipeline")
-        state.add("databricks-engineer", "Output do databricks-engineer: código Bronze criado")
+        state.add("spark-expert", "Output do spark-expert: código Bronze criado")
         step = WorkflowStep(agent="data-quality-steward", task="validar {context}")
         ctx = state.build_context_for(step)
-        assert "databricks-engineer" in ctx
-        assert "Output do databricks-engineer" in ctx
+        assert "spark-expert" in ctx
+        assert "Output do spark-expert" in ctx
 
     def test_inject_context_replaces_placeholder(self):
         state = WorkflowState(wf_id="WF-01", query="pipeline")
-        state.add("databricks-engineer", "Bronze criado com sucesso")
+        state.add("spark-expert", "Bronze criado com sucesso")
         step = WorkflowStep(agent="data-quality-steward", task="Valide: {context}")
         result = state.inject_context("Valide: {context}", step)
         assert "{context}" not in result
@@ -48,7 +47,7 @@ class TestWorkflowState:
 
     def test_inject_context_appends_when_no_placeholder(self):
         state = WorkflowState(wf_id="WF-01", query="pipeline")
-        state.add("databricks-engineer", "Bronze pronto")
+        state.add("spark-expert", "Bronze pronto")
         step = WorkflowStep(agent="data-quality-steward", task="Valide os dados")
         result = state.inject_context("Valide os dados", step)
         assert "Valide os dados" in result
@@ -56,18 +55,18 @@ class TestWorkflowState:
 
     def test_inject_context_no_change_when_empty(self):
         state = WorkflowState(wf_id="WF-01", query="pipeline")
-        step = WorkflowStep(agent="databricks-engineer", task="primeira etapa")
+        step = WorkflowStep(agent="spark-expert", task="primeira etapa")
         result = state.inject_context("primeira etapa", step)
         assert result == "primeira etapa"
 
     def test_multiple_outputs_in_context(self):
         state = WorkflowState(wf_id="WF-02", query="star schema")
-        state.add("databricks-engineer", "Descoberta: 5 tabelas Silver")
-        state.add("fabric-engineer", "Star Schema implementado em 3 tabelas")
+        state.add("sql-expert", "Descoberta: 5 tabelas Silver")
+        state.add("spark-expert", "Star Schema implementado em 3 tabelas")
         step = WorkflowStep(agent="data-quality-steward", task="Valide {context}")
         ctx = state.build_context_for(step)
-        assert "databricks-engineer" in ctx
-        assert "fabric-engineer" in ctx
+        assert "sql-expert" in ctx
+        assert "spark-expert" in ctx
         assert "5 tabelas Silver" in ctx
 
 
@@ -76,7 +75,7 @@ class TestWorkflowState:
 
 class TestWorkflowResult:
     def _make_step_result(self, success: bool = True) -> StepResult:
-        step = WorkflowStep(agent="databricks-engineer", task="t", phase="Bronze")
+        step = WorkflowStep(agent="spark-expert", task="t", phase="Bronze")
         return StepResult(
             step=step, output="output", cost_usd=0.01, duration_seconds=1.0, success=success
         )
@@ -186,9 +185,9 @@ class TestWorkflowBuilders:
         steps = build_wf01_pipeline_end_to_end()
         assert len(steps) >= 5
 
-    def test_wf01_starts_with_databricks_engineer(self):
+    def test_wf01_starts_with_spark_expert(self):
         steps = build_wf01_pipeline_end_to_end()
-        assert steps[0].agent == "databricks-engineer"
+        assert steps[0].agent == "spark-expert"
 
     def test_wf01_has_parallel_quality_and_governance(self):
         steps = build_wf01_pipeline_end_to_end()
@@ -200,15 +199,15 @@ class TestWorkflowBuilders:
         steps = build_wf02_star_schema()
         assert len(steps) >= 4
 
-    def test_wf02_starts_with_databricks_engineer(self):
+    def test_wf02_starts_with_sql_expert(self):
         steps = build_wf02_star_schema()
-        assert steps[0].agent == "databricks-engineer"
+        assert steps[0].agent == "sql-expert"
 
-    def test_wf03_has_parallel_databricks_and_fabric(self):
+    def test_wf03_has_parallel_sql_and_spark(self):
         steps = build_wf03_cross_platform()
         parallel_agents = {s.agent for s in steps if s.parallel_with}
-        assert "databricks-engineer" in parallel_agents
-        assert "fabric-engineer" in parallel_agents
+        assert "sql-expert" in parallel_agents
+        assert "spark-expert" in parallel_agents
 
     def test_wf04_ends_with_compliance_report(self):
         steps = build_wf04_governance_audit()
@@ -226,7 +225,8 @@ class TestWorkflowBuilders:
     def test_wf05_has_parallel_ddl_and_pipeline(self):
         steps = build_wf05_relational_migration()
         parallel_agents = {s.agent for s in steps if s.parallel_with}
-        assert "databricks-engineer" in parallel_agents
+        assert "sql-expert" in parallel_agents
+        assert "spark-expert" in parallel_agents
 
     def test_workflow_registry_has_all_five(self):
         for wf_id in ("WF-01", "WF-02", "WF-03", "WF-04", "WF-05"):
@@ -257,7 +257,7 @@ class TestWorkflowRunner:
 
     @pytest.mark.asyncio
     async def test_run_returns_workflow_result(self):
-        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa simples", phase="P1")]
+        steps = [WorkflowStep(agent="spark-expert", task="tarefa simples", phase="P1")]
         runner = WorkflowRunner(wf_id="WF-TEST", steps=steps)
 
         async def mock_query(prompt, options):
@@ -275,10 +275,8 @@ class TestWorkflowRunner:
     @pytest.mark.asyncio
     async def test_human_pause_callback_abort(self):
         steps = [
-            WorkflowStep(agent="databricks-engineer", task="t1", phase="P1"),
-            WorkflowStep(
-                agent="fabric-engineer", task="t2", phase="P2", require_human_approval=True
-            ),
+            WorkflowStep(agent="spark-expert", task="t1", phase="P1"),
+            WorkflowStep(agent="sql-expert", task="t2", phase="P2", require_human_approval=True),
         ]
 
         async def deny_callback(wf_id, phase, ctx):
@@ -301,69 +299,3 @@ class TestWorkflowRunner:
 
         assert result.aborted is True
         assert result.success is False
-
-    @pytest.mark.asyncio
-    async def test_step_callback_called_on_start_and_done(self):
-        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa", phase="P1")]
-        events: list[tuple[str, str, str, str]] = []
-
-        async def step_cb(wf_id: str, phase: str, agent: str, status: str) -> None:
-            events.append((wf_id, phase, agent, status))
-
-        async def mock_query(prompt, options):
-            class FakeResult:
-                total_cost_usd = 0.01
-
-            yield FakeResult()
-
-        runner = WorkflowRunner(wf_id="WF-TEST", steps=steps, step_callback=step_cb)
-        with patch("commands.workflow.sdk_query", side_effect=mock_query):
-            result = await runner.run("query")
-
-        assert ("WF-TEST", "P1", "databricks-engineer", "start") in events
-        assert ("WF-TEST", "P1", "databricks-engineer", "done") in events
-        assert result.success is True
-
-    @pytest.mark.asyncio
-    async def test_step_callback_called_on_error(self):
-        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa", phase="P1")]
-        events: list[tuple[str, str, str, str]] = []
-
-        async def step_cb(wf_id: str, phase: str, agent: str, status: str) -> None:
-            events.append((wf_id, phase, agent, status))
-
-        async def mock_query_raise(prompt, options):
-            raise RuntimeError("SDK error")
-            yield  # make it a generator
-
-        runner = WorkflowRunner(wf_id="WF-TEST", steps=steps, step_callback=step_cb)
-        with patch("commands.workflow.sdk_query", side_effect=mock_query_raise):
-            result = await runner.run("query")
-
-        assert ("WF-TEST", "P1", "databricks-engineer", "start") in events
-        assert ("WF-TEST", "P1", "databricks-engineer", "error") in events
-        assert result.success is False
-
-    @pytest.mark.asyncio
-    async def test_step_callback_none_does_not_raise(self):
-        steps = [WorkflowStep(agent="databricks-engineer", task="tarefa", phase="P1")]
-
-        async def mock_query(prompt, options):
-            class FakeResult:
-                total_cost_usd = 0.005
-
-            yield FakeResult()
-
-        runner = WorkflowRunner(wf_id="WF-TEST", steps=steps, step_callback=None)
-        with patch("commands.workflow.sdk_query", side_effect=mock_query):
-            result = await runner.run("query")
-
-        assert result.success is True
-
-    def test_step_callback_type_is_callable(self):
-        # StepCallback is a type alias — verify it can be used as annotation
-        async def my_cb(wf_id: str, phase: str, agent: str, status: str) -> None:
-            pass
-
-        cb: StepCallback = my_cb
-        assert callable(cb)

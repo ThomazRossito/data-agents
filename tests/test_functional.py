@@ -87,7 +87,7 @@ class TestCommandResultFieldNames:
         result = parse_command("/sql SELECT 1")
         assert result is not None
         assert result.doma_mode == "express"
-        assert "databricks-engineer" in result.doma_prompt
+        assert "sql-expert" in result.doma_prompt
         assert "DOMA EXPRESS" in result.doma_prompt
 
     def test_parse_plan_returns_full_mode(self):
@@ -142,11 +142,9 @@ class TestPartyModeArgParsing:
     def test_explicit_agents(self):
         from commands.party import parse_party_args
 
-        agents, query = parse_party_args(
-            "/party databricks-engineer databricks-ai analise este schema"
-        )
-        assert "databricks-engineer" in agents
-        assert "databricks-ai" in agents
+        agents, query = parse_party_args("/party sql-expert spark-expert analise este schema")
+        assert "sql-expert" in agents
+        assert "spark-expert" in agents
         assert "analise este schema" in query
 
     def test_empty_query_returns_empty_string(self):
@@ -174,19 +172,16 @@ class TestPartyModeGroups:
     """Todos os agentes nos grupos do Party Mode devem existir no registry."""
 
     VALID_AGENTS = {
-        "databricks-engineer",
-        "databricks-ai",
+        "sql-expert",
+        "spark-expert",
+        "pipeline-architect",
         "python-expert",
         "migration-expert",
         "data-quality-steward",
         "governance-auditor",
-        "fabric-engineer",
-        "fabric-rti",
-        "fabric-ontology",
+        "semantic-modeler",
         "dbt-expert",
         "business-analyst",
-        "data-contracts-engineer",
-        "data-mesh-architect",
         "geral",
     }
 
@@ -209,10 +204,10 @@ class TestPartyModeGroups:
 
         assert "governance-auditor" in PARTY_GROUPS["quality"]
 
-    def test_default_group_has_databricks_engineer(self):
+    def test_default_group_has_pipeline_architect(self):
         from commands.party import PARTY_GROUPS
 
-        assert "databricks-engineer" in PARTY_GROUPS["default"]
+        assert "pipeline-architect" in PARTY_GROUPS["default"]
 
     def test_no_duplicate_agents_in_any_group(self):
         from commands.party import PARTY_GROUPS
@@ -603,10 +598,8 @@ class TestPartyModeQueryExtraction:
     def test_explicit_agents_removes_agent_names_from_query(self):
         from commands.party import parse_party_args
 
-        _, query = parse_party_args(
-            "/party databricks-engineer como otimizar queries no Databricks?"
-        )
-        assert "databricks-engineer" not in query
+        _, query = parse_party_args("/party sql-expert como otimizar queries no Databricks?")
+        assert "sql-expert" not in query
         assert "como otimizar queries no Databricks?" == query
 
     def test_multi_word_query_preserved(self):
@@ -666,10 +659,10 @@ class TestPartyModeAgentTiers:
             )
 
     def test_party_default_core_agents_are_tier_1(self):
-        """databricks-engineer, databricks-ai e fabric-engineer devem ser T1."""
+        """sql-expert, spark-expert e pipeline-architect devem ser T1."""
         from agents.loader import _parse_frontmatter, AGENTS_REGISTRY_DIR
 
-        tier1_in_default = ["databricks-engineer", "databricks-ai", "fabric-engineer"]
+        tier1_in_default = ["sql-expert", "spark-expert", "pipeline-architect"]
         for agent_name in tier1_in_default:
             path = AGENTS_REGISTRY_DIR / f"{agent_name}.md"
             content = path.read_text(encoding="utf-8")

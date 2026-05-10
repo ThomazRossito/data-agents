@@ -5,7 +5,7 @@ mcp_validated: "2026-04-15"
 # KB: Databricks — Índice
 
 **Domínio:** Arquitetura, padrões e boas práticas da plataforma Databricks.
-**Agentes:** databricks-engineer, databricks-ai
+**Agentes:** pipeline-architect, sql-expert, spark-expert
 
 ---
 

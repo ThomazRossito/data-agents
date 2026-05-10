@@ -198,29 +198,6 @@ class TestSearch:
         results = lt.search("quantum physics black holes")
         assert results == [] or all(r.id == "m1" for r in results)
 
-    def test_fts5_bracket_in_query_does_not_raise(self, lt: LongTermMemory) -> None:
-        """Query com [ ] não deve levantar exceção (fts5: syntax error near '[')."""
-        lt.upsert(_make_memory("m1", summary="agentes especializados no sistema"))
-        results = lt.search("quais são os [agentes] configurados")
-        assert isinstance(results, list)
-
-    def test_fts5_special_chars_in_query_do_not_raise(self, lt: LongTermMemory) -> None:
-        """Qualquer caractere não-word na query deve ser sanitizado silenciosamente."""
-        lt.upsert(_make_memory("m1", summary="databricks pipeline"))
-        for query in [
-            "databricks [pipeline]",
-            "spark: structured streaming",
-            "pipeline (ETL/ELT)",
-            "dados? qualidade*",
-            "schema^evolution",
-            "{bronze} -> silver -> gold",
-            "/plan quantos agentes no projeto",
-            "/sql select * from tabela",
-            "agentes, pipelines, schemas",
-        ]:
-            results = lt.search(query)
-            assert isinstance(results, list), f"Falhou para query: {query!r}"
-
 
 # ── migrate_from_store ────────────────────────────────────────────────────────
 

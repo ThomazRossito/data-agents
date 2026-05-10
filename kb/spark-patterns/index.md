@@ -5,7 +5,7 @@ mcp_validated: "2026-04-15"
 # KB: Padrões Spark — Índice
 
 **Domínio:** Geração e otimização de código PySpark para Databricks e Fabric.
-**Agentes:** databricks-engineer
+**Agentes:** spark-expert, pipeline-architect
 
 ---
 

@@ -34,7 +34,7 @@ class TestBuildSupervisorOptions:
         mock_class, _ = self._make_mock_options_class()
         with patch("agents.supervisor.ClaudeAgentOptions", mock_class):
             with patch("agents.supervisor.load_all_agents") as mock_load:
-                mock_load.return_value = {"databricks-engineer": MagicMock()}
+                mock_load.return_value = {"sql-expert": MagicMock()}
                 from agents.supervisor import build_supervisor_options
 
                 build_supervisor_options()

@@ -8,7 +8,7 @@
 
 **Data Agents é um copiloto de engenharia de dados que opera dentro do seu Databricks e do seu Microsoft Fabric — não uma camada de chat que explica o que você já teria que fazer manualmente.**
 
-O diferencial é simples: o assistente **executa** (via MCPs nativos), respeita regras corporativas declarativas (Constituição, KBs, Skills), e orquestra 14 agentes especialistas em vez de jogar tudo em um único agente genérico.
+O diferencial é simples: o assistente **executa** (via MCPs nativos), respeita regras corporativas declarativas (Constituição, KBs, Skills), e orquestra 12 especialistas em vez de jogar tudo em um único agente genérico.
 
 ---
 
@@ -35,7 +35,7 @@ O diferencial é simples: o assistente **executa** (via MCPs nativos), respeita 
 | Tarefa | Caminho manual | Com Data Agents |
 |--------|----------------|-----------------|
 | **Análise de impacto de migração SQL Server → Databricks** (100 tabelas, 30 procedures) | 1-2 dias lendo DDLs, mapeando dependências, estimando esforço | ~30 min: `/migrate` extrai DDLs via MCP, classifica complexidade, sugere desenho Medallion |
-| **Criar pipeline Medallion (Bronze → Silver → Gold)** | 2-4h procurando templates, ajustando configs, testando incrementalmente | ~30-60 min: `/pipeline` delega ao `databricks-engineer` com KBs + skills + MCP Databricks/Fabric |
+| **Criar pipeline Medallion (Bronze → Silver → Gold)** | 2-4h procurando templates, ajustando configs, testando incrementalmente | ~30-60 min: `/pipeline` delega ao `pipeline-architect` com KBs + skills + MCP Databricks/Fabric |
 | **Auditoria de acessos e linhagem num workspace Fabric** | 1 dia compilando manualmente de múltiplas UIs | ~1h: `/governance` cruza `fabric_community` lineage + `memory_mcp` knowledge graph |
 | **Revisar um dbt model com 200 linhas** | 30-45 min de review humano | ~5 min: `/dbt` aponta falta de testes, sugere snapshots, checa naming |
 | **"Qual a diferença entre Delta Lake e Iceberg pro meu caso?"** | 1-2h de leitura de docs e blogs | ~2 min: `/party` traz 3 especialistas em paralelo com opiniões independentes |
@@ -69,15 +69,10 @@ A meta não é magia — é **remover o atrito entre intenção e execução** q
 
 ---
 
-## Estado atual (2026-05-09) — v2.3.0
+## Estado atual (2026-05-07)
 
-- **14 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1326+ testes** ✅.
+- **13 agentes**, **15 MCPs** (6 custom, 9 de terceiros), **1260+ testes** ✅.
 - Modelos: Supervisor e especialistas em Sonnet 4.6; `geral` em Haiku 4.5 (T0).
-- **Loop de aprendizado autônomo** ✅: `LESSON_LEARNED` captura erros e eventos de baixa performance entre sessões; injetado no system prompt antes de operações de alto risco. Dashboard "🧠 Lições Aprendidas" no Streamlit.
-- **S4 Autonomous Mode** ✅: auto-aprovação configurável de delegações read-only/single-agent/baixo custo (`S4_AUTONOMOUS_MODE=false` por padrão).
-- **Chainlit UI completa** ✅: `/analyze-project`, `/party`, `/geral`, `/workflow`, `/sessions`, `/resume` com dispatch direto — sem overhead do Supervisor; tokens `/geral` streamados via `messages.stream()`; `/workflow` com feedback por fase em tempo real e botões de aprovação humana.
-- **`/workflow` Chainlit** ✅: `WorkflowRunner` com `StepCallback` — `cl.Step` por fase, `cl.Action` para pausas humanas (WF-01 a WF-05).
-- **`/sessions` + `/resume` Chainlit** ✅: listagem e retomada de sessões anteriores diretamente na UI, sem Supervisor.
 - T6.2 ✅: evals automáticos com regression detection vs run anterior (`make evals`).
 - T6.3 ✅: `make bootstrap` com wizard de credenciais + checagem de deps de sistema.
 - T6.4 ✅: skills `async-patterns` e `cli-patterns` adicionadas ao python-expert.

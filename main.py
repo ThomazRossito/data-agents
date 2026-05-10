@@ -31,9 +31,6 @@ import signal
 import sys
 import time
 
-from prompt_toolkit import PromptSession
-from prompt_toolkit.history import FileHistory
-from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
 from rich.console import Console
 from rich.live import Live
 from rich.markdown import Markdown
@@ -74,28 +71,12 @@ from hooks.transcript_hook import append_turn as _append_transcript_turn
 from memory.compiler import compile_daily_logs
 from memory.store import MemoryStore
 from memory.manager import MemoryManager
-from config.agent_meta import get_agent_tiers as _get_agent_tiers
+from agents.loader import preload_registry
 from commands.geral import run_geral_query
 from commands.party import run_party_query, parse_party_args
-from commands.analyze import (
-    ANALYZE_PROMPTS,
-    _DEFAULT_ANALYZE_PROMPT,
-    build_report,
-    parse_analyze_args,
-    save_report,
-)
 
 logger = logging.getLogger("data_agents.main")
 console = Console()
-
-# Readline-capable prompt: setas, histórico, Ctrl+A/E, backspace, etc.
-# FileHistory persiste o histórico entre sessões em logs/.cli_history.
-_HISTORY_FILE = _Path(__file__).parent / "logs" / ".cli_history"
-_prompt_session: PromptSession = PromptSession(
-    history=FileHistory(str(_HISTORY_FILE)),
-    auto_suggest=AutoSuggestFromHistory(),
-    mouse_support=False,
-)
 
 # Estado exposto para atexit/signal handlers (T1.1).
 # Atualizado a cada turn bem-sucedido em run_interactive; consumido pelo
@@ -149,11 +130,42 @@ def _signal_handler(signum: int, _frame: object) -> None:
 
 # ─── Mapeamento de tool → label amigável para o usuário ──────────────
 
-# Tier de cada agente — lido dinamicamente do registry (evita dessincronização)
-_AGENT_TIERS: dict[str, str] = _get_agent_tiers()
+# Pré-carrega apenas o frontmatter (fase rápida) para lookup de tier em tempo real.
+_AGENT_TIERS: dict[str, str] = {
+    name: meta.tier for name, meta in preload_registry().items() if meta.tier
+}
 
-# Labels de tools — importados de ui/ui_config.py (fonte única de verdade)
-from ui.ui_config import TOOL_LABELS  # noqa: E402
+TOOL_LABELS: dict[str, str] = {
+    # Ferramentas do Supervisor
+    "Agent": "🤖 Delegando para agente especialista",
+    "Read": "📖 Lendo arquivo",
+    "Grep": "🔍 Buscando conteúdo",
+    "Glob": "📂 Listando arquivos",
+    "Bash": "⚙️  Executando comando",
+    "AskUserQuestion": "❓ Aguardando resposta do usuário",
+    # Ferramentas MCP — Databricks
+    "mcp__databricks__execute_sql": "🗄️  Executando SQL no Databricks",
+    "mcp__databricks__list_catalogs": "📋 Listando catálogos do Unity Catalog",
+    "mcp__databricks__list_schemas": "📋 Listando schemas",
+    "mcp__databricks__list_tables": "📋 Listando tabelas",
+    "mcp__databricks__describe_table": "🔎 Inspecionando tabela",
+    "mcp__databricks__get_table_schema": "🔎 Obtendo schema da tabela",
+    "mcp__databricks__create_or_update_pipeline": "🔧 Criando/atualizando Pipeline LakeFlow",
+    "mcp__databricks__upload_to_volume": "⬆️  Enviando arquivo para Volume",
+    "mcp__databricks__list_volume_files": "📂 Listando arquivos no Volume",
+    "mcp__databricks__run_job_now": "🚀 Executando Job Databricks",
+    "mcp__databricks__start_pipeline": "🚀 Iniciando Pipeline Databricks",
+    "mcp__databricks__get_pipeline": "📊 Consultando status do Pipeline",
+    # Ferramentas MCP — Fabric
+    "mcp__fabric_official__list_workspaces": "📋 Listando workspaces do Fabric",
+    "mcp__fabric_official__list_lakehouses": "📋 Listando Lakehouses",
+    "mcp__fabric_official__onelake_upload_file": "⬆️  Enviando arquivo para OneLake",
+    "mcp__fabric_official__onelake_list_files": "📂 Listando arquivos no OneLake",
+    # Ferramentas MCP — Fabric RTI
+    "mcp__fabric_rti__kusto_query": "🔍 Executando query KQL",
+    "mcp__fabric_rti__kusto_command": "⚙️  Executando comando KQL",
+    "mcp__fabric_rti__kusto_list_databases": "📋 Listando databases do Eventhouse",
+}
 
 
 def _get_tool_label(tool_name: str) -> str:
@@ -538,9 +550,8 @@ async def _handle_memory_command(user_input: str) -> None:
                 )
                 return
 
-        confirm = (
-            _prompt_session.prompt(f"Tem certeza que deseja apagar {label}? (s/N) ").strip().lower()
-        )
+        console.print(f"[yellow]Tem certeza que deseja apagar {label}? (s/N)[/yellow] ", end="")
+        confirm = input().strip().lower()
         if confirm not in ("s", "sim", "y", "yes"):
             console.print("[dim]Cancelado.[/dim]")
             return
@@ -704,20 +715,12 @@ async def _stream_party(user_input: str, session_id: str | None = None) -> dict[
     # Exibe cada resposta com cabeçalho do agente
     total_cost = 0.0
     agent_icons = {
-        "databricks-engineer": "🗄️",
-        "databricks-ai": "🤖",
-        "fabric-engineer": "🏗️",
-        "fabric-rti": "⚡",
-        "fabric-ontology": "🧬",
-        "migration-expert": "🔄",
-        "python-expert": "🐍",
-        "dbt-expert": "📦",
+        "sql-expert": "🗄️",
+        "spark-expert": "⚡",
+        "pipeline-architect": "🏗️",
         "data-quality-steward": "🔍",
         "governance-auditor": "🔐",
-        "data-contracts-engineer": "📋",
-        "data-mesh-architect": "🕸️",
-        "business-analyst": "💼",
-        "geral": "💬",
+        "semantic-modeler": "📊",
     }
 
     for name, text, cost in results:
@@ -749,115 +752,6 @@ async def _stream_party(user_input: str, session_id: str | None = None) -> dict[
                     "session_type": "party",
                     "command": "/party",
                     "agents": [name for name, _, _ in results],
-                },
-            )
-
-    return {"cost": total_cost}
-
-
-async def _stream_analyze(user_input: str, session_id: str | None = None) -> dict[str, float]:
-    """
-    /analyze-project — análise completa do projeto a partir de múltiplas perspectivas.
-
-    Spawna agentes especializados em paralelo, cada um analisando seu domínio,
-    consolida os resultados e salva relatório em output/analyze-project/.
-    """
-    agent_names, project_description = parse_analyze_args(user_input)
-
-    if session_id:
-        _append_transcript_turn(
-            session_id=session_id,
-            role="user",
-            content=user_input,
-            metadata={
-                "session_type": "analyze",
-                "command": "/analyze-project",
-                "agents": agent_names,
-            },
-        )
-
-    console.print(
-        f"[bold green]🔬 [Analyze][/bold green] Agentes: [yellow]{', '.join(agent_names)}[/yellow]"
-    )
-    if project_description:
-        console.print(
-            f"[dim]Projeto: {project_description[:120]}"
-            f"{'...' if len(project_description) > 120 else ''}[/dim]\n"
-        )
-    else:
-        console.print("[dim]Sem descrição — análise por template padrão de cada domínio.[/dim]\n")
-
-    # Monta queries específicas por agente
-    queries = [
-        ANALYZE_PROMPTS.get(name, _DEFAULT_ANALYZE_PROMPT).format(
-            task=project_description or "(no description provided)"
-        )
-        for name in agent_names
-    ]
-
-    spinner = Spinner("dots", text=Text("Analisando projeto em paralelo...", style="dim"))
-    live = Live(spinner, console=console, refresh_per_second=10, transient=True)
-    live.start()
-    try:
-        import asyncio as _asyncio
-
-        from commands.party import _query_single_agent
-
-        tasks = [_query_single_agent(name, query) for name, query in zip(agent_names, queries)]
-        results = await _asyncio.gather(*tasks, return_exceptions=True)
-    finally:
-        if live.is_started:
-            live.stop()
-
-    # Normaliza resultados
-    clean_results: list[tuple[str, str, float]] = []
-    total_cost = 0.0
-    for i, result in enumerate(results):
-        name = agent_names[i]
-        if isinstance(result, Exception):
-            clean_results.append((name, f"_Erro: {result}_", 0.0))
-        else:
-            clean_results.append(result)  # type: ignore[arg-type]
-            total_cost += clean_results[-1][2]
-
-    # Exibe resultados
-    agent_icons = {
-        "databricks-engineer": "🗄️",
-        "fabric-engineer": "🏗️",
-        "data-quality-steward": "🔍",
-        "governance-auditor": "🔐",
-        "data-contracts-engineer": "📋",
-        "data-mesh-architect": "🕸️",
-    }
-    for name, text, _ in clean_results:
-        icon = agent_icons.get(name, "🔬")
-        console.print(f"[bold green]{icon} {name}:[/bold green]")
-        if text.strip():
-            console.print(Markdown(text))
-        console.print()
-
-    # Salva relatório consolidado
-    report = build_report(clean_results, project_description, agent_names)
-    report_path = save_report(report)
-    console.print(f"[dim]📄 Relatório salvo em: {report_path}[/dim]")
-    console.print(
-        f"[dim]💰 Analyze — {len(clean_results)} agentes | Custo total: ${total_cost:.5f}[/dim]\n"
-    )
-
-    if session_id and clean_results:
-        consolidated = "\n\n".join(
-            f"## {name}\n{text.strip()}" for name, text, _ in clean_results if text.strip()
-        )
-        if consolidated:
-            _append_transcript_turn(
-                session_id=session_id,
-                role="assistant",
-                content=consolidated,
-                cost_usd=total_cost,
-                metadata={
-                    "session_type": "analyze",
-                    "command": "/analyze-project",
-                    "agents": [name for name, _, _ in clean_results],
                 },
             )
 
@@ -968,7 +862,7 @@ async def run_interactive() -> None:
                         user_input = await asyncio.wait_for(
                             asyncio.get_event_loop().run_in_executor(
                                 None,
-                                lambda: _prompt_session.prompt("Você: ").strip(),
+                                lambda: console.input("[bold green]Você:[/bold green] ").strip(),
                             ),
                             timeout=settings.idle_timeout_minutes * 60
                             if settings.idle_timeout_minutes > 0
@@ -1160,13 +1054,6 @@ async def run_interactive() -> None:
                         handle_mcp_command(user_input, console)
                         continue
 
-                    # --- /health → Status das plataformas (local, sem Supervisor) ---
-                    if command_result and command_result.command == "/health":
-                        from commands.health import handle_health_command
-
-                        handle_health_command(console)
-                        continue
-
                     # --- /sessions → Lista sessões registradas (local, sem Supervisor) ---
                     if command_result and command_result.command == "/sessions":
                         from commands.sessions import handle_sessions_command
@@ -1245,11 +1132,15 @@ async def run_interactive() -> None:
                         _session_state["total_cost"] += result_metrics.get("cost", 0)
                         continue
 
-                    # --- /analyze-project → análise multi-perspectiva do projeto ---
-                    if command_result and command_result.command == "/analyze-project":
-                        result_metrics = await _stream_analyze(user_input, session_id=_session_id)
-                        _session_state["last_prompt"] = user_input
-                        _session_state["total_cost"] += result_metrics.get("cost", 0)
+                    # --- /monitor → Business Monitor autônomo (on/off/status/run/ask) ---
+                    if command_result and command_result.command == "/monitor":
+                        from commands.monitor import run_monitor_command
+
+                        args_str = user_input[len("/monitor") :].strip()
+                        response = await run_monitor_command(
+                            args_str, console=console, client=client
+                        )
+                        console.print(Markdown(response))
                         continue
 
                     # Ativa thinking apenas para DOMA Full (/plan) — planejamento complexo

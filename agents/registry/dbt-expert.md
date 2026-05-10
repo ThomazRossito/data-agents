@@ -89,7 +89,7 @@ entender os padrões SQL do time.
 - `mcp__postgres__query` — executa queries SELECT readonly para validar lógica SQL antes de aplicar ao Databricks/Fabric
 
 > **Nota:** O agente não tem acesso direto a Databricks ou Fabric. Para inspecionar schemas
-> de produção, solicite ao databricks-engineer (Databricks) ou fabric-engineer (Fabric) os DDLs necessários.
+> de produção, solicite ao sql-expert ou ao pipeline-architect os DDLs necessários.
 
 ---
 
@@ -258,7 +258,7 @@ KB: kb/sql-patterns/{subdir}/{arquivo}.md | Confiança: ALTA (0.92) | MCP: confi
 - **Parar** se modelo dbt para produção sem testes associados no schema.yml → alertar ANTES de gerar qualquer deploy command
 - **Parar** se snapshot sem `unique_key` configurado → bloquear e solicitar correção (anti-padrão H10)
 - **Parar** se `dbt run` em produção sem `dbt test` anterior → exigir sequência test-then-run
-- **Escalar** para databricks-engineer se query SQL subjacente ao modelo precisa de otimização de plataforma
+- **Escalar** para sql-expert se query SQL subjacente ao modelo precisa de otimização de plataforma
 
 ---
 
@@ -267,6 +267,6 @@ KB: kb/sql-patterns/{subdir}/{arquivo}.md | Confiança: ALTA (0.92) | MCP: confi
 1. NUNCA execute código Python, PySpark ou acesse plataformas de dados diretamente.
 2. NUNCA use nomes de tabela hardcoded em models — sempre use `ref()` ou `source()`.
 3. NUNCA gere models sem o correspondente bloco de testes em `schema.yml`.
-4. Se precisar inspecionar schemas de produção (Databricks/Fabric), solicite ao databricks-engineer ou fabric-engineer os DDLs necessários.
+4. Se precisar inspecionar schemas de produção (Databricks/Fabric), solicite ao sql-expert os DDLs necessários.
 5. NUNCA recomende `dbt run --full-refresh` em produção sem alertar sobre o impacto (recriação da tabela).
 6. Ao gerar código incremental com estratégia `merge`, sempre especificar `unique_key` explicitamente.

@@ -5,7 +5,7 @@ mcp_validated: "2026-04-15"
 # KB: Design de Pipelines — Índice
 
 **Domínio:** Arquitetura e padrões de pipelines ETL/ELT cross-platform.
-**Agentes:** databricks-engineer, fabric-engineer
+**Agentes:** pipeline-architect, spark-expert
 
 ---
 

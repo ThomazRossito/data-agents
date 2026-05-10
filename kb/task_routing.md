@@ -55,53 +55,33 @@ Antes de planejar, leia a KB indicada. Skills são opcionais (detalhes operacion
 > `python -c "from agents.delegation import render_routing_table; print(render_routing_table())"`
 
 <!-- BEGIN delegation_map (auto-gerado) -->
-| Situação                                                           | Agente a Acionar        |
-|--------------------------------------------------------------------|-------------------------|
-| Migração SQL Server/PostgreSQL → Databricks/Fabric                 | migration-expert        |
-| /migrate ou assessment de banco relacional                         | migration-expert        |
-| DDL de origem extraído → propor Medallion                          | migration-expert        |
-| Transcript / briefing / notas brutas                               | business-analyst        |
-| Input não estruturado antes do /plan                               | business-analyst        |
-| Tabela nova ingerida → validar qualidade                           | data-quality-steward    |
-| Alerta de qualidade disparado → investigar                         | data-quality-steward    |
-| Schema drift em streaming                                          | data-quality-steward    |
-| Pipeline modificado → verificar conformidade                       | governance-auditor      |
-| Acesso incomum detectado → auditar                                 | governance-auditor      |
-| Dados PII expostos → classificar e proteger                        | governance-auditor      |
-| Qualquer tarefa exclusiva do Microsoft Fabric                      | fabric-engineer         |
-| Descoberta: listar workspaces / lakehouses / tabelas no Fabric     | fabric-engineer         |
-| Design ou revisão de arquitetura Medallion no Fabric               | fabric-engineer         |
-| Semantic Model / DAX / Direct Lake (Fabric)                        | fabric-engineer         |
-| Comentários de catálogo / Data Maturity Score (Fabric)             | fabric-engineer         |
-| Star Schema / Data Vault / SCD (Fabric)                            | fabric-engineer         |
-| Governança Fabric: Sensitivity Labels / Workspace Roles / linhagem | fabric-engineer         |
-| FinOps Fabric: Capacity Units / rightsizing                        | fabric-engineer         |
-| Fabric RTI: Eventhouse / KQL / Eventstream / Activator             | fabric-rti              |
-| KQL queries / séries temporais em tempo real (Fabric)              | fabric-rti              |
-| OWL / RDF / ontologia / Fabric IQ Ontology                         | fabric-ontology         |
-| Qualquer tarefa SQL / Spark SQL / Unity Catalog (Databricks)       | databricks-engineer     |
-| PySpark / DLT / LakeFlow / Delta Lake (Databricks)                 | databricks-engineer     |
-| Jobs e orquestração Databricks                                     | databricks-engineer     |
-| CDC com Debezium / Kafka Connect / AUTO CDC INTO (Databricks)      | databricks-engineer     |
-| Diagnóstico Spark: OOM / data skew / shuffle / job travado         | databricks-engineer     |
-| Criar Knowledge Assistant (KA) / Mosaic AI Supervisor (MAS)        | databricks-engineer     |
-| Executar código serverless / criar cluster/warehouse (Databricks)  | databricks-engineer     |
-| Criar/atualizar Genie Space (Databricks)                           | databricks-engineer     |
-| Criar/publicar AI/BI Dashboard (Databricks)                        | databricks-engineer     |
-| Custo de DBU elevado → investigar e otimizar (Databricks)          | databricks-engineer     |
-| Pipeline DLT com falhas recorrentes (Databricks)                   | databricks-engineer     |
-| Pipeline RAG / Vector Search / embeddings (Databricks)             | databricks-ai           |
-| AI Functions (AI_QUERY, AI_SUMMARIZE) no Databricks                | databricks-ai           |
-| LLMOps: MLflow evaluation, model registry, serving (Databricks)    | databricks-ai           |
-| Kafka / Flink / Spark Structured Streaming (Databricks)            | databricks-ai           |
-| Watermarks, late data, exactly-once (Databricks)                   | databricks-ai           |
-| dbt (models, refs, sources, testes, snapshots)                     | dbt-expert              |
-| Python puro (pacotes, APIs, CLIs, pandas/polars)                   | python-expert           |
-| Data Contract / ODCS / SLA de qualidade contratual                 | data-contracts-engineer |
-| Breaking change em schema → impacto em consumidores                | data-contracts-engineer |
-| Data Mesh: domínios, Data Products, governança federada            | data-mesh-architect     |
-| Mapeamento de domínios de negócio → plataforma de dados            | data-mesh-architect     |
-| Pergunta conceitual sem MCP                                        | geral                   |
+| Situação                                             | Agente a Acionar     |
+|------------------------------------------------------|----------------------|
+| Migração SQL Server/PostgreSQL → Databricks/Fabric   | migration-expert     |
+| /migrate ou assessment de banco relacional           | migration-expert     |
+| DDL de origem extraído → propor Medallion            | migration-expert     |
+| Transcript / briefing / notas brutas                 | business-analyst     |
+| Input não estruturado antes do /plan                 | business-analyst     |
+| Tabela nova ingerida → validar qualidade             | data-quality-steward |
+| Alerta de qualidade disparado → investigar           | data-quality-steward |
+| Schema drift em streaming                            | data-quality-steward |
+| Pipeline modificado → verificar conformidade         | governance-auditor   |
+| Acesso incomum detectado → auditar                   | governance-auditor   |
+| Dados PII expostos → classificar e proteger          | governance-auditor   |
+| Gold Layer criada → preparar para consumo BI         | semantic-modeler     |
+| Semantic Model mencionado (Fabric/Power BI/DAX)      | semantic-modeler     |
+| Criar/atualizar Genie Space (Databricks)             | semantic-modeler     |
+| Criar/publicar AI/BI Dashboard (Databricks)          | semantic-modeler     |
+| Consultar endpoint de modelo ML/GenAI                | semantic-modeler     |
+| Relatório de métricas / análise consumível           | semantic-modeler     |
+| Criar Knowledge Assistant (KA) / Mosaic (MAS)        | pipeline-architect   |
+| Executar código serverless / criar cluster/warehouse | pipeline-architect   |
+| Múltiplas queries SQL independentes em paralelo      | sql-expert           |
+| PySpark / Spark SQL / DLT                            | spark-expert         |
+| dbt (models, refs, sources, testes, snapshots)       | dbt-expert           |
+| Python puro (pacotes, APIs, CLIs, pandas/polars)     | python-expert        |
+| Alerta de negócio recebido (estoque, vendas, SLA)    | business-monitor     |
+| Pergunta conceitual sem MCP                          | geral                |
 <!-- END delegation_map -->
 
 

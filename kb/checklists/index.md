@@ -1,7 +1,7 @@
 ---
 domain: checklists
 updated_at: 2026-04-30
-agents: [databricks-engineer, databricks-ai, fabric-engineer, migration-expert, business-analyst]
+agents: [pipeline-architect, spark-expert, sql-expert, migration-expert, semantic-modeler, business-analyst]
 ---
 
 # Checklists — Índice de Definition of Done

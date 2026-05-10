@@ -129,10 +129,10 @@ silver_transacoes ────────────────────�
 
 | Ordem | Agente | Tarefa | Saída |
 |-------|--------|--------|-------|
-| 1 | databricks-engineer | DDL das dims e facts | SQL scripts |
-| 2 | databricks-engineer | Pipeline SDP para popular as tabelas | Código PySpark/SQL |
+| 1 | sql-expert | DDL das dims e facts | SQL scripts |
+| 2 | spark-expert | Pipeline SDP para popular as tabelas | Código PySpark/SQL |
 | 3 | data-quality-steward | Expectations nas dims e facts | Validações |
-| 4 | fabric-engineer | Modelo semântico + DAX | Definição do modelo |
+| 4 | semantic-modeler | Modelo semântico + DAX | Definição do modelo |
 
 ---
 
